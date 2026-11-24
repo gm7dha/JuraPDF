@@ -1126,3 +1126,60 @@ a.phase-badge {
     display: none;
   }
 }
+
+/* ------------------------------------------------------------------ JuraPDF: the Print window */
+
+.print-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.print-preview {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px;
+  background: var(--desk);
+  border-radius: 8px;
+}
+
+.print-preview-page {
+  width: 260px;
+  min-height: 200px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(20, 32, 50, 0.18);
+}
+
+.print-preview-page canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.print-options .field-label:first-child {
+  margin-top: 0;
+}
+
+.print-options .check-row {
+  margin: 2px 0 8px;
+}
+
+.print-range {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.print-busy {
+  margin-right: auto;
+  font-size: 12.5px;
+}
+
+@media (max-width: 700px) {
+  .print-layout {
+    grid-template-columns: 1fr;
+  }
+}

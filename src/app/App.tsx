@@ -7,6 +7,7 @@ import { HelpDialog } from "./HelpDialog";
 import { Icons } from "./icons";
 import { PageView } from "./PageView";
 import { PasswordDialog } from "./PasswordDialog";
+import { PrintDialog } from "./PrintDialog";
 import { inPopup, inTextBox } from "./popupGuard";
 import { Thumbnails } from "./Thumbnails";
 import { TopBar } from "./TopBar";
@@ -41,6 +42,7 @@ export function App() {
       )}
       {dialog === "help" && <HelpDialog />}
       {dialog === "password" && <PasswordDialog />}
+      {dialog === "print" && <PrintDialog />}
       <Toasts />
     </div>
   );
@@ -113,12 +115,13 @@ function useShortcuts() {
       const s = useStore.getState();
       const mod = e.ctrlKey || e.metaKey;
       const key = e.key.toLowerCase();
-      // Open and Save work everywhere except inside a dialog box.
-      if (mod && !e.altKey && (key === "o" || key === "s")) {
+      // Open, Save and Print work everywhere except inside a dialog box.
+      if (mod && !e.altKey && (key === "o" || key === "s" || key === "p")) {
         if (document.querySelector('[aria-modal="true"]')) return;
         e.preventDefault();
         if (key === "o") void openFromFile();
-        else void saveToFile();
+        else if (key === "s") void saveToFile();
+        else if (s.pdf) s.openDialog("print");
         return;
       }
       if (inPopup(e.target, document) || inTextBox(e.target)) return;

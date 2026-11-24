@@ -24,7 +24,11 @@ export function HelpDialog() {
         JuraPDF shows and edits PDF files, right here in your browser. <strong>Open</strong> a PDF (or drag one onto the window), move round it with the page list on the left, and{" "}
         <strong>Save</strong> it back to your computer. Your files never leave your computer.
       </p>
-      <p className="muted">Coming next: watermarks, then adding, removing and moving pages, editing words and pictures, and printing.</p>
+      <p>
+        <strong>Print</strong> can write <strong>UNCONTROLLED DOCUMENT</strong> and a <strong>Work Order</strong> number across every printed page. Only the printout is
+        marked; your PDF isn't changed.
+      </p>
+      <p className="muted">Coming next: watermarks saved into the PDF, then adding, removing and moving pages, and editing words and pictures.</p>
       <div className="platform-row">
         <span className="muted small">Shortcuts shown for</span>
         <div className="segmented two" role="radiogroup" aria-label="Keyboard type">

@@ -23,6 +23,10 @@
 - Everything outside `src/app` and `src/pdf` is pure and tested in Node (`tests/*.test.ts`). `scripts/smoke-test.mjs`
   builds a small PDF itself, drops it on the built app in headless Chromium and checks drawing, words, page moves, zoom,
   save, help and dark mode; it fails on any console error. `?smoke` exposes the store as `window.jurapdfStore`.
+- Printing (`src/app/printing.ts`): chosen pages drawn at 150 dpi, the print watermark (`src/model/printMark.ts`:
+  "UNCONTROLLED DOCUMENT" and/or "Work Order: …", see-through red, corner to corner) drawn on, then shown as pictures in
+  a hidden iframe with one `@page` size per page and printed. The owner asked for exactly these two options on the Print
+  window; keep their wording.
 - App icons: edit `public/favicon.svg`, then `npm run icons` (set `CHROMIUM_PATH` if Playwright's own browser isn't
   installed).
 - Versions: `package.json` holds the version (shown as e.g. "v0.1" in the top bar); add each version's notes to the top
