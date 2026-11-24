@@ -159,4 +159,58 @@ export const Icons = {
       <path d="M3 8V4.5A1.5 1.5 0 0 1 4.5 3H8M16 3h3.5A1.5 1.5 0 0 1 21 4.5V8M21 16v3.5a1.5 1.5 0 0 1-1.5 1.5H16M8 21H4.5A1.5 1.5 0 0 1 3 19.5V16" />
     </Svg>
   ),
+  /** Turn a page anticlockwise. */
+  TurnLeft: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M4.5 4v5h5" />
+      <path d="M4.8 9A8 8 0 1 1 4 13.5" />
+    </Svg>
+  ),
+  /** Turn a page clockwise. */
+  TurnRight: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M19.5 4v5h-5" />
+      <path d="M19.2 9A8 8 0 1 0 20 13.5" />
+    </Svg>
+  ),
+  Bin: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M4 6.5h16M9.5 6.5V4h5v2.5M6 6.5l1 13A1.5 1.5 0 0 0 8.5 21h7a1.5 1.5 0 0 0 1.5-1.5l1-13M10 10.5v6.5M14 10.5v6.5" />
+    </Svg>
+  ),
+  /** Move pages earlier: a page with an arrow up. */
+  MoveUp: (p: IconProps) => (
+    <Svg {...p}>
+      <rect x="9" y="9" width="11" height="12" rx="1.5" />
+      <path d="M5 15V4M2 7l3-3 3 3" />
+    </Svg>
+  ),
+  /** Move pages later: a page with an arrow down. */
+  MoveDown: (p: IconProps) => (
+    <Svg {...p}>
+      <rect x="9" y="3" width="11" height="12" rx="1.5" />
+      <path d="M5 9v11M2 17l3 3 3-3" />
+    </Svg>
+  ),
+  /** A new blank page. */
+  AddPage: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M6.5 3h8l4 4v12.5A1.5 1.5 0 0 1 17 21H6.5A1.5 1.5 0 0 1 5 19.5v-15A1.5 1.5 0 0 1 6.5 3Z" />
+      <path d="M14.5 3v4h4M12 10.5v6M9 13.5h6" />
+    </Svg>
+  ),
+  /** Pages from another PDF: two pages, one arriving. */
+  BringIn: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M9 3.5h9.5A1.5 1.5 0 0 1 20 5v12a1.5 1.5 0 0 1-1.5 1.5H9" />
+      <path d="M3 11h10M10 8l3 3-3 3" />
+    </Svg>
+  ),
+  /** Save some pages as a new PDF: a page going out. */
+  SaveOut: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M15 3.5H5.5A1.5 1.5 0 0 0 4 5v12a1.5 1.5 0 0 0 1.5 1.5H15" />
+      <path d="M11 11h10M18 8l3 3-3 3" />
+    </Svg>
+  ),
 };

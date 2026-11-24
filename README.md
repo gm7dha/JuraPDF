@@ -8,7 +8,7 @@ JuraPDF runs entirely in your browser. There's no account, nothing is uploaded, 
 [JuraCAD](https://github.com/gm7dha/JuraCAD), [JuraCUT](https://github.com/gm7dha/JuraCUT) and
 [JuraDAW](https://github.com/gm7dha/JuraDAW), built the same way.
 
-> **Status: v0.3 preview.** It opens, shows and prints PDFs, adds watermarks saved into the PDF, and prints with an "Uncontrolled Document" watermark and words of your own. Adding, removing and moving pages comes next. See the [roadmap](docs/DESIGN.md#roadmap).
+> **Status: v0.4 preview.** It opens, shows and prints PDFs, adds watermarks saved into the PDF, prints with an "Uncontrolled Document" watermark and words of your own, and turns, moves, deletes, adds and joins pages. Editing words and pictures comes next. See the [roadmap](docs/DESIGN.md#roadmap).
 
 ## What you can do today
 
@@ -21,6 +21,9 @@ JuraPDF runs entirely in your browser. There's no account, nothing is uploaded, 
 - **Save** the PDF back to your computer.
 - **Watermark** the pages with words or a picture: any colour, size, angle, see-through amount, in the middle, a corner
   or repeated, in front or behind, on all, odd, even or chosen pages, with a live preview. It's saved into the PDF.
+- **Change pages**: pick pages in the page list (Ctrl/⌘-click or Shift-click), then turn, move (or drag), delete
+  or add blank pages; bring in all the pages of another PDF (to join files); save picked pages as a new PDF (to split
+  one up).
 - **Undo and Redo** any change.
 - **Print** all pages, the current page or the pages you choose, with an optional watermark across every printed page:
   **UNCONTROLLED DOCUMENT** and/or your own **Text** (e.g. "Work Order W245354"). Only the printout is marked.
@@ -30,9 +33,8 @@ JuraPDF runs entirely in your browser. There's no account, nothing is uploaded, 
 
 ## Coming next
 
-1. **Pages**: add, delete, reorder, rotate, bring in pages from another PDF, join files, split them up.
-2. **Editing**: add words, pictures and shapes; move, replace or delete pictures; fix words already on the page.
-3. **Bring in and save out**: pictures to pages, pages to pictures, copy all the words out.
+1. **Editing**: add words, pictures and shapes; move, replace or delete pictures; fix words already on the page.
+2. **Bring in and save out**: pictures to pages, pages to pictures, copy all the words out.
 
 ## How it's built
 

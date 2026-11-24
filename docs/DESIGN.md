@@ -32,10 +32,10 @@ from scanned pages), real-time collaboration or cloud storage.
 ## Architecture
 
 ```
-src/model      zoom.ts (zoom and page layout maths), pdfFile.ts (recognising and naming PDFs), printMark.ts (print watermark layout, page ranges), store.ts
+src/model      zoom.ts (zoom and page layout maths), pdfFile.ts (recognising and naming PDFs), printMark.ts (print watermark layout, page ranges), pages.ts (picking pages, new page orders), store.ts
 src/model      watermark.ts (watermark choices and where each copy goes, turned pages included)
-src/pdf        pdfjs.ts (loading, drawing pages and their words with pdf.js), watermark.ts (writing watermarks with pdf-lib)
-src/app        React: TopBar, ViewBar, Thumbnails, PageView, PrintDialog (+ printing.ts), HelpDialog, PasswordDialog, App
+src/pdf        pdfjs.ts (loading, drawing pages and their words with pdf.js), watermark.ts (writing watermarks with pdf-lib), pages.ts (page changes with pdf-lib)
+src/app        React: TopBar, ViewBar (+ pageActions.ts), Thumbnails, PageView, PrintDialog (+ printing.ts), HelpDialog, PasswordDialog, App
 tests          Vitest, pure code only;  scripts/smoke-test.mjs drives the built app in headless Chromium
 ```
 
@@ -52,8 +52,9 @@ tests          Vitest, pure code only;  scripts/smoke-test.mjs drives the built 
   (diagonal by default), position (nine spots, or tiled across the page), which pages (all, odd, even, a range), in
   front of or behind the page; live preview on the real pages; saved presets. An option to turn each page into a
   picture so the watermark can't be lifted off (says plainly that the words then can't be selected).
-- **v0.4** — **pages**: add blank pages, delete, drag to reorder in the page list, rotate, bring in pages from another
-  PDF, join several PDFs, split or save chosen pages as a new PDF. Undo and redo for everything.
+- **v0.4 (done)** — **pages**: pick pages in the page list (Ctrl/⌘-click, Shift-click), add blank pages, delete, drag
+  to reorder or move up/down, turn, bring in pages from another PDF (joining), save chosen pages as a new PDF
+  (splitting). Undo and redo for everything.
 - **v0.5** — **editing**: add words (text boxes), pictures and shapes (lines, boxes, arrows, highlights); move, resize,
   replace or delete pictures already on a page; fix words already on a page (the old words are covered with the page's
   background and the new ones written in the closest matching font; short fixes only, as PDFs don't reflow).

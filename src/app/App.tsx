@@ -4,6 +4,7 @@ import { hasUnsavedChanges, useStore } from "../model/store";
 import { zoomIn, zoomOut } from "../model/zoom";
 import { openFile, openFromFile, saveToFile } from "./fileActions";
 import { HelpDialog } from "./HelpDialog";
+import { deleteChosen } from "./pageActions";
 import { Icons } from "./icons";
 import { PageView } from "./PageView";
 import { PasswordDialog } from "./PasswordDialog";
@@ -169,7 +170,9 @@ function useShortcuts() {
       }
       if (!s.pdf) return;
       const last = s.pdf.sizes.length - 1;
-      if (e.key === "ArrowLeft") s.goToPage(s.currentPage - 1);
+      if ((e.key === "Delete" || e.key === "Backspace") && s.selected.length) void deleteChosen();
+      else if (e.key === "Escape" && s.selected.length) s.setSelected([]);
+      else if (e.key === "ArrowLeft") s.goToPage(s.currentPage - 1);
       else if (e.key === "ArrowRight") s.goToPage(s.currentPage + 1);
       else if (e.key === "Home") s.goToPage(0);
       else if (e.key === "End") s.goToPage(last);

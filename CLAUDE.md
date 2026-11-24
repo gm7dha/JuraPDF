@@ -36,6 +36,9 @@
   14 standard fonts (WinAnsi letters only, explained kindly otherwise). In front: the page's own drawing is wrapped in
   q/Q first; behind: the watermark's stream goes first. Locked (encrypted) PDFs are turned away with `LockedPdf`.
   `tests/watermark.test.ts` reads the result back with pdf.js (legacy build) to check where the words landed.
+- Pages (`src/model/pages.ts` pure: picking and new orders; `src/pdf/pages.ts` writing): the page buttons in the
+  ViewBar (`src/app/pageActions.ts`) work on the picked pages (`selected` in the store, cleared by every change, plain
+  click = just go to the page) or else the page being read. Thumbnails are drag sources and drop targets for moving.
 - App icons: edit `public/favicon.svg`, then `npm run icons` (set `CHROMIUM_PATH` if Playwright's own browser isn't
   installed).
 - Versions: `package.json` holds the version (shown as e.g. "v0.1" in the top bar); add each version's notes to the top

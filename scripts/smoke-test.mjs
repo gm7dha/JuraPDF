@@ -2,7 +2,8 @@
  * Browser smoke test: serves the production build, opens it in headless
  * Chromium and does what a person would: drop a PDF on the window → see its
  * pages and thumbnails drawn → select its words → go to a page → zoom in and
- * out → save it. Fails on any console error. Run after `npm run build`.
+ * out → save it → watermark, print → pick, turn, move, delete and add pages.
+ * Fails on any console error. Run after `npm run build`.
  *
  * In GitHub Actions, problems are reported as annotations. SMOKE_SCREENSHOT=1
  * also saves smoke.png. CHROMIUM_PATH uses a Chromium already on the computer.
@@ -12,6 +13,7 @@ import { readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { extname, join } from "node:path";
 import { chromium } from "playwright";
+import { PDFDocument } from "pdf-lib";
 
 const inCI = process.env.GITHUB_ACTIONS === "true";
 const annotate = (level, title, message) => {
@@ -213,7 +215,7 @@ await step("hiding and showing the page list", async () => {
 });
 
 await step("saving", async () => {
-  const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Save" }).click()]);
+  const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Save", exact: true }).click()]);
   expect(download.suggestedFilename() === "Smoke test.pdf", `saved as ${download.suggestedFilename()}`);
   const saved = await readFile(await download.path());
   expect(saved.equals(pdf), "the saved PDF should be the same as the one opened");
@@ -241,7 +243,7 @@ await step("adding a watermark, undo and redo, and saving it", async () => {
   await page.locator('.page[data-page="1"] .textLayer span', { hasText: "SMOKE DRAFT" }).waitFor({ state: "detached", timeout: 15_000 });
   await page.keyboard.press("Control+y");
   await page.locator('.page[data-page="1"] .textLayer span', { hasText: "SMOKE DRAFT" }).waitFor({ timeout: 15_000 });
-  const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Save" }).click()]);
+  const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Save", exact: true }).click()]);
   const saved = await readFile(await download.path());
   expect(saved.subarray(0, 5).toString() === "%PDF-" && !saved.equals(pdf), "the saved PDF should be a new PDF with the watermark");
   await page.getByText("Unsaved changes").waitFor({ state: "detached" });
@@ -326,6 +328,96 @@ await step("a file that isn't a PDF is turned away kindly", async () => {
   await page.getByText("notes.txt isn't a PDF").waitFor();
   // The PDF that was open is still there.
   expect((await page.locator(".page").count()) === 3, "the open PDF should stay open");
+});
+
+await step("changing pages: pick, turn, drag to move, delete, add, bring in and save some as a new PDF", async () => {
+  const st = () => page.evaluate(() => {
+    const s = window.jurapdfStore.getState();
+    return { selected: s.selected, sizes: s.pdf.sizes, current: s.currentPage, label: s.past.at(-1)?.label };
+  });
+  // Waits for page n's words to be redrawn as `words` (they're drawn again after each change).
+  const wordsAre = (n, words) =>
+    page
+      .waitForFunction(([n, words]) => document.querySelector(`.page[data-page="${n}"] .textLayer`)?.textContent?.includes(words), [n, words], { timeout: 15_000 })
+      .then(() => true, () => false);
+  const pagesIn = async (bytes) => (await PDFDocument.load(bytes)).getPageCount();
+  const thumb = (n) => page.locator(`.thumb[data-thumb="${n}"]`);
+
+  // Pick pages 1 and 3.
+  await thumb(1).click();
+  await thumb(3).click({ modifiers: ["Control"] });
+  expect(JSON.stringify((await st()).selected) === "[0,2]", `pages 1 and 3 should be picked, not ${JSON.stringify((await st()).selected)}`);
+  await page.locator(".thumbs-picked", { hasText: "2 pages picked" }).waitFor();
+  if (process.env.SMOKE_SCREENSHOT) {
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: "smoke-pages.png" });
+  }
+
+  // Turn them a quarter turn: page 1 (A4 upright) lies on its side, page 3 (landscape) stands up.
+  await page.getByRole("button", { name: "Turn right" }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "turn pages 1 and 3");
+  let now = await st();
+  expect(now.sizes[0][0] > now.sizes[0][1] && now.sizes[2][0] < now.sizes[2][1], `pages 1 and 3 should be turned: ${JSON.stringify(now.sizes)}`);
+  expect(JSON.stringify(now.selected) === "[0,2]", "the pages should stay picked");
+  await page.keyboard.press("Control+z");
+  await page.waitForFunction(() => window.jurapdfStore.getState().pdf.sizes[0][0] < window.jurapdfStore.getState().pdf.sizes[0][1]);
+
+  // Drag page 3 to the top.
+  await thumb(3).click();
+  await thumb(3).dragTo(thumb(1), { targetPosition: { x: 60, y: 10 } });
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "move page 3");
+  expect((await wordsAre(1, "Smoke page 3")), "page 3 should now be first");
+  expect((await wordsAre(2, "Smoke page 1")), "page 1 should now be second");
+
+  // Move it back down with the button (it's still the page being read).
+  expect((await st()).current === 0, "the moved page should be the one being read");
+  await page.getByRole("button", { name: "Move down" }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "move page 1 down");
+  expect((await wordsAre(1, "Smoke page 1")) && (await wordsAre(2, "Smoke page 3")), "page 1 should be first again, with page 3 after it");
+  // Undo both moves.
+  for (let i = 0; i < 2; i++) await page.keyboard.press("Control+z");
+  expect((await wordsAre(1, "Smoke page 1")) && (await wordsAre(3, "Smoke page 3")), "Undo should put the pages back in order");
+
+  // Pick page 2 and delete it with the Delete key; Undo brings it back.
+  await thumb(2).click({ modifiers: ["Control"] });
+  await thumb(2).click({ modifiers: ["Control"] }); // a second Ctrl-click un-picks it...
+  await thumb(1).click();
+  await thumb(2).click({ modifiers: ["Shift"] }); // ...and Shift-click picks a run: pages 1 and 2
+  expect(JSON.stringify((await st()).selected) === "[0,1]", `pages 1 and 2 should be picked, not ${JSON.stringify((await st()).selected)}`);
+  await page.keyboard.press("Delete");
+  await page.waitForFunction(() => window.jurapdfStore.getState().pdf.sizes.length === 1);
+  await page.getByText("Deleted pages 1 and 2").waitFor();
+  expect((await wordsAre(1, "Smoke page 3")), "only page 3 should be left");
+  expect(await page.getByRole("button", { name: "Delete pages" }).isDisabled(), "the last page can't be deleted");
+  await page.keyboard.press("Control+z");
+  await page.waitForFunction(() => window.jurapdfStore.getState().pdf.sizes.length === 3);
+
+  // Add a blank page after page 3 (landscape, like it).
+  await thumb(3).click();
+  await page.getByRole("button", { name: "Add a blank page" }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().pdf.sizes.length === 4);
+  now = await st();
+  expect(now.sizes[3][0] === 842 && now.sizes[3][1] === 595 && now.current === 3, `a landscape blank page 4 should be added and shown: ${JSON.stringify(now)}`);
+
+  // Bring in the pages of another PDF after page 1.
+  await thumb(1).click();
+  const [chooser] = await Promise.all([page.waitForEvent("filechooser"), page.getByRole("button", { name: "Bring in pages from another PDF" }).click()]);
+  await chooser.setFiles({ name: "Other.pdf", mimeType: "application/pdf", buffer: pdf });
+  await page.waitForFunction(() => window.jurapdfStore.getState().pdf.sizes.length === 7, null, { timeout: 15_000 });
+  await page.getByText("Brought in 3 pages from Other.pdf").waitFor();
+  expect(JSON.stringify((await st()).selected) === "[1,2,3]", "the pages brought in should be picked");
+  expect((await wordsAre(2, "Smoke page 1")) && (await wordsAre(3, "Smoke page 2")), "the new pages should come after page 1");
+
+  // Save the picked pages as a new PDF of their own.
+  const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Save pages as a new PDF" }).click()]);
+  expect(download.suggestedFilename() === "Smoke test (3 pages).pdf", `saved as ${download.suggestedFilename()}`);
+  const part = await readFile(await download.path());
+  const partPages = await pagesIn(part);
+  expect(partPages === 3, `the new PDF should have 3 pages, not ${partPages}`);
+  // Back to the 3 pages the next steps expect.
+  for (let i = 0; i < 2; i++) await page.keyboard.press("Control+z");
+  await page.waitForFunction(() => window.jurapdfStore.getState().pdf.sizes.length === 3);
+  await page.keyboard.press("Escape");
 });
 
 await step("dark mode", async () => {

@@ -37,28 +37,68 @@ const isCancel = (e: unknown) => e instanceof DOMException && e.name === "AbortE
 
 /** Ask for a PDF and open it. */
 export async function openFromFile(): Promise<void> {
+  try {
+    const file = await pickPdfFile();
+    if (file) await openFile(file);
+  } catch (e) {
+    useStore.getState().showToast(`Couldn't open: ${e instanceof Error ? e.message : String(e)}`, "error");
+  }
+}
+
+/** Ask for a PDF file from the computer. Null if nothing was chosen. */
+export async function pickPdfFile(): Promise<File | null> {
   const w = window as PickerWindow;
   if (w.showOpenFilePicker) {
     try {
       const [handle] = await w.showOpenFilePicker({ types: PDF_TYPES });
-      if (handle) await openFile(await handle.getFile());
+      return handle ? await handle.getFile() : null;
     } catch (e) {
-      if (!isCancel(e)) useStore.getState().showToast(`Couldn't open: ${e instanceof Error ? e.message : String(e)}`, "error");
+      if (isCancel(e)) return null;
+      throw e;
     }
-    return;
   }
-  // Other browsers: the ordinary file picker.
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = `${PDF_EXTENSION},${PDF_MIME}`;
-  input.className = "file-input";
-  input.onchange = () => {
-    const file = input.files?.[0];
-    input.remove();
-    if (file) void openFile(file);
-  };
-  document.body.appendChild(input);
-  input.click();
+  // Other browsers: the ordinary file picker. (If it's closed without a choice, nothing more happens.)
+  return new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = `${PDF_EXTENSION},${PDF_MIME}`;
+    input.className = "file-input";
+    input.onchange = () => {
+      const file = input.files?.[0] ?? null;
+      input.remove();
+      resolve(file);
+    };
+    input.oncancel = () => {
+      input.remove();
+      resolve(null);
+    };
+    document.body.appendChild(input);
+    input.click();
+  });
+}
+
+/**
+ * Write a PDF to the computer: the Save window where there is one, else a
+ * download. Gives the name it was saved as and whether it was downloaded, or
+ * null if the Save window was closed.
+ */
+export async function writePdf(bytes: Uint8Array<ArrayBuffer>, suggested: string): Promise<{ name: string; downloaded: boolean } | null> {
+  const blob = new Blob([bytes], { type: PDF_MIME });
+  const w = window as PickerWindow;
+  if (w.showSaveFilePicker) {
+    try {
+      const handle = await w.showSaveFilePicker({ suggestedName: suggested, types: PDF_TYPES });
+      const out = await handle.createWritable();
+      await out.write(blob);
+      await out.close();
+      return { name: handle.name, downloaded: false };
+    } catch (e) {
+      if (isCancel(e)) return null;
+      throw e;
+    }
+  }
+  downloadFile(blob, suggested);
+  return { name: suggested, downloaded: true };
 }
 
 let opened = 0;
@@ -108,23 +148,12 @@ export async function saveToFile(): Promise<void> {
   const pdf = s.pdf;
   if (!pdf) return;
   const suggested = `${safeFileName(nameFromFileName(pdf.fileName), "Document")}${PDF_EXTENSION}`;
-  const blob = new Blob([pdf.bytes], { type: PDF_MIME });
-  const w = window as PickerWindow;
   try {
-    if (w.showSaveFilePicker) {
-      const handle = await w.showSaveFilePicker({ suggestedName: suggested, types: PDF_TYPES });
-      const out = await handle.createWritable();
-      await out.write(blob);
-      await out.close();
-      s.markSaved(handle.name);
-      s.showToast(`Saved ${handle.name}`, "success");
-      return;
-    }
-    downloadFile(blob, suggested);
-    s.markSaved(suggested);
-    s.showToast(`Saved ${suggested} to your Downloads folder`, "success");
+    const saved = await writePdf(pdf.bytes, suggested);
+    if (!saved) return;
+    s.markSaved(saved.name);
+    s.showToast(saved.downloaded ? `Saved ${saved.name} to your Downloads folder` : `Saved ${saved.name}`, "success");
   } catch (e) {
-    if (isCancel(e)) return;
     s.showToast(`Couldn't save: ${e instanceof Error ? e.message : String(e)}`, "error");
   }
 }

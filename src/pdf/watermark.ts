@@ -28,7 +28,7 @@ export interface WatermarkPicture {
 /** The PDF is locked against changes (it has a password or owner restrictions). */
 export class LockedPdf extends Error {
   constructor() {
-    super("This PDF is locked against changes, so a watermark can't be saved into it. You can still print it with a watermark.");
+    super("This PDF is locked against changes, so it can't be changed or have a watermark saved into it. You can still print it, with a watermark if you like.");
   }
 }
 
