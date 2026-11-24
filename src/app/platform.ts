@@ -41,6 +41,7 @@ export function helpRows(p: Platform) {
   const mac = p === "mac";
   const mouse: [string, string][] = [
     ["Scroll through the pages", "Scroll wheel, trackpad, or drag the scroll bar"],
+    ["One whole page at a time", "The one-page button at the top: then scrolling, the arrow keys and Page Up / Down flip pages"],
     ["Zoom (towards the pointer)", mac ? `${k.mod} + scroll, or pinch on a trackpad` : `${k.mod} + scroll, or pinch on a trackpad`],
     ["Go to a page", "Click it in the page list on the left, or type its number in the box at the top"],
     ["Pick several pages", `${k.mod}-click them in the page list, or click one and Shift-click another for all those between`],
@@ -54,7 +55,7 @@ export function helpRows(p: Platform) {
     ["Home / End", "First / last page"],
     ["Delete", "Delete the picked pages (Undo brings them back)"],
     ["Esc", "Stop picking pages"],
-    ["Page Up / Page Down", "Scroll up / down a screenful"],
+    ["Page Up / Page Down", "Scroll up / down a screenful (the previous / next page when showing one page at a time)"],
     [`${k.mod} + + / −`, "Zoom in / out"],
     [`${k.mod} + 0`, "Fit the page's width to the window"],
     [`${k.mod} + 1`, "Real size (100%)"],

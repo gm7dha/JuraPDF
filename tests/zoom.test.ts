@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   CSS_PER_PT,
   MAX_ZOOM,
+  wheelFlip,
   MIN_ZOOM,
   PAGE_GAP,
   PAGE_MARGIN_X,
@@ -102,5 +103,21 @@ describe("page layout", () => {
     // Under the pointer, 200 px down the window.
     const top2 = keepSpotInView(before, after, scrollTop - 200, 200);
     expect(top2 + 200).toBeCloseTo(after[1].top + after[1].height / 2, 5);
+  });
+});
+
+describe("one page at a time: the wheel flips pages", () => {
+  it("flips once the wheel has turned far enough", () => {
+    let r = wheelFlip(0, 50, false);
+    expect(r).toEqual({ total: 50, flip: 0 });
+    r = wheelFlip(r.total, 50, false);
+    expect(r).toEqual({ total: 0, flip: 1 });
+    expect(wheelFlip(0, -120, false)).toEqual({ total: 0, flip: -1 });
+  });
+  it("starts again when the wheel turns the other way", () => {
+    expect(wheelFlip(60, -30, false)).toEqual({ total: -30, flip: 0 });
+  });
+  it("scrolls the page instead while it can", () => {
+    expect(wheelFlip(60, 100, true)).toEqual({ total: 0, flip: 0 });
   });
 });

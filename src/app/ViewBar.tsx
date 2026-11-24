@@ -16,6 +16,7 @@ export function ViewBar() {
   const shown = useStore((s) => s.shownZoom);
   const sidebar = useStore((s) => s.sidebar);
   const selected = useStore((s) => s.selected);
+  const onePage = useStore((s) => s.onePage);
   const s = useStore.getState;
   const count = pdf?.sizes.length ?? 0;
   const platform = detectPlatform();
@@ -114,6 +115,16 @@ export function ViewBar() {
         title="Show the whole page"
       >
         <Icons.FitPage />
+      </button>
+      <button
+        type="button"
+        className={`icon-button${onePage ? " active" : ""}`}
+        onClick={() => s().setOnePage(!onePage)}
+        aria-pressed={onePage}
+        aria-label="One page at a time"
+        title={onePage ? "Show the pages one under another again" : "Show one whole page at a time: scrolling or the arrow keys flip to the next or previous page"}
+      >
+        <Icons.OnePage />
       </button>
       <button type="button" className={`text-button compact${zoom === 1 ? " active" : ""}`} onClick={() => s().setZoom(1)} title={`Real size (${shortcut(platform, "1")})`}>
         100%
