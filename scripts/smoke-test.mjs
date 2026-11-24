@@ -220,6 +220,33 @@ await step("saving", async () => {
   await page.locator(".save-state", { hasText: "Saved" }).waitFor();
 });
 
+await step("adding a watermark, undo and redo, and saving it", async () => {
+  await page.getByRole("button", { name: "Watermark" }).click();
+  const dialog = page.getByRole("dialog", { name: "Watermark" });
+  await dialog.waitFor();
+  await dialog.getByLabel("Watermark words").fill("SMOKE DRAFT");
+  // The preview is a real page with the watermark in it.
+  await page.waitForFunction(() => !!document.querySelector(".watermark-preview-page canvas"), null, { timeout: 15_000 });
+  if (process.env.SMOKE_SCREENSHOT) {
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: "smoke-watermark.png" });
+  }
+  await dialog.getByRole("button", { name: "Add to every page" }).click();
+  await dialog.waitFor({ state: "detached", timeout: 15_000 });
+  await page.getByText("Unsaved changes").waitFor();
+  // The words are really in the pages now: they can be selected like the page's own.
+  await page.locator('.page[data-page="1"] .textLayer span', { hasText: "SMOKE DRAFT" }).waitFor({ timeout: 15_000 });
+  expect((await page.locator(".page").count()) === 3, "still 3 pages");
+  await page.keyboard.press("Control+z");
+  await page.locator('.page[data-page="1"] .textLayer span', { hasText: "SMOKE DRAFT" }).waitFor({ state: "detached", timeout: 15_000 });
+  await page.keyboard.press("Control+y");
+  await page.locator('.page[data-page="1"] .textLayer span', { hasText: "SMOKE DRAFT" }).waitFor({ timeout: 15_000 });
+  const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Save" }).click()]);
+  const saved = await readFile(await download.path());
+  expect(saved.subarray(0, 5).toString() === "%PDF-" && !saved.equals(pdf), "the saved PDF should be a new PDF with the watermark");
+  await page.getByText("Unsaved changes").waitFor({ state: "detached" });
+});
+
 await step("printing with an Uncontrolled Document watermark and words of your own", async () => {
   await page.getByRole("button", { name: "Print" }).click();
   const dialog = page.getByRole("dialog", { name: "Print" });

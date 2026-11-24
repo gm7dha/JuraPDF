@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { nameFromFileName } from "../model/pdfFile";
-import { useStore } from "../model/store";
+import { hasUnsavedChanges, useStore } from "../model/store";
 import { SHORT_VERSION } from "../version";
 import { openFromFile, saveToFile } from "./fileActions";
 import { Icons } from "./icons";
@@ -15,6 +15,9 @@ const CHANGELOG_URL = "https://github.com/gm7dha/JuraPDF/blob/main/CHANGELOG.md"
 export function TopBar() {
   const pdf = useStore((s) => s.pdf);
   const savedAs = useStore((s) => s.savedAs);
+  const unsaved = useStore(hasUnsavedChanges);
+  const undoLabel = useStore((s) => s.past[s.past.length - 1]?.label);
+  const redoLabel = useStore((s) => s.future[s.future.length - 1]?.label);
   const openDialog = useStore((s) => s.openDialog);
   const platform = detectPlatform();
   const canInstall = useCanInstall();
@@ -32,7 +35,13 @@ export function TopBar() {
           {nameFromFileName(pdf.fileName)}
         </span>
       )}
-      {savedAs && <span className="save-state">Saved · {savedAs}</span>}
+      {unsaved ? (
+        <span className="save-state unsaved" title="You've changed this PDF. Click Save to keep the changes in a file on your computer.">
+          Unsaved changes
+        </span>
+      ) : (
+        savedAs && <span className="save-state">Saved · {savedAs}</span>
+      )}
       <a className="phase-badge" href={CHANGELOG_URL} target="_blank" rel="noreferrer" title="Your JuraPDF version: click to see what's new">
         {SHORT_VERSION}
         <span className="badge-extra"> preview</span>
@@ -49,6 +58,19 @@ export function TopBar() {
       )}
       <button className="text-button" onClick={() => void openFromFile()} title={`Open a PDF (${shortcut(platform, "O")}). You can also drag one onto the window.`}>
         <Icons.Open size={18} /> <span className="button-label">Open</span>
+      </button>
+      {pdf && (
+        <>
+          <button className="icon-button" onClick={() => useStore.getState().undo()} disabled={!undoLabel} aria-label="Undo" title={undoLabel ? `Undo ${undoLabel} (${shortcut(platform, "Z")})` : "Nothing to undo"}>
+            <Icons.Undo />
+          </button>
+          <button className="icon-button" onClick={() => useStore.getState().redo()} disabled={!redoLabel} aria-label="Redo" title={redoLabel ? `Redo ${redoLabel} (${shortcut(platform, "Y")})` : "Nothing to redo"}>
+            <Icons.Redo />
+          </button>
+        </>
+      )}
+      <button className="text-button" onClick={() => openDialog("watermark")} disabled={!pdf} title="Add a watermark (words or a picture) to the pages, saved into the PDF">
+        <Icons.Stamp size={18} /> <span className="button-label">Watermark</span>
       </button>
       <button className="text-button" onClick={() => openDialog("print")} disabled={!pdf} title={`Print, with an "Uncontrolled Document" and your own words as a watermark if you like (${shortcut(platform, "P")})`}>
         <Icons.Print size={18} /> <span className="button-label">Print</span>

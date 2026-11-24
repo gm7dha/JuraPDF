@@ -23,7 +23,7 @@ from scanned pages), real-time collaboration or cloud storage.
 | Language and build | TypeScript, Vite | As the sister apps |
 | UI | React + Zustand | As the sister apps |
 | Reading and drawing PDFs | Mozilla's pdf.js (`pdfjs-dist`, Apache 2.0) in a worker | The most faithful free PDF renderer for browsers; writing one is not realistic |
-| Writing PDFs (from v0.2) | `pdf-lib` (MIT) | Adds pages, words, pictures and drawing to existing PDFs in the browser |
+| Writing PDFs (from v0.3) | `pdf-lib` (MIT) | Adds pages, words, pictures and drawing to existing PDFs in the browser |
 | Edits | Kept as a list of changes, applied to the original file when saving | The original is never damaged; edits can be undone |
 | Units | PDF points (1/72 in); 100% zoom = real size (96 CSS px per inch) | As Chrome's and Adobe's viewers |
 | Delivery | PWA on GitHub Pages; opens `.pdf` files once installed | Installs on Windows and macOS, offline, free |
@@ -33,7 +33,8 @@ from scanned pages), real-time collaboration or cloud storage.
 
 ```
 src/model      zoom.ts (zoom and page layout maths), pdfFile.ts (recognising and naming PDFs), printMark.ts (print watermark layout, page ranges), store.ts
-src/pdf        pdfjs.ts (loading, drawing pages and their words with pdf.js)
+src/model      watermark.ts (watermark choices and where each copy goes, turned pages included)
+src/pdf        pdfjs.ts (loading, drawing pages and their words with pdf.js), watermark.ts (writing watermarks with pdf-lib)
 src/app        React: TopBar, ViewBar, Thumbnails, PageView, PrintDialog (+ printing.ts), HelpDialog, PasswordDialog, App
 tests          Vitest, pure code only;  scripts/smoke-test.mjs drives the built app in headless Chromium
 ```
@@ -47,7 +48,7 @@ tests          Vitest, pure code only;  scripts/smoke-test.mjs drives the built 
   pages, each on paper of its own size; tick "Uncontrolled Document" and/or type your own Text (e.g. a work order number), written
   see-through red corner to corner across every printed page (pages are printed as 150 dpi pictures with the mark drawn
   on, as Firefox's viewer prints). Only the printout is marked.
-- **v0.3** — **watermarks saved into the PDF**: words or a picture (PNG/JPG, e.g. a logo); font, size, colour, see-through amount, angle
+- **v0.3 (done)** — **watermarks saved into the PDF**, with Undo/Redo: words or a picture (PNG/JPG, e.g. a logo); font, size, colour, see-through amount, angle
   (diagonal by default), position (nine spots, or tiled across the page), which pages (all, odd, even, a range), in
   front of or behind the page; live preview on the real pages; saved presets. An option to turn each page into a
   picture so the watermark can't be lifted off (says plainly that the words then can't be selected).

@@ -8,7 +8,7 @@ JuraPDF runs entirely in your browser. There's no account, nothing is uploaded, 
 [JuraCAD](https://github.com/gm7dha/JuraCAD), [JuraCUT](https://github.com/gm7dha/JuraCUT) and
 [JuraDAW](https://github.com/gm7dha/JuraDAW), built the same way.
 
-> **Status: v0.2 preview.** It opens, shows and prints PDFs, with an "Uncontrolled Document" watermark and words of your own on the printout. Watermarks saved into the PDF come next. See the [roadmap](docs/DESIGN.md#roadmap).
+> **Status: v0.3 preview.** It opens, shows and prints PDFs, adds watermarks saved into the PDF, and prints with an "Uncontrolled Document" watermark and words of your own. Adding, removing and moving pages comes next. See the [roadmap](docs/DESIGN.md#roadmap).
 
 ## What you can do today
 
@@ -19,6 +19,9 @@ JuraPDF runs entirely in your browser. There's no account, nothing is uploaded, 
   trackpad pinch zooms towards the pointer.
 - **Select and copy words**, and find them with Ctrl + F.
 - **Save** the PDF back to your computer.
+- **Watermark** the pages with words or a picture: any colour, size, angle, see-through amount, in the middle, a corner
+  or repeated, in front or behind, on all, odd, even or chosen pages, with a live preview. It's saved into the PDF.
+- **Undo and Redo** any change.
 - **Print** all pages, the current page or the pages you choose, with an optional watermark across every printed page:
   **UNCONTROLLED DOCUMENT** and/or your own **Text** (e.g. "Work Order W245354"). Only the printout is marked.
 - **Install it as an app** (Chrome/Edge: the Install button) so it opens in its own window, works offline and opens
@@ -27,11 +30,9 @@ JuraPDF runs entirely in your browser. There's no account, nothing is uploaded, 
 
 ## Coming next
 
-1. **Watermarks**: words or a picture, any size, colour, angle and see-through amount, placed or tiled, on the pages
-   you choose, in front of or behind what's there.
-2. **Pages**: add, delete, reorder, rotate, bring in pages from another PDF, join files, split them up.
-3. **Editing**: add words, pictures and shapes; move, replace or delete pictures; fix words already on the page.
-4. **Bring in and save out**: pictures to pages, pages to pictures, copy all the words out.
+1. **Pages**: add, delete, reorder, rotate, bring in pages from another PDF, join files, split them up.
+2. **Editing**: add words, pictures and shapes; move, replace or delete pictures; fix words already on the page.
+3. **Bring in and save out**: pictures to pages, pages to pictures, copy all the words out.
 
 ## How it's built
 
@@ -56,5 +57,5 @@ npm run smoke      # drive the built app in headless Chromium
 ## Licence
 
 JuraPDF is MIT licensed (see [LICENSE](LICENSE)). It uses [pdf.js](https://mozilla.github.io/pdf.js/) (Apache 2.0,
-with its standard fonts under their own free licences, shipped in `pdfjs/standard_fonts/`), [React](https://react.dev)
+with its standard fonts under their own free licences, shipped in `pdfjs/standard_fonts/`), [pdf-lib](https://pdf-lib.js.org) (MIT), [React](https://react.dev)
 (MIT) and [Zustand](https://github.com/pmndrs/zustand) (MIT).

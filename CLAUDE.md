@@ -11,7 +11,7 @@
   `platform.ts`, `easterEgg.ts` and the smoke test all began as JuraCUT's. Design and roadmap: `docs/DESIGN.md`.
 - Stack: TypeScript (strict, no unused locals or parameters), React 18, Vite 5, Zustand 5. PDFs are read and drawn by
   `pdfjs-dist` (pinned; `src/pdf/pdfjs.ts` is the only file that talks to it). Writing PDFs (watermarks and every edit
-  after) is planned with `pdf-lib` (MIT). No other runtime dependencies, no CDNs: everything works offline.
+  after) uses `pdf-lib` (MIT, pinned), only in `src/pdf/`. No other runtime dependencies, no CDNs: everything works offline.
 - pdf.js's character maps and standard fonts are served from `node_modules` in dev and copied to `dist/pdfjs/` by the
   plugin in `vite.config.ts`. The worker is imported with `?url`.
 - Units: page sizes are PDF points (72 to the inch), as pdf.js gives them (already turned for rotated pages). At 100%
@@ -27,6 +27,15 @@
   "UNCONTROLLED DOCUMENT" and/or the "Text" box's words, printed as typed, see-through red, corner to corner) drawn on, then shown as pictures in
   a hidden iframe with one `@page` size per page and printed. The owner asked for these two options on the Print
   window (the box is called "Text" so it can hold a work order number or anything else); keep that wording.
+- Edits: each change makes a new version of the whole file (`applyChange` in `src/app/editing.ts` → `changePdf` in the
+  store, which keeps up to 20 earlier versions for Undo/Redo, each with its own pdf.js document on one shared worker).
+  `savedBytes` marks the version last opened or saved; anything else is "Unsaved changes". `openId` changes only when a
+  new file is opened (the page view goes back to the top only then).
+- Watermarks (`src/model/watermark.ts` pure layout, `src/pdf/watermark.ts` writing): positions are worked out "as
+  shown" (y up, after the page's own turn) and turned into the page's space by `toPageSpace`; text is written with the
+  14 standard fonts (WinAnsi letters only, explained kindly otherwise). In front: the page's own drawing is wrapped in
+  q/Q first; behind: the watermark's stream goes first. Locked (encrypted) PDFs are turned away with `LockedPdf`.
+  `tests/watermark.test.ts` reads the result back with pdf.js (legacy build) to check where the words landed.
 - App icons: edit `public/favicon.svg`, then `npm run icons` (set `CHROMIUM_PATH` if Playwright's own browser isn't
   installed).
 - Versions: `package.json` holds the version (shown as e.g. "v0.1" in the top bar); add each version's notes to the top
