@@ -60,6 +60,9 @@ tests          Vitest, pure code only;  scripts/smoke-test.mjs drives the built 
 - **v0.5 (done)** — **JuraPDF with Claude** (asked for by the owner, as JuraCAD's and JuraDAW's): an extension for
   the Claude desktop app with tools to read, watermark and change pages of PDFs in a chosen folder, and Live with
   Claude on the PDF open in the tab.
+- **v0.5.1 (done)** — **bookmarks** (asked for by the owner): a Bookmarks tab beside Pages in the side panel showing
+  the PDF's outline (folding, the bookmark for the page being read marked); add one for the page being read, rename,
+  delete, point at this page, move up/down/in/out. Written into the PDF's outline with pdf-lib, an undo step each.
 - **v0.6** — **editing**: add words (text boxes), pictures and shapes (lines, boxes, arrows, highlights); move, resize,
   replace or delete pictures already on a page; fix words already on a page (the old words are covered with the page's
   background and the new ones written in the closest matching font; short fixes only, as PDFs don't reflow).

@@ -11,13 +11,14 @@ import { PasswordDialog } from "./PasswordDialog";
 import { PrintDialog } from "./PrintDialog";
 import { WatermarkDialog } from "./WatermarkDialog";
 import { inPopup, inTextBox } from "./popupGuard";
-import { Thumbnails } from "./Thumbnails";
+import { SidePanel } from "./SidePanel";
 import { TopBar } from "./TopBar";
 import { ViewBar } from "./ViewBar";
 
 export function App() {
   const pdf = useStore((s) => s.pdf);
   const sidebar = useStore((s) => s.sidebar);
+  const pane = useStore((s) => s.sidePane);
   const dialog = useStore((s) => s.dialog);
   const dropping = useDropToOpen();
   useShortcuts();
@@ -28,8 +29,8 @@ export function App() {
       <TopBar />
       <ViewBar />
       {pdf ? (
-        <main className={`workspace${sidebar ? "" : " no-sidebar"}`}>
-          {sidebar && <Thumbnails />}
+        <main className={`workspace${sidebar ? ` with-${pane}` : " no-sidebar"}`}>
+          {sidebar && <SidePanel />}
           <PageView />
         </main>
       ) : (

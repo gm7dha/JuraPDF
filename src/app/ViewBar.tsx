@@ -40,7 +40,7 @@ export function ViewBar() {
         onClick={() => s().toggleSidebar()}
         aria-pressed={sidebar}
         aria-label="Page list"
-        title={sidebar ? "Hide the page list" : "Show the page list"}
+        title={sidebar ? "Hide the pages and bookmarks" : "Show the pages and bookmarks"}
       >
         <Icons.Sidebar />
       </button>

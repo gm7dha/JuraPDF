@@ -877,6 +877,56 @@ a.phase-badge {
   grid-template-columns: minmax(0, 1fr);
 }
 
+.workspace.with-bookmarks {
+  grid-template-columns: 250px minmax(0, 1fr);
+}
+
+/* The side panel: tabs (Pages, Bookmarks) over what they show. */
+.side-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+}
+
+.side-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 6px 6px 0;
+  border-bottom: 1px solid var(--line);
+  flex: none;
+}
+
+.side-tab {
+  flex: 1;
+  padding: 6px 4px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.side-tab:hover {
+  color: var(--ink);
+}
+
+.side-tab.active {
+  color: var(--accent-dark);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+.side-pane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .thumbnails {
   display: flex;
   flex-direction: column;
@@ -884,8 +934,148 @@ a.phase-badge {
   gap: 4px;
   padding: 12px 0;
   overflow-y: auto;
-  background: var(--panel);
-  border-right: 1px solid var(--line);
+  flex: 1;
+  min-height: 0;
+}
+
+/* Bookmarks: tools along the top, then the list. */
+.bookmarks {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.bookmarks.muted {
+  padding: 12px;
+  font-size: 13px;
+}
+
+.bookmark-tools {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 4px;
+  border-bottom: 1px solid var(--line-2);
+  flex: none;
+}
+
+.bookmark-tools-gap {
+  flex: 1;
+}
+
+.bookmark-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 4px 12px;
+}
+
+.bookmarks-empty {
+  margin: 12px 8px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.bookmark {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: var(--radius);
+}
+
+.bookmark:hover {
+  background: var(--line-2);
+}
+
+.bookmark.here {
+  background: var(--subtle);
+  box-shadow: inset 3px 0 0 var(--accent-line);
+}
+
+.bookmark.chosen {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.bookmark-fold {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+
+span.bookmark-fold {
+  cursor: default;
+}
+
+.bookmark-fold svg {
+  transition: transform 0.12s;
+}
+
+.bookmark-fold svg.open {
+  transform: rotate(90deg);
+}
+
+.bookmark-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 5px 6px 5px 2px;
+  border: none;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.bookmark-title:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: var(--radius);
+}
+
+.bookmark-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bookmark.chosen .bookmark-name {
+  font-weight: 600;
+}
+
+.bookmark-page {
+  flex: none;
+  font-size: 11px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.bookmark.nowhere .bookmark-name {
+  color: var(--ink-3);
+  font-style: italic;
+}
+
+.bookmark-rename {
+  flex: 1;
+  min-width: 0;
+  margin: 2px 4px 2px 0;
+  padding: 3px 6px;
+  font-size: 13px;
 }
 
 .thumb {

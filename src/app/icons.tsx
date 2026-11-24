@@ -220,4 +220,43 @@ export const Icons = {
       <path d="M9.5 3.5 12 1.8l2.5 1.7M9.5 20.5l2.5 1.7 2.5-1.7" />
     </Svg>
   ),
+  /** Rename: a pencil. */
+  Pencil: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M4 20h4L19 9l-4-4L4 16z" />
+      <path d="m13.5 6.5 4 4" />
+    </Svg>
+  ),
+  /** Point at this page: a target. */
+  Target: (p: IconProps) => (
+    <Svg {...p}>
+      <circle cx="12" cy="12" r="7.5" />
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+    </Svg>
+  ),
+  /** Put inside the one above: lines with an arrow pointing in. */
+  Indent: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M11 6h9M11 12h9M11 18h9M3 9l3 3-3 3" />
+    </Svg>
+  ),
+  /** Take out a level: lines with an arrow pointing out. */
+  Outdent: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M11 6h9M11 12h9M11 18h9M6 9l-3 3 3 3" />
+    </Svg>
+  ),
+  /** Fold or unfold: a small arrow pointing right (turned down when open). */
+  Chevron: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="m9 6 6 6-6 6" />
+    </Svg>
+  ),
+  /** Bookmarks: a ribbon. */
+  Bookmark: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M6.5 3h11v18L12 16.5 6.5 21z" />
+    </Svg>
+  ),
 };
