@@ -17,7 +17,7 @@ export interface OpenPdf {
   password?: string;
 }
 
-export type DialogName = "help" | "password" | null;
+export type DialogName = "help" | "password" | "print" | null;
 
 export interface Toast {
   id: number;

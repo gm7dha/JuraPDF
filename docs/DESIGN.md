@@ -32,9 +32,9 @@ from scanned pages), real-time collaboration or cloud storage.
 ## Architecture
 
 ```
-src/model      zoom.ts (zoom and page layout maths), pdfFile.ts (recognising and naming PDFs), store.ts
+src/model      zoom.ts (zoom and page layout maths), pdfFile.ts (recognising and naming PDFs), printMark.ts (print watermark layout, page ranges), store.ts
 src/pdf        pdfjs.ts (loading, drawing pages and their words with pdf.js)
-src/app        React: TopBar, ViewBar, Thumbnails, PageView, HelpDialog, PasswordDialog, App
+src/app        React: TopBar, ViewBar, Thumbnails, PageView, PrintDialog (+ printing.ts), HelpDialog, PasswordDialog, App
 tests          Vitest, pure code only;  scripts/smoke-test.mjs drives the built app in headless Chromium
 ```
 
@@ -43,16 +43,19 @@ tests          Vitest, pure code only;  scripts/smoke-test.mjs drives the built 
 - **v0.1 (done)** — the viewer: open (button, drag and drop, double-click once installed), password-protected PDFs,
   page list, page numbers, zoom (fit width, whole page, real size, Ctrl + scroll), selectable words, save, install,
   light/dark.
-- **v0.2** — **watermarks**: words or a picture (PNG/JPG, e.g. a logo); font, size, colour, see-through amount, angle
+- **v0.2 (done)** — **printing with a watermark** (the owner's first need, brought forward): all / current / chosen
+  pages, each on paper of its own size; tick "Uncontrolled Document" and/or type a Work Order number, written
+  see-through red corner to corner across every printed page (pages are printed as 150 dpi pictures with the mark drawn
+  on, as Firefox's viewer prints). Only the printout is marked.
+- **v0.3** — **watermarks saved into the PDF**: words or a picture (PNG/JPG, e.g. a logo); font, size, colour, see-through amount, angle
   (diagonal by default), position (nine spots, or tiled across the page), which pages (all, odd, even, a range), in
   front of or behind the page; live preview on the real pages; saved presets. An option to turn each page into a
   picture so the watermark can't be lifted off (says plainly that the words then can't be selected).
-- **v0.3** — **pages**: add blank pages, delete, drag to reorder in the page list, rotate, bring in pages from another
+- **v0.4** — **pages**: add blank pages, delete, drag to reorder in the page list, rotate, bring in pages from another
   PDF, join several PDFs, split or save chosen pages as a new PDF. Undo and redo for everything.
-- **v0.4** — **editing**: add words (text boxes), pictures and shapes (lines, boxes, arrows, highlights); move, resize,
+- **v0.5** — **editing**: add words (text boxes), pictures and shapes (lines, boxes, arrows, highlights); move, resize,
   replace or delete pictures already on a page; fix words already on a page (the old words are covered with the page's
   background and the new ones written in the closest matching font; short fixes only, as PDFs don't reflow).
-- **v0.5** — **bring in and save out**: pictures (JPG/PNG) to new pages; pages to PNG/JPG; all the words out as text.
-- **v0.6** — **printing**: page range, fit to paper, how many copies (through the browser's print window).
+- **v0.6** — **bring in and save out**: pictures (JPG/PNG) to new pages; pages to PNG/JPG; all the words out as text.
 - **Later** — recent files, keeping work in the browser between visits, a Claude extension (as JuraCAD's and
   JuraDAW's), comments and highlights, compressing large PDFs.

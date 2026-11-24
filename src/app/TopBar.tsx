@@ -50,6 +50,9 @@ export function TopBar() {
       <button className="text-button" onClick={() => void openFromFile()} title={`Open a PDF (${shortcut(platform, "O")}). You can also drag one onto the window.`}>
         <Icons.Open size={18} /> <span className="button-label">Open</span>
       </button>
+      <button className="text-button" onClick={() => openDialog("print")} disabled={!pdf} title={`Print, with an "Uncontrolled Document" or Work Order watermark if you like (${shortcut(platform, "P")})`}>
+        <Icons.Print size={18} /> <span className="button-label">Print</span>
+      </button>
       <button className="primary-button" onClick={() => void saveToFile()} disabled={!pdf} title={`Save the PDF to your computer (${shortcut(platform, "S")})`}>
         <Icons.Save size={18} /> <span className="button-label">Save</span>
       </button>

@@ -220,6 +220,69 @@ await step("saving", async () => {
   await page.locator(".save-state", { hasText: "Saved" }).waitFor();
 });
 
+await step("printing with an Uncontrolled Document and Work Order watermark", async () => {
+  await page.getByRole("button", { name: "Print" }).click();
+  const dialog = page.getByRole("dialog", { name: "Print" });
+  await dialog.waitFor();
+  await dialog.getByRole("checkbox").check();
+  await dialog.getByLabel("Work Order").fill("W245354");
+  // The preview shows the red watermark.
+  const redIn = (selector) =>
+    page.evaluate((sel) => {
+      const c = document.querySelector(sel);
+      if (!c) return 0;
+      let d;
+      if (c instanceof HTMLCanvasElement) d = c.getContext("2d").getImageData(0, 0, c.width, c.height);
+      else {
+        const k = document.createElement("canvas");
+        k.width = c.naturalWidth;
+        k.height = c.naturalHeight;
+        k.getContext("2d").drawImage(c, 0, 0);
+        d = k.getContext("2d").getImageData(0, 0, k.width, k.height);
+      }
+      let n = 0;
+      for (let i = 0; i < d.data.length; i += 4) if (d.data[i] > 200 && d.data[i] - d.data[i + 1] > 30 && d.data[i] - d.data[i + 2] > 30) n++;
+      return n / (d.width * d.height);
+    }, selector);
+  await page.waitForFunction(() => !!document.querySelector(".print-preview-page canvas"));
+  await page.waitForTimeout(400);
+  expect((await redIn(".print-preview-page canvas")) > 0.005, "the preview should show the red watermark");
+  // Choose pages 1 and 3.
+  await dialog.getByRole("radio", { name: "Choose" }).click();
+  await dialog.getByLabel("Pages to print").last().fill("1, 3");
+  await dialog.getByRole("button", { name: "Print 2 pages" }).click();
+  await dialog.waitFor({ state: "detached", timeout: 30_000 });
+  // The pages handed to the browser's print window: two pictures, sized as their pages, with the watermark.
+  const frame = page.frameLocator("iframe[aria-hidden=true]");
+  await frame.locator("img").nth(1).waitFor({ state: "attached" });
+  const imgs = await page.evaluate(() => {
+    const doc = document.querySelector("iframe[aria-hidden=true]").contentDocument;
+    return Array.from(doc.images).map((i) => [i.naturalWidth, i.naturalHeight]);
+  });
+  expect(imgs.length === 2, `expected 2 printed pages, got ${imgs.length}`);
+  expect(imgs[1][0] > imgs[1][1], "page 3 should print landscape");
+  const red = await page.evaluate(() => {
+    const img = document.querySelector("iframe[aria-hidden=true]").contentDocument.images[0];
+    const k = document.createElement("canvas");
+    k.width = img.naturalWidth;
+    k.height = img.naturalHeight;
+    const ctx = k.getContext("2d");
+    ctx.drawImage(img, 0, 0);
+    const d = ctx.getImageData(0, 0, k.width, k.height).data;
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4) if (d[i] > 200 && d[i] - d[i + 1] > 30 && d[i] - d[i + 2] > 30) n++;
+    return n / (k.width * k.height);
+  });
+  expect(red > 0.005, "the printed page should carry the red watermark");
+  // The next print remembers the tick and the work order.
+  await page.keyboard.press("Control+p");
+  await dialog.waitFor();
+  expect(await dialog.getByRole("checkbox").isChecked(), "Uncontrolled Document should stay ticked");
+  expect((await dialog.getByLabel("Work Order").inputValue()) === "W245354", "the work order should be kept");
+  await page.keyboard.press("Escape");
+  await dialog.waitFor({ state: "detached" });
+});
+
 await step("help opens and closes", async () => {
   await page.keyboard.press("?");
   await page.getByRole("dialog", { name: "Help and shortcuts" }).waitFor();
