@@ -6,7 +6,7 @@
  * save by downloading.
  */
 import { isPdfName, looksLikePdf, PDF_EXTENSION, PDF_MIME, nameFromFileName } from "../model/pdfFile";
-import { useStore } from "../model/store";
+import { hasUnsavedChanges, useStore } from "../model/store";
 import { loadPdf, NeedsPassword, pageSizes } from "../pdf/pdfjs";
 import { downloadFile, safeFileName } from "./download";
 
@@ -61,6 +61,15 @@ export async function openFromFile(): Promise<void> {
   input.click();
 }
 
+let opened = 0;
+
+/** Ask before a new file replaces changes that haven't been saved. True = go ahead. */
+export function okToReplace(): boolean {
+  const s = useStore.getState();
+  if (!hasUnsavedChanges(s)) return true;
+  return window.confirm(`${s.pdf?.fileName ?? "This PDF"} has changes you haven't saved. Open another PDF anyway, and lose them?`);
+}
+
 /** Open a PDF (from a picker, dropped on the window, or double-clicked once installed). Returns true if it worked. */
 export async function openFile(file: File, password?: string): Promise<boolean> {
   const s = useStore.getState();
@@ -74,10 +83,11 @@ export async function openFile(file: File, password?: string): Promise<boolean> 
       );
       return false;
     }
+    if (!password && !okToReplace()) return false;
     const doc = await loadPdf(bytes, password);
     const sizes = await pageSizes(doc);
     s.askPassword(null);
-    s.setPdf({ fileName: file.name, bytes, doc, sizes, password });
+    s.setPdf({ fileName: file.name, bytes, doc, sizes, password, openId: ++opened });
     document.title = `${nameFromFileName(file.name)} · JuraPDF`;
     return true;
   } catch (e) {

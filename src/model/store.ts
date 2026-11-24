@@ -7,8 +7,10 @@ import { clampZoom, type Size, type ZoomMode } from "./zoom";
 export interface OpenPdf {
   /** The file's name, e.g. "Report.pdf". */
   fileName: string;
-  /** The file as it was opened. */
+  /** The file as it is now (as opened, plus any changes). */
   bytes: Uint8Array<ArrayBuffer>;
+  /** Which opening of a file this is: the same through changes, new for each file opened. */
+  openId: number;
   /** pdf.js's reader for it (draws the pages). */
   doc: PDFDocumentProxy;
   /** Each page's size in points, as it shows. */
@@ -17,7 +19,13 @@ export interface OpenPdf {
   password?: string;
 }
 
-export type DialogName = "help" | "password" | "print" | null;
+export type DialogName = "help" | "password" | "print" | "watermark" | null;
+
+/** A version of the PDF to go back or forward to, and what changed it (for "Undo add watermark"). */
+export interface Snapshot {
+  pdf: OpenPdf;
+  label: string;
+}
 
 export interface Toast {
   id: number;
@@ -29,6 +37,11 @@ export interface Toast {
 export interface PendingPassword {
   file: File;
   wrong: boolean;
+}
+
+/** True when the PDF has changes not yet saved to a file. */
+export function hasUnsavedChanges(s: { pdf: OpenPdf | null; savedBytes: Uint8Array | null }): boolean {
+  return !!s.pdf && s.pdf.bytes !== s.savedBytes;
 }
 
 interface State {
@@ -49,8 +62,17 @@ interface State {
   theme: "light" | "dark";
   /** The file the PDF was last saved to, if it has been. */
   savedAs: string | null;
+  /** The PDF as it was last opened or saved: anything else is unsaved changes. */
+  savedBytes: Uint8Array | null;
+  /** Versions to go back to (newest last), and forward to after an undo (newest last). */
+  past: Snapshot[];
+  future: Snapshot[];
 
   setPdf(pdf: OpenPdf | null): void;
+  /** A change to the PDF (labelled for Undo); `pdf` is the new version. */
+  changePdf(pdf: OpenPdf, label: string): void;
+  undo(): void;
+  redo(): void;
   setOpening(name: string | null): void;
   setZoom(z: ZoomMode): void;
   setShownZoom(z: number): void;
@@ -80,11 +102,38 @@ export const useStore = create<State>((set, get) => ({
   toasts: [],
   theme: "light",
   savedAs: null,
+  savedBytes: null,
+  past: [],
+  future: [],
 
   setPdf(pdf) {
-    const old = get().pdf;
-    if (old && old.doc !== pdf?.doc) void old.doc.destroy();
-    set({ pdf, currentPage: 0, goTo: null, zoom: "width", savedAs: null });
+    const { pdf: old, past, future } = get();
+    const keep = new Set(pdf ? [pdf.doc] : []);
+    for (const p of [old, ...past.map((s) => s.pdf), ...future.map((s) => s.pdf)]) if (p && !keep.has(p.doc)) void p.doc.destroy();
+    set({ pdf, currentPage: 0, goTo: null, zoom: "width", savedAs: null, savedBytes: pdf?.bytes ?? null, past: [], future: [] });
+  },
+  changePdf(pdf, label) {
+    const { pdf: old, past, future } = get();
+    if (!old) return;
+    for (const s of future) void s.pdf.doc.destroy();
+    // Keep the last 20 versions to go back to.
+    const kept = [...past, { pdf: old, label }];
+    for (const s of kept.slice(0, -20)) void s.pdf.doc.destroy();
+    set({ pdf, past: kept.slice(-20), future: [], currentPage: Math.min(get().currentPage, pdf.sizes.length - 1) });
+  },
+  undo() {
+    const { pdf, past, future } = get();
+    const back = past[past.length - 1];
+    if (!pdf || !back) return;
+    set({ pdf: back.pdf, past: past.slice(0, -1), future: [...future, { pdf, label: back.label }], currentPage: Math.min(get().currentPage, back.pdf.sizes.length - 1) });
+    get().showToast(`Undone: ${back.label}`);
+  },
+  redo() {
+    const { pdf, past, future } = get();
+    const fwd = future[future.length - 1];
+    if (!pdf || !fwd) return;
+    set({ pdf: fwd.pdf, future: future.slice(0, -1), past: [...past, { pdf, label: fwd.label }], currentPage: Math.min(get().currentPage, fwd.pdf.sizes.length - 1) });
+    get().showToast(`Redone: ${fwd.label}`);
   },
   setOpening: (opening) => set({ opening }),
   setZoom: (z) => set({ zoom: typeof z === "number" ? clampZoom(z) : z }),
@@ -108,5 +157,5 @@ export const useStore = create<State>((set, get) => ({
   },
   dismissToast: (id) => set({ toasts: get().toasts.filter((t) => t.id !== id) }),
   setTheme: (theme) => set({ theme }),
-  markSaved: (savedAs) => set({ savedAs }),
+  markSaved: (savedAs) => set({ savedAs, savedBytes: get().pdf?.bytes ?? null }),
 }));

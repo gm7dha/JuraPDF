@@ -100,6 +100,25 @@ export const Icons = {
       <path d="m8.5 12 2.5 2.5 4.5-5" />
     </Svg>
   ),
+  Undo: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M9 14 4 9l5-5" />
+      <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+    </Svg>
+  ),
+  Redo: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="m15 14 5-5-5-5" />
+      <path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" />
+    </Svg>
+  ),
+  /** A watermark: a page with a slanted line of words across it. */
+  Stamp: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M6.5 3h11A1.5 1.5 0 0 1 19 4.5v15a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 19.5v-15A1.5 1.5 0 0 1 6.5 3Z" />
+      <path d="M8 16.5 16 7.5" />
+    </Svg>
+  ),
   Print: (p: IconProps) => (
     <Svg {...p}>
       <path d="M7 9V3.5h10V9" />

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { useStore } from "../model/store";
+import { hasUnsavedChanges, useStore } from "../model/store";
 import { zoomIn, zoomOut } from "../model/zoom";
 import { openFile, openFromFile, saveToFile } from "./fileActions";
 import { HelpDialog } from "./HelpDialog";
@@ -8,6 +8,7 @@ import { Icons } from "./icons";
 import { PageView } from "./PageView";
 import { PasswordDialog } from "./PasswordDialog";
 import { PrintDialog } from "./PrintDialog";
+import { WatermarkDialog } from "./WatermarkDialog";
 import { inPopup, inTextBox } from "./popupGuard";
 import { Thumbnails } from "./Thumbnails";
 import { TopBar } from "./TopBar";
@@ -19,6 +20,7 @@ export function App() {
   const dialog = useStore((s) => s.dialog);
   const dropping = useDropToOpen();
   useShortcuts();
+  useWarnBeforeLeaving();
 
   return (
     <div className="app">
@@ -43,6 +45,7 @@ export function App() {
       {dialog === "help" && <HelpDialog />}
       {dialog === "password" && <PasswordDialog />}
       {dialog === "print" && <PrintDialog />}
+      {dialog === "watermark" && <WatermarkDialog />}
       <Toasts />
     </div>
   );
@@ -108,6 +111,19 @@ function useDropToOpen(): boolean {
   return over;
 }
 
+/** The browser asks before closing the tab while there are unsaved changes. */
+function useWarnBeforeLeaving() {
+  useEffect(() => {
+    const onLeave = (e: BeforeUnloadEvent) => {
+      if (!hasUnsavedChanges(useStore.getState())) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onLeave);
+    return () => window.removeEventListener("beforeunload", onLeave);
+  }, []);
+}
+
 /** Keyboard shortcuts (see the Help dialog). */
 function useShortcuts() {
   useEffect(() => {
@@ -126,7 +142,11 @@ function useShortcuts() {
       }
       if (inPopup(e.target, document) || inTextBox(e.target)) return;
       if (mod && !e.altKey) {
-        if (key === "=" || key === "+") {
+        if (key === "z" || key === "y") {
+          e.preventDefault();
+          if (key === "y" || e.shiftKey) s.redo();
+          else s.undo();
+        } else if (key === "=" || key === "+") {
           e.preventDefault();
           s.setZoom(zoomIn(s.shownZoom));
         } else if (key === "-" || key === "_") {

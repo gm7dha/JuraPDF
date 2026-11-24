@@ -5,6 +5,22 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.3 — Watermarks saved into the PDF, and Undo
+
+- **Watermark** (the new button in the top bar): words or a picture (PNG or JPG, such as a logo), saved into the
+  pages so they're there wherever the PDF is opened or printed.
+  - Words: any letters from six built-in styles (Helvetica, Times or Courier, plain or bold), the colour (red, grey,
+    blue, black or any other), and a size that fills the page or one you choose.
+  - Pictures: as wide as you like, from 5% to the whole width of the page.
+  - Angle: corner to corner, level, or any angle. Where: the middle, the top, the bottom, a corner, or repeated all over
+    the page.
+  - How see-through it is, and whether it goes in front of or behind what's on the page.
+  - Which pages: all, odd, even, or the ones you choose (e.g. 1-3, 5).
+  - A preview shows the page with the watermark exactly as it will be. Your choices are remembered for next time.
+- **Undo and Redo** (the arrows in the top bar, Ctrl + Z and Ctrl + Y): take a watermark off again, or put it back.
+- The top bar says **Unsaved changes** until you Save, and JuraPDF asks before you close it or open another PDF and lose
+  them.
+
 ## v0.2.1 — The Work Order box is now "Text"
 
 - The Print window's second watermark box is now called **Text**, so it can hold anything: a work order number

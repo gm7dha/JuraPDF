@@ -56,6 +56,8 @@ export function helpRows(p: Platform) {
     [`${k.mod} + F`, "Find words (on the pages near where you are)"],
     [`${k.mod} + O`, "Open a PDF"],
     [`${k.mod} + S`, "Save the PDF to your computer"],
+    [`${k.mod} + Z`, "Undo (e.g. take a watermark off again)"],
+    [mac ? `${k.mod} + ${k.shift} + Z  or  ${k.mod} + Y` : `${k.mod} + Y  or  ${k.mod} + ${k.shift} + Z`, "Redo"],
     [`${k.mod} + P`, "Print (with an Uncontrolled Document watermark and your own words if you like)"],
     ["?", "Show this help"],
   ];

@@ -63,7 +63,7 @@ export function PageView() {
     el.scrollLeft = 0;
     scrollPos.current = { top: 0, left: 0 };
     before.current = null;
-  }, [pdf?.doc]);
+  }, [pdf?.openId]);
 
   // Where the view was scrolled to for a page asked for (until it's scrolled elsewhere).
   const jumped = useRef<number | null>(null);

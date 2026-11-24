@@ -20,10 +20,15 @@ export class NeedsPassword extends Error {
   }
 }
 
+/** One background worker shared by every PDF opened (each version kept for Undo is one). */
+let worker: pdfjs.PDFWorker | null = null;
+
 /** Open a PDF from its bytes. The bytes are copied, so the caller's copy stays usable. */
 export async function loadPdf(bytes: Uint8Array, password?: string): Promise<PDFDocumentProxy> {
   const base = import.meta.env.BASE_URL;
+  worker ??= new pdfjs.PDFWorker();
   const task = pdfjs.getDocument({
+    worker,
     data: bytes.slice(),
     password,
     // Character maps (for Chinese, Japanese and Korean text) and the standard fonts,
