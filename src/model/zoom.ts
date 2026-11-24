@@ -1,0 +1,146 @@
+/**
+ * Zoom and page-position maths for the page view. Pure, so it can be tested.
+ *
+ * Page sizes are in PDF points (72 to the inch). At 100% a page shows at its
+ * real size on screen, which is 96 CSS pixels to the inch, the same as
+ * Chrome's and Adobe's PDF viewers.
+ */
+
+/** CSS pixels per PDF point at 100%. */
+export const CSS_PER_PT = 96 / 72;
+
+/** Zoom levels the − and + buttons step through. */
+export const ZOOM_STEPS = [0.25, 0.33, 0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4, 5];
+export const MIN_ZOOM = ZOOM_STEPS[0];
+export const MAX_ZOOM = ZOOM_STEPS[ZOOM_STEPS.length - 1];
+
+/** A fixed zoom (1 = 100%), or one that follows the window's size. */
+export type ZoomMode = number | "width" | "page";
+
+/** Room left round the pages, in CSS pixels: the gap at the sides, and above and below. */
+export const PAGE_MARGIN_X = 24;
+export const PAGE_MARGIN_Y = 16;
+/** Gap between pages, in CSS pixels. */
+export const PAGE_GAP = 14;
+
+export type Size = [width: number, height: number];
+
+export function clampZoom(z: number): number {
+  if (!Number.isFinite(z)) return 1;
+  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
+}
+
+/** The zoom that makes the widest page fill the window's width. */
+export function fitWidthZoom(pages: Size[], view: Size): number {
+  const widest = Math.max(1, ...pages.map((p) => p[0]));
+  return clampZoom((view[0] - 2 * PAGE_MARGIN_X) / (widest * CSS_PER_PT));
+}
+
+/** The zoom that shows one whole page (the biggest) in the window. */
+export function fitPageZoom(pages: Size[], view: Size): number {
+  const widest = Math.max(1, ...pages.map((p) => p[0]));
+  const tallest = Math.max(1, ...pages.map((p) => p[1]));
+  return clampZoom(Math.min((view[0] - 2 * PAGE_MARGIN_X) / (widest * CSS_PER_PT), (view[1] - 2 * PAGE_MARGIN_Y) / (tallest * CSS_PER_PT)));
+}
+
+/** The zoom a mode works out to for these pages in a window of this size. */
+export function resolveZoom(mode: ZoomMode, pages: Size[], view: Size): number {
+  if (mode === "width") return fitWidthZoom(pages, view);
+  if (mode === "page") return fitPageZoom(pages, view);
+  return clampZoom(mode);
+}
+
+/** The next zoom step up from `z`. */
+export function zoomIn(z: number): number {
+  return ZOOM_STEPS.find((s) => s > z * 1.001) ?? MAX_ZOOM;
+}
+
+/** The next zoom step down from `z`. */
+export function zoomOut(z: number): number {
+  for (let i = ZOOM_STEPS.length - 1; i >= 0; i--) if (ZOOM_STEPS[i] < z / 1.001) return ZOOM_STEPS[i];
+  return MIN_ZOOM;
+}
+
+/** "125%". */
+export function zoomLabel(z: number): string {
+  return `${Math.round(z * 100)}%`;
+}
+
+/** Read a typed zoom: "150", "150%" or "1.5x". Null if it isn't one. */
+export function parseZoom(text: string): number | null {
+  const t = text.trim().toLowerCase();
+  let m = t.match(/^(\d+(?:\.\d+)?)\s*%?$/);
+  if (m) return clampZoom(Number(m[1]) / 100);
+  m = t.match(/^(\d+(?:\.\d+)?)\s*x$/);
+  if (m) return clampZoom(Number(m[1]));
+  return null;
+}
+
+/** Read a typed page number (1 to count). Null if it isn't one. */
+export function parsePageNumber(text: string, count: number): number | null {
+  const t = text.trim();
+  if (!/^\d+$/.test(t) || count < 1) return null;
+  const n = Number(t);
+  return Math.min(count, Math.max(1, n));
+}
+
+/** Where each page sits in the scrolling view at a zoom: its top, and its size on screen, in CSS pixels. */
+export interface PageBox {
+  top: number;
+  width: number;
+  height: number;
+}
+
+export function layoutPages(pages: Size[], zoom: number): { boxes: PageBox[]; height: number; width: number } {
+  const k = zoom * CSS_PER_PT;
+  let y = PAGE_MARGIN_Y;
+  let width = 0;
+  const boxes = pages.map(([w, h]) => {
+    const box = { top: y, width: Math.round(w * k), height: Math.round(h * k) };
+    y += box.height + PAGE_GAP;
+    width = Math.max(width, box.width);
+    return box;
+  });
+  return { boxes, height: y - (pages.length ? PAGE_GAP : 0) + PAGE_MARGIN_Y, width: width + 2 * PAGE_MARGIN_X };
+}
+
+/**
+ * The page being read: the one that fills most of the window (the first one,
+ * on a tie). Pages are given as `layoutPages` boxes.
+ */
+export function currentPageAt(boxes: PageBox[], scrollTop: number, viewHeight: number): number {
+  let best = 0;
+  let bestShown = -1;
+  const bottom = scrollTop + viewHeight;
+  for (let i = 0; i < boxes.length; i++) {
+    const b = boxes[i];
+    if (b.top > bottom) break;
+    const shown = Math.min(bottom, b.top + b.height) - Math.max(scrollTop, b.top);
+    if (shown > bestShown + 0.5) {
+      best = i;
+      bestShown = shown;
+    }
+  }
+  return best;
+}
+
+/**
+ * Where to scroll after the zoom changes so the same spot stays under `anchorY`
+ * (a height in the window, e.g. the pointer, or 0 for the top edge).
+ */
+export function keepSpotInView(
+  before: PageBox[],
+  after: PageBox[],
+  scrollTop: number,
+  anchorY: number,
+): number {
+  const y = scrollTop + anchorY;
+  // The page under the anchor (or the last one above it), and how far down it the anchor is.
+  let i = 0;
+  while (i + 1 < before.length && before[i + 1].top <= y) i++;
+  const b = before[i];
+  const a = after[i];
+  if (!b || !a) return scrollTop;
+  const fraction = b.height > 0 ? (y - b.top) / b.height : 0;
+  return Math.max(0, a.top + fraction * a.height - anchorY);
+}
