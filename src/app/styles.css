@@ -870,24 +870,60 @@ a.phase-badge {
 /* ------------------------------------------------------------------ JuraPDF: pages */
 
 .workspace {
-  grid-template-columns: 168px minmax(0, 1fr);
+  grid-template-columns: var(--side-width, 168px) minmax(0, 1fr);
 }
 
 .workspace.no-sidebar {
   grid-template-columns: minmax(0, 1fr);
 }
 
-.workspace.with-bookmarks {
-  grid-template-columns: 250px minmax(0, 1fr);
-}
 
 /* The side panel: tabs (Pages, Bookmarks) over what they show. */
 .side-panel {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 0;
   background: var(--panel);
   border-right: 1px solid var(--line);
+}
+
+/* The panel's right edge: drag it (or use ← → when it has focus) to make the panel wider or narrower. */
+.side-resize {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -4px;
+  width: 8px;
+  z-index: 5;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.side-resize::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 2px;
+  background: transparent;
+  transition: background 0.12s;
+}
+
+.side-resize:hover::after,
+.side-resize:focus-visible::after,
+.side-resize.dragging::after {
+  background: var(--accent);
+}
+
+.side-resize:focus-visible {
+  outline: none;
+}
+
+body.resizing-side {
+  cursor: col-resize;
+  user-select: none;
 }
 
 .side-tabs {

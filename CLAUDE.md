@@ -44,7 +44,8 @@
   click = just go to the page) or else the page being read. Thumbnails are drag sources and drop targets for moving.
 - Bookmarks (`src/model/bookmarks.ts` pure tree changes by path; `src/pdf/bookmarks.ts` reads them from a pdf.js
   document it's given and writes the whole outline with pdf-lib): the side panel (`SidePanel.tsx`, `sidePane` in the
-  store, remembered in localStorage `jurapdf.sidePane`) has Pages and Bookmarks tabs. `bookmarkActions.ts` keeps each
+  store, remembered in localStorage `jurapdf.sidePane`) has Pages and Bookmarks tabs. Its width (`sideWidth` per pane, localStorage `jurapdf.sideWidth`, rules in
+  `src/model/sidePanel.ts`) is dragged by its right edge; thumbnails are drawn at `thumbWidthFor` once a drag pauses. `bookmarkActions.ts` keeps each
   version's tree (with folding) in a WeakMap by pdf.js document; every change writes a new version (one undo step).
   pdf-lib keeps page objects when pages move, so bookmarks follow them; ones to deleted pages show as going nowhere.
 - JuraPDF for Claude (`src/mcp/`, `src/live/`, `claude-extension/manifest.json`): JuraDAW's extension and live link
