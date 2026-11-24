@@ -515,6 +515,60 @@ await step("bookmarks: add, rename, go to, move inside another, and Undo", async
   await page.locator(".thumbnails").waitFor();
 });
 
+await step("adding words and a picture to pages", async () => {
+  const label = () => page.evaluate(() => window.jurapdfStore.getState().past.at(-1)?.label);
+  // Words: click the button, click on page 1, type, Done.
+  await page.keyboard.press("Home");
+  await page.getByRole("button", { name: "Add words" }).click();
+  const p1 = await page.locator('.page[data-page="1"]').boundingBox();
+  await page.mouse.click(p1.x + p1.width * 0.2, p1.y + p1.height * 0.5);
+  const box = page.getByRole("textbox", { name: "Words to add" });
+  await box.waitFor();
+  await page.keyboard.type("Checked by Kevin");
+  await page.getByRole("combobox", { name: "Font" }).selectOption("HelveticaBold");
+  await page.getByRole("button", { name: "Done" }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "add “Checked by Kevin” to page 1");
+  await page.waitForFunction(() => document.querySelector('.page[data-page="1"] .textLayer')?.textContent?.includes("Checked by Kevin"), null, { timeout: 15_000 });
+  // The words land where they were typed: about a fifth of the way across the page.
+  const spot = await page.evaluate(() => {
+    const span = [...document.querySelectorAll('.page[data-page="1"] .textLayer span')].find((s) => s.textContent.includes("Checked"));
+    const pageBox = document.querySelector('.page[data-page="1"]').getBoundingClientRect();
+    const r = span.getBoundingClientRect();
+    return { across: (r.left - pageBox.left) / pageBox.width, down: (r.top + r.height / 2 - pageBox.top) / pageBox.height };
+  });
+  expect(Math.abs(spot.across - 0.2) < 0.02 && Math.abs(spot.down - 0.5) < 0.03, `the words should be where the page was clicked: ${JSON.stringify(spot)}`);
+
+  // A picture: choose it, click on page 2, make it bigger by its corner, Done.
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAIAAAB7QOjdAAAAEElEQVR4nGP4z8DAwMDAAAAN/gH/w+1JvwAAAABJRU5ErkJggg==", "base64");
+  const [chooser] = await Promise.all([page.waitForEvent("filechooser"), page.getByRole("button", { name: "Add a picture" }).click()]);
+  await chooser.setFiles({ name: "Stamp.png", mimeType: "image/png", buffer: png });
+  await page.getByText("Click on a page where the picture should go").waitFor();
+  await page.locator('.page[data-page="2"]').scrollIntoViewIfNeeded();
+  const p2 = await page.locator('.page[data-page="2"]').boundingBox();
+  await page.mouse.click(p2.x + p2.width / 2, p2.y + p2.height / 2);
+  await page.locator(".draft-picture").waitFor();
+  const before = await page.locator(".draft-picture").boundingBox();
+  const corner = await page.locator(".draft-size").boundingBox();
+  await page.mouse.move(corner.x + corner.width / 2, corner.y + corner.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(corner.x + corner.width / 2 + 60, corner.y + 200, { steps: 4 });
+  await page.mouse.up();
+  const after = await page.locator(".draft-picture").boundingBox();
+  expect(Math.abs(after.width - before.width - 60) < 3 && Math.abs(after.width / after.height - 2) < 0.05, `the picture should grow, keeping its shape: ${JSON.stringify([before, after])}`);
+  if (process.env.SMOKE_SCREENSHOT) await page.screenshot({ path: "smoke-add.png" });
+  await page.getByRole("button", { name: "Done" }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "add a picture to page 2");
+  expect((await page.locator(".draft").count()) === 0, "nothing left waiting to be added");
+
+  // Esc stops adding; Undo takes both back.
+  await page.getByRole("button", { name: "Add words" }).click();
+  await page.keyboard.press("Escape");
+  expect(!(await page.evaluate(() => window.jurapdfStore.getState().placing)), "Esc stops adding words");
+  for (let i = 0; i < 2; i++) await page.keyboard.press("Control+z");
+  await page.waitForFunction(() => !document.querySelector('.page[data-page="1"] .textLayer')?.textContent?.includes("Checked by Kevin"), null, { timeout: 15_000 });
+  expect((await label()) !== "add a picture to page 2", "Undo takes the picture back");
+});
+
 await step("Connect to Claude with no extension running says what to do", async () => {
   await page.getByRole("button", { name: "Connect to Claude" }).click();
   await page.locator('.modal:has-text("Not connected")').waitFor({ timeout: 60_000 });

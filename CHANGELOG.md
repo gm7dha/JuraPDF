@@ -5,6 +5,20 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.6 — Add words and pictures to pages
+
+- **Add words** (the T button in the bar under the top bar): click on a page where the words should start and type.
+  Choose the font, letter size and colour above the box; drag the ✥ handle to move it. Several lines are fine. Click
+  **Done** (or Ctrl+Enter) to put them on the page, or Esc to leave them off. Handy for notes, a name and date, or
+  "Approved".
+- **Add a picture** (the picture button): choose a PNG or JPG (a signature, a stamp, a logo), click on a page where it
+  should go, drag it to move it and drag its round corner to make it bigger or smaller (it keeps its shape). Then
+  **Done**.
+- Both are saved into the page like everything else, and Undo takes them back. They land the right way up on turned
+  pages too.
+- **Claude** can do the same: ask it to "write 'Checked by Kevin, 24 Nov' at the bottom of page 3" or "put
+  signature.png on the last page" (pictures come from your JuraPDF folder).
+
 ## v0.5.2 — A wider or narrower side panel
 
 - **Drag the right edge** of the panel on the left (Pages or Bookmarks) to make it wider or narrower. With Pages,

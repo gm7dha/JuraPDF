@@ -133,9 +133,16 @@ describe("reading and changing a PDF", () => {
     // A 1×1 PNG from the folder.
     const png = Buffer.from("89504e470d0a1a0a0000000d4948445200000001000000010806000000" + "1f15c4890000000d49444154789c6360f8cfc0000003010100c9fe92ef0000000049454e44ae426082", "hex");
     writeFileSync(join(dir, "logo.png"), png);
-    expect(await ok(s, "list_pdfs")).toMatch(/Pictures \(for add_watermark\):\n- logo\.png/);
+    expect(await ok(s, "list_pdfs")).toMatch(/Pictures \(for add_picture and add_watermark\):\n- logo\.png/);
     expect(await ok(s, "add_watermark", { picture: "logo.png", placement: "top-right", picture_width: 20, pages: 2 })).toBe("Added the logo.png watermark to page 2.");
     expect(await bad(s, "add_watermark", { picture: "missing.png" })).toMatch(/no file called/);
+    // Words and a picture on one page.
+    expect(await ok(s, "add_words", { page: 1, words: "Signed: K. Pugh\n24 Nov 2026", x: 100, y: 700, size: 12, colour: "blue" })).toBe("Added the words to page 1, 100 points from the left and 700 from the top.");
+    expect((await words(s))[0]).toContain("Signed: K. Pugh");
+    expect(await ok(s, "add_picture", { page: 1, picture: "logo.png", x: 400, y: 50 })).toBe("Added logo.png to page 1: 72 × 72 points, its top-left corner 400 points from the left and 50 from the top.");
+    expect(await bad(s, "add_words", { page: 1, words: "Tick ✓" })).toMatch(/✓/);
+    expect(await bad(s, "add_words", { page: 99, words: "x" })).toMatch(/page must be/);
+    expect(await bad(s, "add_picture", { page: 1, picture: "missing.png" })).toMatch(/no file called/);
   });
 
   it("starts a new PDF, and says what's wrong in words", async () => {

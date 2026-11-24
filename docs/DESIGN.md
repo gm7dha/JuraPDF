@@ -63,7 +63,10 @@ tests          Vitest, pure code only;  scripts/smoke-test.mjs drives the built 
 - **v0.5.1 (done)** — **bookmarks** (asked for by the owner): a Bookmarks tab beside Pages in the side panel showing
   the PDF's outline (folding, the bookmark for the page being read marked); add one for the page being read, rename,
   delete, point at this page, move up/down/in/out. Written into the PDF's outline with pdf-lib, an undo step each.
-- **v0.6** — **editing**: add words (text boxes), pictures and shapes (lines, boxes, arrows, highlights); move, resize,
+- **v0.6 (done)** — **add words and pictures**: click on a page to place typed words (font, size, colour, several
+  lines) or a PNG/JPG picture (drag to move, corner to size), Done writes them into the page; Claude's add_words and
+  add_picture tools.
+- **v0.6.x** — **more editing**: shapes (lines, boxes, arrows, highlights); move, resize,
   replace or delete pictures already on a page; fix words already on a page (the old words are covered with the page's
   background and the new ones written in the closest matching font; short fixes only, as PDFs don't reflow).
 - **v0.7** — **bring in and save out**: pictures (JPG/PNG) to new pages; pages to PNG/JPG; all the words out as text.
