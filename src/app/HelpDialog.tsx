@@ -34,7 +34,7 @@ export function HelpDialog() {
       </p>
       <p>
         <strong>Bookmarks</strong> (the tab beside <strong>Pages</strong> on the left) lists the PDF's chapters and sections: click one to go there. <strong>+</strong> bookmarks the page
-        you're on; you can rename (double-click), delete, move bookmarks up and down, put one inside another, and fold them away. They're saved in the PDF, so other PDF readers show them too.
+        you're on; you can rename (double-click), delete, move bookmarks up and down, put one inside another, and fold them away. They're saved in the PDF, so other PDF readers show them too. Drag the panel's right edge to make it wider or narrower.
       </p>
       <p className="muted">Coming next: editing words and pictures on the pages.</p>
       <div className="platform-row">

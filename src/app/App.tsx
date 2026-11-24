@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 
 import { hasUnsavedChanges, useStore } from "../model/store";
 import { zoomIn, zoomOut } from "../model/zoom";
@@ -19,6 +19,7 @@ export function App() {
   const pdf = useStore((s) => s.pdf);
   const sidebar = useStore((s) => s.sidebar);
   const pane = useStore((s) => s.sidePane);
+  const sideWidth = useStore((s) => s.sideWidth[s.sidePane]);
   const dialog = useStore((s) => s.dialog);
   const dropping = useDropToOpen();
   useShortcuts();
@@ -29,7 +30,7 @@ export function App() {
       <TopBar />
       <ViewBar />
       {pdf ? (
-        <main className={`workspace${sidebar ? ` with-${pane}` : " no-sidebar"}`}>
+        <main className={`workspace${sidebar ? ` with-${pane}` : " no-sidebar"}`} style={{ "--side-width": `${sideWidth}px` } as CSSProperties}>
           {sidebar && <SidePanel />}
           <PageView />
         </main>

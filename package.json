@@ -1,7 +1,7 @@
 {
   "name": "jurapdf",
   "private": true,
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Free, open-source, browser-based PDF viewer and editor. Sister app to JuraCAD, JuraCUT and JuraDAW.",
   "license": "MIT",
   "type": "module",

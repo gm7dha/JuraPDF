@@ -218,6 +218,25 @@ await step("hiding and showing the page list", async () => {
   await page.locator(".thumbnails").waitFor();
 });
 
+await step("making the side panel wider by dragging its edge", async () => {
+  const panelWidth = async () => (await page.locator(".side-panel").boundingBox()).width;
+  const thumbWidth = async () => (await page.locator('.thumb[data-thumb="1"] .thumb-picture').boundingBox()).width;
+  const before = await panelWidth();
+  const edge = await page.locator(".side-resize").boundingBox();
+  await page.mouse.move(edge.x + edge.width / 2, edge.y + 200);
+  await page.mouse.down();
+  await page.mouse.move(edge.x + 120, edge.y + 200, { steps: 5 });
+  await page.mouse.up();
+  const after = await panelWidth();
+  expect(Math.abs(after - before - 116) < 6, `the panel should be about 116px wider: ${before} → ${after}`);
+  await page.waitForFunction((w) => document.querySelector('.thumb[data-thumb="1"] .thumb-picture').getBoundingClientRect().width > w, before - 40);
+  expect((await thumbWidth()) > before - 40, "the page pictures should grow with the panel");
+  expect((await page.evaluate(() => localStorage.getItem("jurapdf.sideWidth")))?.includes(`"pages":${Math.round(after)}`), "the width should be remembered");
+  // A double-click on the edge goes back to the usual width.
+  await page.locator(".side-resize").dblclick();
+  await page.waitForFunction((w) => Math.abs(document.querySelector(".side-panel").getBoundingClientRect().width - w) < 2, before);
+});
+
 await step("saving", async () => {
   const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Save", exact: true }).click()]);
   expect(download.suggestedFilename() === "Smoke test.pdf", `saved as ${download.suggestedFilename()}`);

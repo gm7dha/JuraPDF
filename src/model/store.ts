@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 import type { PDFDocumentProxy } from "../pdf/pdfjs";
 import { pickPages, type ClickKind } from "./pages";
+import { readSideWidths } from "./sidePanel";
 import { clampZoom, type Size, type ZoomMode } from "./zoom";
 
 /** The PDF that's open. */
@@ -61,6 +62,8 @@ interface State {
   sidebar: boolean;
   /** What the side panel shows: the pages, or the bookmarks. */
   sidePane: SidePane;
+  /** How wide the side panel is for each pane, in CSS pixels (dragged by its edge). */
+  sideWidth: Record<SidePane, number>;
   /** Show one whole page at a time (the wheel and keys flip pages), rather than pages one under another. */
   onePage: boolean;
   dialog: DialogName;
@@ -90,6 +93,8 @@ interface State {
   goToPage(i: number): void;
   toggleSidebar(): void;
   setSidePane(p: SidePane): void;
+  /** Set the panel's width for a pane; `remember` keeps it on this computer (at the end of a drag). */
+  setSideWidth(p: SidePane, width: number, remember?: boolean): void;
   /** One page at a time on or off; it shows the whole page on, and fits the width off. */
   setOnePage(on: boolean): void;
   openDialog(d: DialogName): void;
@@ -110,6 +115,14 @@ let toastId = 0;
 const ONE_PAGE_KEY = "jurapdf.onePage";
 /** So is which side panel shows. */
 const SIDE_PANE_KEY = "jurapdf.sidePane";
+const SIDE_WIDTH_KEY = "jurapdf.sideWidth";
+function rememberedWidths(): Record<SidePane, number> {
+  try {
+    return readSideWidths(globalThis.localStorage?.getItem(SIDE_WIDTH_KEY) ?? null);
+  } catch {
+    return readSideWidths(null);
+  }
+}
 function rememberedPane(): SidePane {
   try {
     return globalThis.localStorage?.getItem(SIDE_PANE_KEY) === "bookmarks" ? "bookmarks" : "pages";
@@ -134,6 +147,7 @@ export const useStore = create<State>((set, get) => ({
   goTo: null,
   sidebar: true,
   sidePane: rememberedPane(),
+  sideWidth: rememberedWidths(),
   onePage: remembered(ONE_PAGE_KEY),
   dialog: null,
   passwordFor: null,
@@ -195,6 +209,17 @@ export const useStore = create<State>((set, get) => ({
       // Not remembered; still works now.
     }
     set({ sidePane, sidebar: true });
+  },
+  setSideWidth(pane, width, remember = false) {
+    const sideWidth = { ...get().sideWidth, [pane]: width };
+    if (width !== get().sideWidth[pane]) set({ sideWidth });
+    if (remember) {
+      try {
+        globalThis.localStorage?.setItem(SIDE_WIDTH_KEY, JSON.stringify(sideWidth));
+      } catch {
+        // Not remembered; still works now.
+      }
+    }
   },
   setOnePage(onePage) {
     if (onePage === get().onePage) return;

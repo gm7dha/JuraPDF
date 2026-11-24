@@ -5,6 +5,12 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.5.2 — A wider or narrower side panel
+
+- **Drag the right edge** of the panel on the left (Pages or Bookmarks) to make it wider or narrower. With Pages,
+  the page pictures grow to fill it, so you can see more of each page. Double-click the edge to go back to the usual
+  width. JuraPDF remembers the width you like, separately for Pages and Bookmarks.
+
 ## v0.5.1 — Bookmarks
 
 - **Bookmarks** sit beside **Pages** in the panel on the left: click the **Bookmarks** tab. It lists the PDF's own

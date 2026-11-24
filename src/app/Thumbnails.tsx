@@ -4,6 +4,7 @@
  */
 import { memo, useEffect, useRef, useState, type DragEvent, type MouseEvent, type RefObject } from "react";
 
+import { thumbWidthFor } from "../model/sidePanel";
 import { useStore } from "../model/store";
 import type { Size } from "../model/zoom";
 import { drawPage, isCancelled, type PDFDocumentProxy } from "../pdf/pdfjs";
@@ -12,8 +13,6 @@ import { detectPlatform } from "./platform";
 
 const isMac = () => detectPlatform() === "mac";
 
-/** How wide a thumbnail is, in CSS pixels. */
-const THUMB_WIDTH = 120;
 
 /** The pages being dragged in the list (null when nothing from the list is). */
 let dragging: number[] | null = null;
@@ -22,6 +21,7 @@ export function Thumbnails() {
   const pdf = useStore((s) => s.pdf);
   const current = useStore((s) => s.currentPage);
   const selected = useStore((s) => s.selected);
+  const thumbWidth = useSettled(thumbWidthFor(useStore((s) => s.sideWidth.pages)));
   const list = useRef<HTMLDivElement>(null);
   /** Where dragged pages would land: before this page (count = at the end). */
   const [dropAt, setDropAt] = useState<number | null>(null);
@@ -69,6 +69,7 @@ export function Thumbnails() {
           doc={pdf.doc}
           index={i}
           size={size}
+          width={thumbWidth}
           active={i === current}
           picked={picked.has(i)}
           dropMark={dropAt === i ? "before" : dropAt === count && i === count - 1 ? "after" : null}
@@ -96,6 +97,8 @@ interface ThumbProps {
   doc: PDFDocumentProxy;
   index: number;
   size: Size;
+  /** How wide it is, in CSS pixels. */
+  width: number;
   active: boolean;
   picked: boolean;
   dropMark: "before" | "after" | null;
@@ -104,11 +107,11 @@ interface ThumbProps {
   onDragEnd(): void;
 }
 
-const Thumb = memo(function Thumb({ doc, index, size, active, picked, dropMark, root, onDragOver, onDragEnd }: ThumbProps) {
+const Thumb = memo(function Thumb({ doc, index, size, width, active, picked, dropMark, root, onDragOver, onDragEnd }: ThumbProps) {
   const ref = useRef<HTMLDivElement>(null);
   const holder = useRef<HTMLDivElement>(null);
   const [near, setNear] = useState(false);
-  const scale = THUMB_WIDTH / Math.max(1, size[0]);
+  const scale = width / Math.max(1, size[0]);
   const height = Math.round(size[1] * scale);
 
   useEffect(() => {
@@ -174,8 +177,18 @@ const Thumb = memo(function Thumb({ doc, index, size, active, picked, dropMark, 
       onDragOver={(e) => onDragOver(e, index)}
       onDragEnd={onDragEnd}
     >
-      <div className="thumb-picture" ref={holder} style={{ width: THUMB_WIDTH, height }} />
+      <div className="thumb-picture" ref={holder} style={{ width, height }} />
       <span className="thumb-number">{index + 1}</span>
     </div>
   );
 });
+
+/** The value once it has stopped changing for a moment (the pictures are drawn again only when a drag pauses). */
+function useSettled(value: number, ms = 200): number {
+  const [settled, setSettled] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setSettled(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return settled;
+}
