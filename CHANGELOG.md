@@ -5,6 +5,13 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.4.1 — One page at a time
+
+- **One page at a time** (the new button beside the zoom buttons): the whole page fits in the window, and scrolling,
+  the ↑ ↓ arrow keys or Page Up / Page Down flip to the next or previous page. If you zoom in, the page scrolls first
+  and then flips at its top or bottom. Click the button again to see the pages one under another. JuraPDF remembers
+  which way you like.
+
 ## v0.4 — Pages
 
 - **Pick pages** in the page list down the left: Ctrl-click (⌘-click on a Mac) to pick several, or click one and

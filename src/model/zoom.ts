@@ -144,3 +144,20 @@ export function keepSpotInView(
   const fraction = b.height > 0 ? (y - b.top) / b.height : 0;
   return Math.max(0, a.top + fraction * a.height - anchorY);
 }
+
+/** How far the wheel must turn (CSS pixels) to flip to the next page when showing one page at a time. */
+export const FLIP_DISTANCE = 80;
+
+/**
+ * One page at a time: add a wheel turn to the turn so far and say whether to
+ * flip a page (+1 next, −1 previous). A turn the other way starts again.
+ * `canScroll` is false while the page fits the window, or when it's already
+ * scrolled as far as it goes in that direction (then the wheel flips instead).
+ */
+export function wheelFlip(total: number, deltaY: number, canScroll: boolean): { total: number; flip: -1 | 0 | 1 } {
+  if (canScroll || deltaY === 0) return { total: 0, flip: 0 };
+  const sum = Math.sign(total) === Math.sign(deltaY) ? total + deltaY : deltaY;
+  if (sum >= FLIP_DISTANCE) return { total: 0, flip: 1 };
+  if (sum <= -FLIP_DISTANCE) return { total: 0, flip: -1 };
+  return { total: sum, flip: 0 };
+}

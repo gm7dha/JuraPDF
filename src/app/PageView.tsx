@@ -1,5 +1,6 @@
 /**
- * The pages, one under another, in a scrolling window.
+ * The pages, one under another, in a scrolling window, or one whole page at a
+ * time (the wheel, arrows and Page Up/Down flip pages).
  *
  * Only pages near the window are drawn (and pages far away are let go), so
  * even very long PDFs open quickly and don't use much memory. While the zoom
@@ -8,13 +9,15 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 
 import { useStore } from "../model/store";
-import { CSS_PER_PT, PAGE_MARGIN_Y, currentPageAt, keepSpotInView, layoutPages, resolveZoom, type PageBox, type Size } from "../model/zoom";
+import { CSS_PER_PT, PAGE_MARGIN_Y, currentPageAt, keepSpotInView, layoutPages, resolveZoom, wheelFlip, type PageBox, type Size } from "../model/zoom";
 import { drawPage, drawTextLayer, isCancelled, type PDFDocumentProxy } from "../pdf/pdfjs";
 
 export function PageView() {
   const pdf = useStore((s) => s.pdf);
   const zoomMode = useStore((s) => s.zoom);
   const goTo = useStore((s) => s.goTo);
+  const onePage = useStore((s) => s.onePage);
+  const current = useStore((s) => s.currentPage);
   const scroller = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<Size>([0, 0]);
 
@@ -29,7 +32,11 @@ export function PageView() {
     return () => ro.disconnect();
   }, []);
 
-  const sizes = pdf?.sizes ?? [];
+  const allSizes = pdf?.sizes ?? [];
+  // One page at a time: just the page being read, fitted on its own.
+  const shownPage = Math.min(current, allSizes.length - 1);
+  const sizes = useMemo(() => (onePage && allSizes.length ? [allSizes[shownPage]] : allSizes), [onePage, allSizes, shownPage]);
+  const first = onePage ? shownPage : 0;
   const zoom = view[0] > 0 ? resolveZoom(zoomMode, sizes, view) : 1;
   const layout = useMemo(() => layoutPages(sizes, zoom), [sizes, zoom]);
 
@@ -71,8 +78,15 @@ export function PageView() {
   // Scroll to a page when asked (thumbnails, page number box, keys).
   useLayoutEffect(() => {
     const el = scroller.current;
-    const box = goTo && layout.boxes[goTo.page];
-    if (!el || !box) return;
+    if (!el || !goTo) return;
+    if (onePage) {
+      // The page asked for is the one shown: start at its top.
+      el.scrollTop = 0;
+      scrollPos.current.top = 0;
+      return;
+    }
+    const box = layout.boxes[goTo.page];
+    if (!box) return;
     el.scrollTop = Math.max(0, box.top - PAGE_MARGIN_Y / 2);
     scrollPos.current.top = el.scrollTop;
     // The page asked for stays the current one while the view stays put, even when it can't
@@ -86,6 +100,7 @@ export function PageView() {
     const el = scroller.current;
     if (!el) return;
     scrollPos.current = { top: el.scrollTop, left: el.scrollLeft };
+    if (onePageRef.current) return;
     if (jumped.current !== null && Math.abs(el.scrollTop - jumped.current) < 2) return;
     jumped.current = null;
     cancelAnimationFrame(frame.current);
@@ -95,13 +110,43 @@ export function PageView() {
   };
 
   // Ctrl + scroll (or a trackpad pinch) zooms towards the pointer.
+  // One page at a time: the wheel flips pages (once the page has scrolled as far as it goes, if it's zoomed in).
   const zoomRef = useRef(zoom);
   zoomRef.current = zoom;
+  const onePageRef = useRef(onePage);
+  onePageRef.current = onePage;
   useEffect(() => {
     const el = scroller.current;
     if (!el) return;
+    let turned = 0;
+    let restUntil = 0;
     const onWheel = (e: WheelEvent) => {
-      if (!e.ctrlKey && !e.metaKey) return;
+      if (!e.ctrlKey && !e.metaKey) {
+        if (!onePageRef.current || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+        const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * el.clientHeight : e.deltaY;
+        const canScroll = dy > 0 ? el.scrollTop + el.clientHeight < el.scrollHeight - 1 : el.scrollTop > 0;
+        if (canScroll) {
+          turned = 0;
+          return;
+        }
+        e.preventDefault();
+        // After a flip, let the rest of that wheel turn (a trackpad's glide) go by.
+        if (performance.now() < restUntil) return;
+        const r = wheelFlip(turned, dy, false);
+        turned = r.total;
+        if (r.flip) {
+          restUntil = performance.now() + 350;
+          const s = useStore.getState();
+          const count = s.pdf?.sizes.length ?? 0;
+          const next = s.currentPage + r.flip;
+          if (next >= 0 && next < count) {
+            s.goToPage(next);
+            // Going back shows the previous page from its bottom, as if scrolled up into it.
+            if (r.flip < 0) requestAnimationFrame(() => (el.scrollTop = el.scrollHeight));
+          }
+        }
+        return;
+      }
       e.preventDefault();
       const step = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
       const next = zoomRef.current * Math.exp(-Math.max(-60, Math.min(60, step)) * 0.006);
@@ -113,11 +158,11 @@ export function PageView() {
   }, []);
 
   return (
-    <div className="page-scroller" ref={scroller} onScroll={onScroll} tabIndex={-1} aria-label="Pages">
+    <div className={`page-scroller${onePage ? " one-page" : ""}`} ref={scroller} onScroll={onScroll} tabIndex={-1} aria-label="Pages">
       <div className="page-stack" style={{ height: layout.height, minWidth: layout.width }}>
         {pdf &&
           layout.boxes.map((box, i) => (
-            <PageSlot key={i} doc={pdf.doc} index={i} box={box} zoom={zoom} root={scroller} />
+            <PageSlot key={first + i} doc={pdf.doc} index={first + i} box={box} zoom={zoom} root={scroller} />
           ))}
       </div>
     </div>

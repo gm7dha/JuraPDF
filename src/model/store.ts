@@ -57,6 +57,8 @@ interface State {
   /** A request for the page view to scroll to a page; `n` makes repeat requests for the same page count. */
   goTo: { page: number; n: number } | null;
   sidebar: boolean;
+  /** Show one whole page at a time (the wheel and keys flip pages), rather than pages one under another. */
+  onePage: boolean;
   dialog: DialogName;
   passwordFor: PendingPassword | null;
   toasts: Toast[];
@@ -83,6 +85,8 @@ interface State {
   setCurrentPage(i: number): void;
   goToPage(i: number): void;
   toggleSidebar(): void;
+  /** One page at a time on or off; it shows the whole page on, and fits the width off. */
+  setOnePage(on: boolean): void;
   openDialog(d: DialogName): void;
   askPassword(p: PendingPassword | null): void;
   showToast(text: string, kind?: Toast["kind"]): void;
@@ -97,14 +101,25 @@ interface State {
 
 let toastId = 0;
 
+/** "One page at a time" is remembered on this computer. */
+const ONE_PAGE_KEY = "jurapdf.onePage";
+function remembered(key: string): boolean {
+  try {
+    return globalThis.localStorage?.getItem(key) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export const useStore = create<State>((set, get) => ({
   pdf: null,
   opening: null,
-  zoom: "width",
+  zoom: remembered(ONE_PAGE_KEY) ? "page" : "width",
   shownZoom: 1,
   currentPage: 0,
   goTo: null,
   sidebar: true,
+  onePage: remembered(ONE_PAGE_KEY),
   dialog: null,
   passwordFor: null,
   toasts: [],
@@ -120,7 +135,7 @@ export const useStore = create<State>((set, get) => ({
     const { pdf: old, past, future } = get();
     const keep = new Set(pdf ? [pdf.doc] : []);
     for (const p of [old, ...past.map((s) => s.pdf), ...future.map((s) => s.pdf)]) if (p && !keep.has(p.doc)) void p.doc.destroy();
-    set({ pdf, currentPage: 0, goTo: null, zoom: "width", savedAs: null, savedBytes: pdf?.bytes ?? null, past: [], future: [], selected: [], anchor: null });
+    set({ pdf, currentPage: 0, goTo: null, zoom: get().onePage ? "page" : "width", savedAs: null, savedBytes: pdf?.bytes ?? null, past: [], future: [], selected: [], anchor: null });
   },
   changePdf(pdf, label) {
     const { pdf: old, past, future } = get();
@@ -158,6 +173,15 @@ export const useStore = create<State>((set, get) => ({
     set({ goTo: { page, n: (get().goTo?.n ?? 0) + 1 }, currentPage: page });
   },
   toggleSidebar: () => set({ sidebar: !get().sidebar }),
+  setOnePage(onePage) {
+    if (onePage === get().onePage) return;
+    try {
+      globalThis.localStorage?.setItem(ONE_PAGE_KEY, onePage ? "1" : "0");
+    } catch {
+      // Not remembered; still works now.
+    }
+    set({ onePage, zoom: onePage ? "page" : "width", goTo: get().pdf ? { page: get().currentPage, n: (get().goTo?.n ?? 0) + 1 } : get().goTo });
+  },
   openDialog: (dialog) => set({ dialog }),
   askPassword: (passwordFor) => set({ passwordFor, dialog: passwordFor ? "password" : null }),
   showToast(text, kind = "info") {

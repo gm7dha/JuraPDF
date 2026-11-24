@@ -213,4 +213,11 @@ export const Icons = {
       <path d="M11 11h10M18 8l3 3-3 3" />
     </Svg>
   ),
+  /** One page at a time: a single page with arrows above and below it. */
+  OnePage: (p: IconProps) => (
+    <Svg {...p}>
+      <rect x="6.5" y="6" width="11" height="12" rx="1.3" />
+      <path d="M9.5 3.5 12 1.8l2.5 1.7M9.5 20.5l2.5 1.7 2.5-1.7" />
+    </Svg>
+  ),
 };

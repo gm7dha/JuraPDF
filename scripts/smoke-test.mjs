@@ -420,6 +420,36 @@ await step("changing pages: pick, turn, drag to move, delete, add, bring in and 
   await page.keyboard.press("Escape");
 });
 
+await step("one whole page at a time: the wheel and keys flip pages", async () => {
+  const current = () => page.evaluate(() => window.jurapdfStore.getState().currentPage);
+  await page.keyboard.press("Home");
+  await page.waitForFunction(() => window.jurapdfStore.getState().currentPage === 0);
+  await page.getByRole("button", { name: "One page at a time" }).click();
+  await page.waitForFunction(() => document.querySelectorAll(".page").length === 1);
+  // The whole page fits in the window.
+  const box = await page.locator(".page").boundingBox();
+  const view = await page.locator(".page-scroller").boundingBox();
+  expect(box.height <= view.height && box.width <= view.width, "the whole page should fit in the window");
+  // The wheel flips to the next page.
+  await page.mouse.move(view.x + view.width / 2, view.y + view.height / 2);
+  await page.mouse.wheel(0, 120);
+  await page.waitForFunction(() => window.jurapdfStore.getState().currentPage === 1, null, { timeout: 5000 });
+  await page.locator('.page[data-page="2"]').waitFor();
+  expect((await page.locator(".page").count()) === 1, "still one page showing");
+  // Page Down and the arrow keys flip too.
+  await page.waitForTimeout(400);
+  await page.keyboard.press("PageDown");
+  await page.waitForFunction(() => window.jurapdfStore.getState().currentPage === 2);
+  await page.keyboard.press("ArrowUp");
+  await page.waitForFunction(() => window.jurapdfStore.getState().currentPage === 1);
+  await page.mouse.wheel(0, -120);
+  await page.waitForFunction(() => window.jurapdfStore.getState().currentPage === 0, null, { timeout: 5000 });
+  expect((await current()) === 0, "back on page 1");
+  // And back to pages one under another.
+  await page.getByRole("button", { name: "One page at a time" }).click();
+  await page.waitForFunction(() => document.querySelectorAll(".page").length === 3);
+});
+
 await step("dark mode", async () => {
   await page.getByRole("button", { name: "Settings" }).click();
   await page.getByRole("radio", { name: "Dark" }).click();

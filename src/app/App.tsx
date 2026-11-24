@@ -172,7 +172,14 @@ function useShortcuts() {
       const last = s.pdf.sizes.length - 1;
       if ((e.key === "Delete" || e.key === "Backspace") && s.selected.length) void deleteChosen();
       else if (e.key === "Escape" && s.selected.length) s.setSelected([]);
-      else if (e.key === "ArrowLeft") s.goToPage(s.currentPage - 1);
+      else if (s.onePage && ["ArrowDown", "ArrowUp", "PageDown", "PageUp"].includes(e.key)) {
+        // One page at a time: these flip pages, once a zoomed-in page has scrolled as far as it goes.
+        const back = e.key === "ArrowUp" || e.key === "PageUp";
+        const el = document.querySelector<HTMLElement>(".page-scroller");
+        const canScroll = el ? (back ? el.scrollTop > 0 : el.scrollTop + el.clientHeight < el.scrollHeight - 1) : false;
+        if (canScroll) return;
+        s.goToPage(s.currentPage + (back ? -1 : 1));
+      } else if (e.key === "ArrowLeft") s.goToPage(s.currentPage - 1);
       else if (e.key === "ArrowRight") s.goToPage(s.currentPage + 1);
       else if (e.key === "Home") s.goToPage(0);
       else if (e.key === "End") s.goToPage(last);

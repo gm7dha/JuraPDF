@@ -14,6 +14,7 @@ JuraPDF runs entirely in your browser. There's no account, nothing is uploaded, 
 
 - **Open a PDF**: the Open button, or drag it onto the window. Password-protected PDFs ask for their password.
 - **Read it**: pages one under another, with a **page list** of thumbnails down the left (click one to go there).
+- **One page at a time**: the whole page fits the window and scrolling or the arrow keys flip pages.
 - **Go to a page**: type its number, use the arrows, or ← / → and Home / End.
 - **Zoom**: − and +, type a zoom, **Fit to width**, **Whole page** or **100%** (real size); Ctrl + scroll or a
   trackpad pinch zooms towards the pointer.
