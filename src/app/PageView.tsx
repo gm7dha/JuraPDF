@@ -65,6 +65,9 @@ export function PageView() {
     before.current = null;
   }, [pdf?.doc]);
 
+  // Where the view was scrolled to for a page asked for (until it's scrolled elsewhere).
+  const jumped = useRef<number | null>(null);
+
   // Scroll to a page when asked (thumbnails, page number box, keys).
   useLayoutEffect(() => {
     const el = scroller.current;
@@ -72,6 +75,9 @@ export function PageView() {
     if (!el || !box) return;
     el.scrollTop = Math.max(0, box.top - PAGE_MARGIN_Y / 2);
     scrollPos.current.top = el.scrollTop;
+    // The page asked for stays the current one while the view stays put, even when it can't
+    // scroll to the top of the window (the last pages of a PDF).
+    jumped.current = el.scrollTop;
   }, [goTo]);
 
   // Keep the page number up to date while scrolling.
@@ -80,6 +86,8 @@ export function PageView() {
     const el = scroller.current;
     if (!el) return;
     scrollPos.current = { top: el.scrollTop, left: el.scrollLeft };
+    if (jumped.current !== null && Math.abs(el.scrollTop - jumped.current) < 2) return;
+    jumped.current = null;
     cancelAnimationFrame(frame.current);
     frame.current = requestAnimationFrame(() => {
       useStore.getState().setCurrentPage(currentPageAt(layout.boxes, el.scrollTop, el.clientHeight));

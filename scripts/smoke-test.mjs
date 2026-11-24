@@ -163,7 +163,13 @@ await step("the words can be selected", async () => {
 await step("going to a page", async () => {
   await page.locator('.thumb[data-thumb="3"]').click();
   await page.waitForFunction(() => window.jurapdfStore.getState().currentPage === 2);
-  expect((await page.getByLabel("Page number").inputValue()) === "3", "page box should say 3");
+  // It stays on page 3 once the view has settled, though page 3 (the last) can't scroll to the top.
+  await page.waitForTimeout(400);
+  expect((await page.evaluate(() => window.jurapdfStore.getState().currentPage)) === 2, "should stay on page 3");
+  // (The box updates when the screen next redraws, so wait for it rather than read it straight away.)
+  await page.waitForFunction(() => document.querySelector('[aria-label="Page number"]')?.value === "3", null, { timeout: 5000 }).catch(() => {
+    throw new Error("page box should say 3");
+  });
   const page3 = await page.locator('.page[data-page="3"]').boundingBox();
   expect(page3 && page3.y < 400, "page 3 should be scrolled into view");
   await page.keyboard.press("Home");
