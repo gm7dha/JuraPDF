@@ -784,6 +784,13 @@ kbd {
   overflow-x: auto;
 }
 
+.page-tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+}
+
 .viewbar-divider {
   width: 1px;
   height: 24px;
@@ -921,6 +928,74 @@ a.phase-badge {
 .thumb.active .thumb-number {
   color: var(--accent-dark);
   font-weight: 600;
+}
+
+.thumb {
+  position: relative;
+  cursor: pointer;
+  flex: none;
+}
+
+.thumb:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Picked with Ctrl/⌘ or Shift: a tick in the corner and a tinted frame. */
+.thumb.picked {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.thumb.picked::after {
+  content: "✓";
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  line-height: 20px;
+  text-align: center;
+}
+
+/* Where dragged pages will land. */
+.thumb.drop-before::before,
+.thumb.drop-after::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.thumb.drop-before::before {
+  top: -5px;
+}
+
+.thumb.drop-after::before {
+  bottom: -5px;
+}
+
+.thumbs-picked {
+  margin: 8px 8px 0;
+  font-size: 12px;
+  text-align: center;
+}
+
+.link-button {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--accent-dark);
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
 }
 
 .page-scroller {

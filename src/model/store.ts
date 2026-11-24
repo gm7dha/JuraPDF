@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 import type { PDFDocumentProxy } from "../pdf/pdfjs";
+import { pickPages, type ClickKind } from "./pages";
 import { clampZoom, type Size, type ZoomMode } from "./zoom";
 
 /** The PDF that's open. */
@@ -67,6 +68,9 @@ interface State {
   /** Versions to go back to (newest last), and forward to after an undo (newest last). */
   past: Snapshot[];
   future: Snapshot[];
+  /** Pages picked in the page list (0 = first), and the page a Shift-click run starts from. */
+  selected: number[];
+  anchor: number | null;
 
   setPdf(pdf: OpenPdf | null): void;
   /** A change to the PDF (labelled for Undo); `pdf` is the new version. */
@@ -85,6 +89,10 @@ interface State {
   dismissToast(id: number): void;
   setTheme(t: "light" | "dark"): void;
   markSaved(name: string): void;
+  /** A click on page `i` in the page list (goes to it, and picks pages with Ctrl/⌘ or Shift). */
+  pickPage(i: number, kind: ClickKind): void;
+  /** Pick exactly these pages (e.g. after they've moved). */
+  setSelected(pages: number[]): void;
 }
 
 let toastId = 0;
@@ -105,12 +113,14 @@ export const useStore = create<State>((set, get) => ({
   savedBytes: null,
   past: [],
   future: [],
+  selected: [],
+  anchor: null,
 
   setPdf(pdf) {
     const { pdf: old, past, future } = get();
     const keep = new Set(pdf ? [pdf.doc] : []);
     for (const p of [old, ...past.map((s) => s.pdf), ...future.map((s) => s.pdf)]) if (p && !keep.has(p.doc)) void p.doc.destroy();
-    set({ pdf, currentPage: 0, goTo: null, zoom: "width", savedAs: null, savedBytes: pdf?.bytes ?? null, past: [], future: [] });
+    set({ pdf, currentPage: 0, goTo: null, zoom: "width", savedAs: null, savedBytes: pdf?.bytes ?? null, past: [], future: [], selected: [], anchor: null });
   },
   changePdf(pdf, label) {
     const { pdf: old, past, future } = get();
@@ -119,20 +129,20 @@ export const useStore = create<State>((set, get) => ({
     // Keep the last 20 versions to go back to.
     const kept = [...past, { pdf: old, label }];
     for (const s of kept.slice(0, -20)) void s.pdf.doc.destroy();
-    set({ pdf, past: kept.slice(-20), future: [], currentPage: Math.min(get().currentPage, pdf.sizes.length - 1) });
+    set({ pdf, past: kept.slice(-20), future: [], selected: [], anchor: null, currentPage: Math.min(get().currentPage, pdf.sizes.length - 1) });
   },
   undo() {
     const { pdf, past, future } = get();
     const back = past[past.length - 1];
     if (!pdf || !back) return;
-    set({ pdf: back.pdf, past: past.slice(0, -1), future: [...future, { pdf, label: back.label }], currentPage: Math.min(get().currentPage, back.pdf.sizes.length - 1) });
+    set({ pdf: back.pdf, past: past.slice(0, -1), future: [...future, { pdf, label: back.label }], selected: [], anchor: null, currentPage: Math.min(get().currentPage, back.pdf.sizes.length - 1) });
     get().showToast(`Undone: ${back.label}`);
   },
   redo() {
     const { pdf, past, future } = get();
     const fwd = future[future.length - 1];
     if (!pdf || !fwd) return;
-    set({ pdf: fwd.pdf, future: future.slice(0, -1), past: [...past, { pdf, label: fwd.label }], currentPage: Math.min(get().currentPage, fwd.pdf.sizes.length - 1) });
+    set({ pdf: fwd.pdf, future: future.slice(0, -1), past: [...past, { pdf, label: fwd.label }], selected: [], anchor: null, currentPage: Math.min(get().currentPage, fwd.pdf.sizes.length - 1) });
     get().showToast(`Redone: ${fwd.label}`);
   },
   setOpening: (opening) => set({ opening }),
@@ -158,4 +168,14 @@ export const useStore = create<State>((set, get) => ({
   dismissToast: (id) => set({ toasts: get().toasts.filter((t) => t.id !== id) }),
   setTheme: (theme) => set({ theme }),
   markSaved: (savedAs) => set({ savedAs, savedBytes: get().pdf?.bytes ?? null }),
+  pickPage(i, kind) {
+    const { selected, anchor, currentPage } = get();
+    // A plain click just goes to the page (and is where a Shift-click run starts from);
+    // Ctrl/⌘-click starts a pick from the page being read.
+    if (kind === "only") set({ selected: [], anchor: i });
+    else if (kind === "toggle") set({ selected: pickPages(selected.length ? selected : [currentPage], i, "toggle", null), anchor: i });
+    else set({ selected: pickPages(selected, i, "run", anchor ?? currentPage), anchor: anchor ?? currentPage });
+    get().goToPage(i);
+  },
+  setSelected: (pages) => set({ selected: [...new Set(pages)].sort((a, b) => a - b), anchor: pages.length ? Math.min(...pages) : get().anchor }),
 }));

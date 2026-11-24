@@ -43,12 +43,17 @@ export function helpRows(p: Platform) {
     ["Scroll through the pages", "Scroll wheel, trackpad, or drag the scroll bar"],
     ["Zoom (towards the pointer)", mac ? `${k.mod} + scroll, or pinch on a trackpad` : `${k.mod} + scroll, or pinch on a trackpad`],
     ["Go to a page", "Click it in the page list on the left, or type its number in the box at the top"],
+    ["Pick several pages", `${k.mod}-click them in the page list, or click one and Shift-click another for all those between`],
+    ["Move pages", "Drag them up or down the page list, or use the move buttons at the top"],
+    ["Turn, delete or add pages", "The page buttons at the top work on the picked pages, or the page you're on if none are picked"],
     ["Select and copy words", `Drag across them, then ${k.mod} + C`],
     ["Open a PDF", "Drag it onto the window"],
   ];
   const keys: [string, string][] = [
     ["← / →", "Previous / next page"],
     ["Home / End", "First / last page"],
+    ["Delete", "Delete the picked pages (Undo brings them back)"],
+    ["Esc", "Stop picking pages"],
     ["Page Up / Page Down", "Scroll up / down a screenful"],
     [`${k.mod} + + / −`, "Zoom in / out"],
     [`${k.mod} + 0`, "Fit the page's width to the window"],

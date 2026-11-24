@@ -1,10 +1,12 @@
-/** The bar under the top bar: the page list, which page you're on, and the zoom. */
+/** The bar under the top bar: the page list, which page you're on, the zoom, and the page buttons. */
 import { useEffect, useState } from "react";
 
+import { pagesLabel, targetPages } from "../model/pages";
 import { useStore } from "../model/store";
 import { paperName, sizeLabel } from "../model/pdfFile";
 import { parsePageNumber, parseZoom, zoomIn, zoomLabel, zoomOut } from "../model/zoom";
 import { Icons } from "./icons";
+import { addBlank, deleteChosen, insertFromFile, moveChosen, saveChosenAsNew, turnChosen } from "./pageActions";
 import { detectPlatform, shortcut } from "./platform";
 
 export function ViewBar() {
@@ -13,6 +15,7 @@ export function ViewBar() {
   const zoom = useStore((s) => s.zoom);
   const shown = useStore((s) => s.shownZoom);
   const sidebar = useStore((s) => s.sidebar);
+  const selected = useStore((s) => s.selected);
   const s = useStore.getState;
   const count = pdf?.sizes.length ?? 0;
   const platform = detectPlatform();
@@ -24,6 +27,9 @@ export function ViewBar() {
 
   if (!pdf) return null;
   const size = pdf.sizes[current];
+  const pages = targetPages(selected, current, count);
+  const which = pagesLabel(pages);
+  const these = selected.length ? `the picked ${pages.length === 1 ? "page" : "pages"} (${which})` : `this page (${which})`;
 
   return (
     <div className="viewbar" role="toolbar" aria-label="Pages and zoom">
@@ -112,6 +118,47 @@ export function ViewBar() {
       <button type="button" className={`text-button compact${zoom === 1 ? " active" : ""}`} onClick={() => s().setZoom(1)} title={`Real size (${shortcut(platform, "1")})`}>
         100%
       </button>
+      <span className="viewbar-divider" />
+      <div className="page-tools" role="group" aria-label="Change pages">
+        <button type="button" className="icon-button" onClick={() => void turnChosen(-90)} aria-label="Turn left" title={`Turn ${these} a quarter turn anticlockwise`}>
+          <Icons.TurnLeft />
+        </button>
+        <button type="button" className="icon-button" onClick={() => void turnChosen(90)} aria-label="Turn right" title={`Turn ${these} a quarter turn clockwise`}>
+          <Icons.TurnRight />
+        </button>
+        <button type="button" className="icon-button" onClick={() => void moveChosen(-1)} disabled={pages[0] === 0} aria-label="Move up" title={`Move ${these} one place earlier (or drag pages in the page list)`}>
+          <Icons.MoveUp />
+        </button>
+        <button
+          type="button"
+          className="icon-button"
+          onClick={() => void moveChosen(1)}
+          disabled={pages[pages.length - 1] === count - 1}
+          aria-label="Move down"
+          title={`Move ${these} one place later (or drag pages in the page list)`}
+        >
+          <Icons.MoveDown />
+        </button>
+        <button
+          type="button"
+          className="icon-button"
+          onClick={() => void deleteChosen()}
+          disabled={pages.length >= count}
+          aria-label="Delete pages"
+          title={pages.length >= count ? "A PDF needs at least one page" : `Delete ${these} (Delete key when pages are picked)`}
+        >
+          <Icons.Bin />
+        </button>
+        <button type="button" className="icon-button" onClick={() => void addBlank()} aria-label="Add a blank page" title={`Add a blank page after ${which}`}>
+          <Icons.AddPage />
+        </button>
+        <button type="button" className="icon-button" onClick={() => void insertFromFile()} aria-label="Bring in pages from another PDF" title={`Bring in all the pages of another PDF, after ${which}`}>
+          <Icons.BringIn />
+        </button>
+        <button type="button" className="icon-button" onClick={() => void saveChosenAsNew()} aria-label="Save pages as a new PDF" title={`Save ${these} as a new PDF`}>
+          <Icons.SaveOut />
+        </button>
+      </div>
       <div className="topbar-spacer" />
       <span className="doc-facts muted" title="This page's paper size, how many pages the PDF has, and its file size">
         {size ? paperName(size[0], size[1]) : ""} · {count} {count === 1 ? "page" : "pages"} · {sizeLabel(pdf.bytes.length)}

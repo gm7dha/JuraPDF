@@ -5,6 +5,20 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.4 — Pages
+
+- **Pick pages** in the page list down the left: Ctrl-click (⌘-click on a Mac) to pick several, or click one and
+  Shift-click another to pick all those in between. Esc stops picking.
+- **Page buttons** in the bar at the top. They work on the picked pages, or the page you're on if none are picked:
+  - **Turn** a quarter turn left or right.
+  - **Move** one place earlier or later. Or just **drag** pages up and down the page list.
+  - **Delete** (or press the Delete key). A PDF always keeps at least one page.
+  - **Add a blank page**, the same size and way round as the page before it.
+  - **Bring in pages from another PDF**: all its pages go in after the page you're on. This is also how to join PDFs.
+  - **Save pages as a new PDF**: the picked pages become a PDF of their own (the one you have open doesn't change).
+    This is also how to split a PDF up.
+- Every change can be undone and redone.
+
 ## v0.3 — Watermarks saved into the PDF, and Undo
 
 - **Watermark** (the new button in the top bar): words or a picture (PNG or JPG, such as a logo), saved into the
