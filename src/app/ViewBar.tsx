@@ -5,6 +5,7 @@ import { pagesLabel, targetPages } from "../model/pages";
 import { useStore } from "../model/store";
 import { paperName, sizeLabel } from "../model/pdfFile";
 import { parsePageNumber, parseZoom, zoomIn, zoomLabel, zoomOut } from "../model/zoom";
+import { cancelAdding, startPicture, startWords } from "./addActions";
 import { Icons } from "./icons";
 import { addBlank, deleteChosen, insertFromFile, moveChosen, saveChosenAsNew, turnChosen } from "./pageActions";
 import { detectPlatform, shortcut } from "./platform";
@@ -15,6 +16,8 @@ export function ViewBar() {
   const zoom = useStore((s) => s.zoom);
   const shown = useStore((s) => s.shownZoom);
   const sidebar = useStore((s) => s.sidebar);
+  const placing = useStore((s) => s.placing?.kind ?? null);
+  const draftKind = useStore((s) => s.draft?.kind ?? null);
   const selected = useStore((s) => s.selected);
   const onePage = useStore((s) => s.onePage);
   const s = useStore.getState;
@@ -168,6 +171,27 @@ export function ViewBar() {
         </button>
         <button type="button" className="icon-button" onClick={() => void saveChosenAsNew()} aria-label="Save pages as a new PDF" title={`Save ${these} as a new PDF`}>
           <Icons.SaveOut />
+        </button>
+      </div>
+      <span className="viewbar-divider" />
+      <div className="page-tools" role="group" aria-label="Add to a page">
+        <button
+          type="button"
+          className={`icon-button${placing === "words" || draftKind === "words" ? " active" : ""}`}
+          onClick={() => (placing === "words" ? cancelAdding() : startWords())}
+          aria-label="Add words"
+          title="Add words to a page: click where they should go, then type"
+        >
+          <Icons.Words />
+        </button>
+        <button
+          type="button"
+          className={`icon-button${placing === "picture" || draftKind === "picture" ? " active" : ""}`}
+          onClick={() => (placing === "picture" ? cancelAdding() : void startPicture())}
+          aria-label="Add a picture"
+          title="Add a picture (PNG or JPG) to a page: choose it, then click where it should go"
+        >
+          <Icons.Picture />
         </button>
       </div>
       <div className="topbar-spacer" />

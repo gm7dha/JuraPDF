@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 import type { PDFDocumentProxy } from "../pdf/pdfjs";
 import { pickPages, type ClickKind } from "./pages";
+import type { Draft, Placing } from "./additions";
 import { readSideWidths } from "./sidePanel";
 import { clampZoom, type Size, type ZoomMode } from "./zoom";
 
@@ -77,6 +78,10 @@ interface State {
   /** Versions to go back to (newest last), and forward to after an undo (newest last). */
   past: Snapshot[];
   future: Snapshot[];
+  /** Waiting for a click on a page to put words or a picture there. */
+  placing: Placing | null;
+  /** Words or a picture on a page, not yet written into the PDF. */
+  draft: Draft | null;
   /** Pages picked in the page list (0 = first), and the page a Shift-click run starts from. */
   selected: number[];
   anchor: number | null;
@@ -87,6 +92,8 @@ interface State {
   undo(): void;
   redo(): void;
   setOpening(name: string | null): void;
+  setPlacing(p: Placing | null): void;
+  setDraft(d: Draft | null): void;
   setZoom(z: ZoomMode): void;
   setShownZoom(z: number): void;
   setCurrentPage(i: number): void;
@@ -157,6 +164,8 @@ export const useStore = create<State>((set, get) => ({
   savedBytes: null,
   past: [],
   future: [],
+  placing: null,
+  draft: null,
   selected: [],
   anchor: null,
 
@@ -164,7 +173,7 @@ export const useStore = create<State>((set, get) => ({
     const { pdf: old, past, future } = get();
     const keep = new Set(pdf ? [pdf.doc] : []);
     for (const p of [old, ...past.map((s) => s.pdf), ...future.map((s) => s.pdf)]) if (p && !keep.has(p.doc)) void p.doc.destroy();
-    set({ pdf, currentPage: 0, goTo: null, zoom: get().onePage ? "page" : "width", savedAs: null, savedBytes: pdf?.bytes ?? null, past: [], future: [], selected: [], anchor: null });
+    set({ pdf, currentPage: 0, goTo: null, zoom: get().onePage ? "page" : "width", savedAs: null, savedBytes: pdf?.bytes ?? null, past: [], future: [], selected: [], anchor: null, placing: null, draft: null });
   },
   changePdf(pdf, label) {
     const { pdf: old, past, future } = get();
@@ -190,6 +199,8 @@ export const useStore = create<State>((set, get) => ({
     get().showToast(`Redone: ${fwd.label}`);
   },
   setOpening: (opening) => set({ opening }),
+  setPlacing: (placing) => set({ placing }),
+  setDraft: (draft) => set({ draft }),
   setZoom: (z) => set({ zoom: typeof z === "number" ? clampZoom(z) : z }),
   setShownZoom: (shownZoom) => set({ shownZoom }),
   setCurrentPage(i) {

@@ -259,4 +259,25 @@ export const Icons = {
       <path d="M6.5 3h11v18L12 16.5 6.5 21z" />
     </Svg>
   ),
+  /** Add words: a T in a box. */
+  Words: (p: IconProps) => (
+    <Svg {...p}>
+      <rect x="3.5" y="3.5" width="17" height="17" rx="2" />
+      <path d="M8 8h8M12 8v9" />
+    </Svg>
+  ),
+  /** Add a picture: a framed landscape. */
+  Picture: (p: IconProps) => (
+    <Svg {...p}>
+      <rect x="3" y="4.5" width="18" height="15" rx="2" />
+      <circle cx="8.5" cy="9.5" r="1.6" />
+      <path d="m3.5 17 5-5 4 4 3-3 5 5" />
+    </Svg>
+  ),
+  /** Move: arrows four ways. */
+  Move: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3" />
+    </Svg>
+  ),
 };

@@ -13,6 +13,8 @@ import { parsePageRange } from "../model/printMark";
 import { DEFAULT_WATERMARK, FONT_NAMES, PLACEMENT_NAMES, type FontChoice, type Placement, type WatermarkSettings } from "../model/watermark";
 import { addBlankPage, deletePages, extractPages, insertPdf, PageProblem, reorderPages, turnPages } from "../pdf/pages";
 import { addWatermark, LockedPdf, WatermarkProblem, type WatermarkPicture } from "../pdf/watermark";
+import { additionLabel, cleanSize, DEFAULT_WORDS, linesOf, startingPictureSize } from "../model/additions";
+import { AddProblem, addPicture, addWords, pictureType } from "../pdf/additions";
 import { moveTo, sameOrder } from "../model/pages";
 import { InputError, bool, noExtras, num, object, oneOf, text } from "./args";
 import { isLocked, pageFacts, pageWords } from "./reading";
@@ -27,7 +29,7 @@ export const FORMAT_GUIDE = `How JuraPDF works with PDFs:
 - Pages are numbered from 1, as the user sees them. "pages" takes a number, a list of numbers, or text like "1-3, 5", "4-" (4 to the end), "all", "odd", "even" or "last".
 - Sizes are paper names (A4, Letter…) or millimetres; "landscape" means wider than tall. A page's "turn" is how it has been rotated to show (0, 90, 180 or 270 degrees clockwise).
 - describe_pdf gives the pages and a taste of their words; read_words gives the words of chosen pages (scanned pages, being pictures, have none).
-- Changes: add_watermark (words or a PNG/JPG picture from the folder, saved into the pages), turn_pages, delete_pages (one page must stay), move_pages, add_blank_pages, bring_in_pdf (all the pages of another PDF from the folder: this is how to join PDFs), save_pages_as_pdf (some pages as a new PDF in the folder: this is how to split one). undo takes back your last change.
+- Changes: add_watermark (words or a PNG/JPG picture from the folder, saved into the pages), add_words and add_picture (writing or a PNG/JPG picture such as a signature on one page, placed in points from its top-left corner as it shows; describe_pdf gives the page sizes), turn_pages, delete_pages (one page must stay), move_pages, add_blank_pages, bring_in_pdf (all the pages of another PDF from the folder: this is how to join PDFs), save_pages_as_pdf (some pages as a new PDF in the folder: this is how to split one). undo takes back your last change.
 - Locked PDFs (with a password or protected against changes) can be read but not changed.
 - Talk to the user in plain words: "pages", "words", "picture", "see-through" — not PDF jargon.`;
 
@@ -112,6 +114,38 @@ function colourOf(v: unknown): string {
   throw new InputError(`colour: give ${Object.keys(COLOURS).filter((c) => c !== "gray").join(", ")}, or a colour like "#336699" (got ${JSON.stringify(v)}).`);
 }
 
+/** A PNG or JPG picture from the folder. */
+function readPicture(folder: ReturnType<typeof needFolder>, path: string): WatermarkPicture {
+  const bytes = folder.read(path);
+  const name = path.split(/[\\/]/).pop() ?? "picture";
+  const type = pictureType(bytes);
+  if (!type) throw new InputError(`${name} isn't a PNG or JPG picture inside.`);
+  return { bytes, type, name };
+}
+
+/** A picture's size in pixels, read from its file. */
+function pixelSize(bytes: Uint8Array, type: "png" | "jpg"): { w: number; h: number } {
+  if (type === "png") {
+    const v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    return { w: v.getUint32(16), h: v.getUint32(20) };
+  }
+  // JPG: the first "start of frame" block holds the size.
+  let i = 2;
+  while (i + 9 < bytes.length) {
+    if (bytes[i] !== 0xff) {
+      i++;
+      continue;
+    }
+    const marker = bytes[i + 1];
+    const len = (bytes[i + 2] << 8) | bytes[i + 3];
+    if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+      return { h: (bytes[i + 5] << 8) | bytes[i + 6], w: (bytes[i + 7] << 8) | bytes[i + 8] };
+    }
+    i += 2 + len;
+  }
+  return { w: 100, h: 100 };
+}
+
 /** Words for a change of the PDF, for Claude and the user's Undo list. */
 async function describeDoc(doc: PdfDoc, opts: { words?: boolean } = {}): Promise<string> {
   const facts = await pageFacts(doc.bytes);
@@ -145,7 +179,7 @@ async function change(s: Session, run: (bytes: Uint8Array<ArrayBuffer>) => Promi
     bytes = await run(doc.bytes);
   } catch (e) {
     if (e instanceof LockedPdf) throw new InputError("This PDF is locked against changes (it has a password or is protected), so it can't be changed. It can still be read.");
-    if (e instanceof PageProblem || e instanceof WatermarkProblem) throw new InputError(e.message);
+    if (e instanceof PageProblem || e instanceof WatermarkProblem || e instanceof AddProblem) throw new InputError(e.message);
     throw e;
   }
   s.throwIfCancelled();
@@ -233,7 +267,7 @@ export const TOOLS: ToolDef[] = [
       return say(
         pdfs.length ? `PDFs in ${folder.root}:` : `There are no PDFs in ${folder.root} yet. The user can put PDFs there for you to open.`,
         ...pdfs.map((f) => `- ${f.name} (${sizeLabel(f.bytes)}, ${f.modified.toISOString().slice(0, 10)})`),
-        pictures.length > 0 && "Pictures (for add_watermark):",
+        pictures.length > 0 && "Pictures (for add_picture and add_watermark):",
         ...pictures.map((f) => `- ${f.name}`),
       );
     },
@@ -353,11 +387,7 @@ export const TOOLS: ToolDef[] = [
       if (hasPicture) {
         const folder = needFolder(s);
         const path = folder.pathFor(text(a.picture, "picture"), [".png", ".jpg", ".jpeg"], "picture");
-        const bytes = folder.read(path);
-        const png = bytes[0] === 0x89 && bytes[1] === 0x50;
-        const jpg = bytes[0] === 0xff && bytes[1] === 0xd8;
-        if (!png && !jpg) throw new InputError(`${path.split(/[\\/]/).pop()} isn't a PNG or JPG picture inside.`);
-        picture = { bytes, type: png ? "png" : "jpg", name: path.split(/[\\/]/).pop() ?? "picture" };
+        picture = readPicture(folder, path);
       }
       const count = (await pageFacts(doc.bytes)).length;
       const pages = a.pages === undefined || a.pages === null ? undefined : pagesOf(a.pages, count, "pages");
@@ -374,6 +404,79 @@ export const TOOLS: ToolDef[] = [
         `added a ${what} watermark to ${where}`,
       );
       return say(`Added the ${what} watermark to ${on.length === count ? "every page" : pagesLabel(on.map((p) => p - 1))}${settings.behind ? ", behind what's on the page" : ""}.`);
+    },
+  },
+  {
+    name: "add_words",
+    title: "Add words to a page",
+    description:
+      "Write words onto one page, where they're asked for (e.g. a note, a name and date, \"Approved\"). Positions are in points (72 to the inch) from the page's top-left corner as it shows; describe_pdf gives each page's size. Several lines are fine (\\n between them).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        page: { type: "number", description: "The page, from 1." },
+        words: { type: "string", description: "The words (ordinary letters: English and most European ones)." },
+        x: { type: "number", description: "Points from the page's left edge to where the words start (72 if left out)." },
+        y: { type: "number", description: "Points from the page's top edge to the top of the first line (72 if left out)." },
+        font: { type: "string", enum: Object.keys(FONT_NAMES), description: "Helvetica if left out." },
+        size: { type: "number", description: `Letter size in points, 4–300 (${DEFAULT_WORDS.size} if left out).` },
+        colour: { type: "string", description: `${Object.keys(COLOURS).filter((c) => c !== "gray").join(", ")} or "#rrggbb" (near-black if left out).` },
+      },
+      required: ["page", "words"],
+    },
+    async run(s, a) {
+      noExtras(a, ["page", "words", "x", "y", "font", "size", "colour", "color"], "add_words");
+      const doc = needDoc(s);
+      const facts = await pageFacts(doc.bytes);
+      const page = num(a.page, "page", { min: 1, max: facts.length, integer: true }) - 1;
+      const { width, height } = facts[page];
+      const item = {
+        kind: "words" as const,
+        page,
+        text: text(a.words, "words"),
+        x: num(a.x, "x", { min: 0, max: width, fallback: 72 }),
+        y: num(a.y, "y", { min: 0, max: height, fallback: 72 }),
+        font: oneOf(a.font, Object.keys(FONT_NAMES) as FontChoice[], "font", DEFAULT_WORDS.font),
+        size: cleanSize(num(a.size, "size", { min: 4, max: 300, fallback: DEFAULT_WORDS.size })),
+        colour: a.colour === undefined && a.color === undefined ? DEFAULT_WORDS.colour : colourOf(a.colour ?? a.color),
+      };
+      if (!linesOf(item.text).length) throw new InputError("words: give some words to write.");
+      const label = additionLabel(item).replace(/^add/, "added");
+      await change(s, (bytes) => addWords(bytes, item), label);
+      return say(`Added the words to page ${page + 1}, ${Math.round(item.x)} points from the left and ${Math.round(item.y)} from the top.`);
+    },
+  },
+  {
+    name: "add_picture",
+    title: "Add a picture to a page",
+    description:
+      "Put a PNG or JPG picture from the JuraPDF folder (e.g. a signature, a stamp or a logo) onto one page. Positions and sizes are in points (72 to the inch) from the page's top-left corner as it shows.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        page: { type: "number", description: "The page, from 1." },
+        picture: { type: "string", description: "A PNG or JPG file in the JuraPDF folder." },
+        x: { type: "number", description: "Points from the page's left edge to the picture's left side (72 if left out)." },
+        y: { type: "number", description: "Points from the page's top edge to the picture's top (72 if left out)." },
+        width: { type: "number", description: "Its width in points (its height keeps its shape). Its own size, up to half the page, if left out." },
+      },
+      required: ["page", "picture"],
+    },
+    async run(s, a) {
+      noExtras(a, ["page", "picture", "x", "y", "width"], "add_picture");
+      const doc = needDoc(s);
+      const folder = needFolder(s);
+      const picture = readPicture(folder, folder.pathFor(text(a.picture, "picture"), [".png", ".jpg", ".jpeg"], "picture"));
+      const facts = await pageFacts(doc.bytes);
+      const page = num(a.page, "page", { min: 1, max: facts.length, integer: true }) - 1;
+      const { width: pw, height: ph } = facts[page];
+      const px = pixelSize(picture.bytes, picture.type);
+      const start = startingPictureSize(px.w, px.h, pw, ph);
+      const width = num(a.width, "width", { min: 4, max: pw * 2, fallback: start.width });
+      const height = (width * start.height) / start.width;
+      const item = { kind: "picture" as const, page, x: num(a.x, "x", { min: -width, max: pw, fallback: 72 }), y: num(a.y, "y", { min: -height, max: ph, fallback: 72 }), width, height };
+      await change(s, (bytes) => addPicture(bytes, item, picture), `added ${picture.name} to page ${page + 1}`);
+      return say(`Added ${picture.name} to page ${page + 1}: ${Math.round(width)} × ${Math.round(height)} points, its top-left corner ${Math.round(item.x)} points from the left and ${Math.round(item.y)} from the top.`);
     },
   },
   {

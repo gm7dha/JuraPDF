@@ -154,6 +154,7 @@ const words = text(await call("read_words", { pages: "3" }));
 check(/--- Page 3 ---\nReport page 3/.test(words), `read_words doesn't read page 3:\n${words}`);
 // Change it: a watermark, a turn, a move, a blank page, another PDF's pages, a delete.
 await call("add_watermark", { words: "CI DRAFT", colour: "blue", pages: "1-2" });
+await call("add_words", { page: 1, words: "Checked by CI", x: 72, y: 72 });
 await call("turn_pages", { pages: [2], direction: "right" });
 await call("move_pages", { pages: 3, before: 1 });
 await call("add_blank_pages", { after: "end" });

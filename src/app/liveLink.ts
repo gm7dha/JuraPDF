@@ -43,6 +43,7 @@ const host: LiveHost = {
     if (s.dialog === "watermark") return "The user has the Watermark window open in JuraPDF.";
     if (s.dialog === "print") return "The user has the Print window open in JuraPDF.";
     if (s.dialog === "password") return "JuraPDF is asking the user for a password.";
+    if (s.draft || s.placing) return "The user is adding words or a picture to a page in JuraPDF.";
     return null;
   },
   async apply(name, file, label, replace) {

@@ -35,7 +35,7 @@ export class LockedPdf extends Error {
 /** Something about the choices stops the watermark being made; the message says what. */
 export class WatermarkProblem extends Error {}
 
-const FONTS: Record<FontChoice, StandardFonts> = {
+export const FONTS: Record<FontChoice, StandardFonts> = {
   Helvetica: StandardFonts.Helvetica,
   HelveticaBold: StandardFonts.HelveticaBold,
   TimesRoman: StandardFonts.TimesRoman,
@@ -80,7 +80,7 @@ async function prepare(doc: PDFDocument, s: WatermarkSettings, picture?: Waterma
   return { font };
 }
 
-function frameOf(page: PDFPage): PageFrame {
+export function frameOf(page: PDFPage): PageFrame {
   const box = page.getCropBox();
   return { x: box.x, y: box.y, width: box.width, height: box.height, rotation: page.getRotation().angle };
 }
@@ -123,7 +123,7 @@ function stampPage(page: PDFPage, s: WatermarkSettings, ink: Ink): void {
 }
 
 /** The page's own drawing instructions before the watermark was added (as a list). */
-function existingContents(page: PDFPage): number {
+export function existingContents(page: PDFPage): number {
   page.node.normalize();
   const contents = page.node.lookup(PDFName.of("Contents"));
   return contents instanceof PDFArray ? contents.size() : 0;
@@ -134,7 +134,7 @@ function existingContents(page: PDFPage): number {
  * the page's own drawing is wrapped so any settings it leaves behind (a
  * shift, a colour) can't move or recolour the watermark.
  */
-function arrange(page: PDFPage, before: number, behind: boolean): void {
+export function arrange(page: PDFPage, before: number, behind: boolean): void {
   const contents = page.node.lookup(PDFName.of("Contents"));
   if (!(contents instanceof PDFArray)) return;
   const all = contents.asArray();

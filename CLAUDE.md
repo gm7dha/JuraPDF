@@ -48,6 +48,11 @@
   `src/model/sidePanel.ts`) is dragged by its right edge; thumbnails are drawn at `thumbWidthFor` once a drag pauses. `bookmarkActions.ts` keeps each
   version's tree (with folding) in a WeakMap by pdf.js document; every change writes a new version (one undo step).
   pdf-lib keeps page objects when pages move, so bookmarks follow them; ones to deleted pages show as going nowhere.
+- Adding words and pictures (`src/model/additions.ts` pure: positions in points "as shown" from the top-left, line
+  starts using `BASELINE` per font so the PDF words land where the screen font showed them; `src/pdf/additions.ts`
+  writes them through `toPageSpace`, in front, wrapped like a watermark): `addActions.ts` runs placing (`placing` in
+  the store: the next click on a page) and the `draft` (`DraftBox.tsx`, drawn inside the page at `cssScale`), Done
+  writes one undo step. Live with Claude is busy while either is open. Claude tools: add_words, add_picture.
 - JuraPDF for Claude (`src/mcp/`, `src/live/`, `claude-extension/manifest.json`): JuraDAW's extension and live link
   (which are JuraCAD's) with the names changed, so a fix in one belongs in the others. Ports **47655–47664** (JuraCAD
   47615–47624, JuraDAW 47635–47644), path `/jurapdf-live`, sub-protocol `jurapdf-live.1`, `JURAPDF_LIVE_DEV=1` lets in
@@ -55,7 +60,7 @@
   (`name` on hello/doc/change); `MAX_MESSAGE_BYTES` 150 MB. The session holds a `PdfDoc` {name, bytes}, Claude's own
   undo list and a `label` per change ("turned page 2") that becomes the tab's undo step ("Claude: turned page 2",
   `describeChange`). `tools.ts`: format_guide, live_status, describe_pdf, read_words, list_pdfs, open_pdf, new_pdf,
-  save_pdf, add_watermark, turn_pages, delete_pages, move_pages, add_blank_pages, bring_in_pdf, save_pages_as_pdf, undo —
+  save_pdf, add_watermark, add_words, add_picture, turn_pages, delete_pages, move_pages, add_blank_pages, bring_in_pdf, save_pages_as_pdf, undo —
   page numbers from 1 (`pagesOf`), changes through `src/pdf/pages.ts` and `watermark.ts`. `reading.ts` reads words with
   pdf.js's legacy build in Node (the worker imported into the bundle as `globalThis.pdfjsWorker`). `quietStdout.ts` is
   imported first by server.ts so nothing pdf.js prints reaches stdout. In the app: `LiveButton` in the TopBar (with a

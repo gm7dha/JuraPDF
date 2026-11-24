@@ -36,7 +36,11 @@ export function HelpDialog() {
         <strong>Bookmarks</strong> (the tab beside <strong>Pages</strong> on the left) lists the PDF's chapters and sections: click one to go there. <strong>+</strong> bookmarks the page
         you're on; you can rename (double-click), delete, move bookmarks up and down, put one inside another, and fold them away. They're saved in the PDF, so other PDF readers show them too. Drag the panel's right edge to make it wider or narrower.
       </p>
-      <p className="muted">Coming next: editing words and pictures on the pages.</p>
+      <p>
+        <strong>Add words</strong> (the T button) and <strong>Add a picture</strong> (the picture button): click on a page where it should go, then type, or drag the picture and its round corner to
+        place and size it. <strong>Done</strong> puts it on the page; Esc leaves it off.
+      </p>
+      <p className="muted">Coming next: shapes and highlights, and changing what's already on a page.</p>
       <div className="platform-row">
         <span className="muted small">Shortcuts shown for</span>
         <div className="segmented two" role="radiogroup" aria-label="Keyboard type">

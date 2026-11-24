@@ -4,6 +4,7 @@ import { hasUnsavedChanges, useStore } from "../model/store";
 import { zoomIn, zoomOut } from "../model/zoom";
 import { openFile, openFromFile, saveToFile } from "./fileActions";
 import { HelpDialog } from "./HelpDialog";
+import { cancelAdding } from "./addActions";
 import { deleteChosen } from "./pageActions";
 import { Icons } from "./icons";
 import { PageView } from "./PageView";
@@ -173,6 +174,7 @@ function useShortcuts() {
       if (!s.pdf) return;
       const last = s.pdf.sizes.length - 1;
       if ((e.key === "Delete" || e.key === "Backspace") && s.selected.length) void deleteChosen();
+      else if (e.key === "Escape" && (s.placing || s.draft)) cancelAdding();
       else if (e.key === "Escape" && s.selected.length) s.setSelected([]);
       else if (s.onePage && ["ArrowDown", "ArrowUp", "PageDown", "PageUp"].includes(e.key)) {
         // One page at a time: these flip pages, once a zoomed-in page has scrolled as far as it goes.

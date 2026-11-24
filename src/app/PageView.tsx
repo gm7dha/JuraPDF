@@ -11,12 +11,15 @@ import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefOb
 import { useStore } from "../model/store";
 import { CSS_PER_PT, PAGE_MARGIN_Y, currentPageAt, keepSpotInView, layoutPages, resolveZoom, wheelFlip, type PageBox, type Size } from "../model/zoom";
 import { drawPage, drawTextLayer, isCancelled, type PDFDocumentProxy } from "../pdf/pdfjs";
+import { placeAt } from "./addActions";
+import { DraftBox } from "./DraftBox";
 
 export function PageView() {
   const pdf = useStore((s) => s.pdf);
   const zoomMode = useStore((s) => s.zoom);
   const goTo = useStore((s) => s.goTo);
   const onePage = useStore((s) => s.onePage);
+  const placing = useStore((s) => !!s.placing);
   const current = useStore((s) => s.currentPage);
   const scroller = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<Size>([0, 0]);
@@ -158,7 +161,7 @@ export function PageView() {
   }, []);
 
   return (
-    <div className={`page-scroller${onePage ? " one-page" : ""}`} ref={scroller} onScroll={onScroll} tabIndex={-1} aria-label="Pages">
+    <div className={`page-scroller${onePage ? " one-page" : ""}${placing ? " placing" : ""}`} ref={scroller} onScroll={onScroll} tabIndex={-1} aria-label="Pages">
       <div className="page-stack" style={{ height: layout.height, minWidth: layout.width }}>
         {pdf &&
           layout.boxes.map((box, i) => (
@@ -253,11 +256,17 @@ const PageSlot = memo(function PageSlot({ doc, index, box, zoom, root }: SlotPro
     <div
       ref={ref}
       className={`page${drawn ? " drawn" : ""}`}
+      onClick={(e) => {
+        if (!useStore.getState().placing) return;
+        const box = e.currentTarget.getBoundingClientRect();
+        placeAt(index, (e.clientX - box.left) / cssScale, (e.clientY - box.top) / cssScale);
+      }}
       data-page={index + 1}
       style={{ top: box.top, width: box.width, height: box.height, left: `calc(50% - ${box.width / 2}px)`, ["--scale-factor" as string]: cssScale }}
     >
       <div className="page-canvas" ref={holder} />
       <div className="textLayer" ref={text} />
+      <DraftBox index={index} scale={cssScale} />
       {!drawn && <span className="page-loading">Page {index + 1}</span>}
     </div>
   );
