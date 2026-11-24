@@ -220,12 +220,12 @@ await step("saving", async () => {
   await page.locator(".save-state", { hasText: "Saved" }).waitFor();
 });
 
-await step("printing with an Uncontrolled Document and Work Order watermark", async () => {
+await step("printing with an Uncontrolled Document watermark and words of your own", async () => {
   await page.getByRole("button", { name: "Print" }).click();
   const dialog = page.getByRole("dialog", { name: "Print" });
   await dialog.waitFor();
   await dialog.getByRole("checkbox").check();
-  await dialog.getByLabel("Work Order").fill("W245354");
+  await dialog.getByLabel("Text", { exact: true }).fill("Work Order W245354");
   // The preview shows the red watermark.
   const redIn = (selector) =>
     page.evaluate((sel) => {
@@ -274,11 +274,11 @@ await step("printing with an Uncontrolled Document and Work Order watermark", as
     return n / (k.width * k.height);
   });
   expect(red > 0.005, "the printed page should carry the red watermark");
-  // The next print remembers the tick and the work order.
+  // The next print remembers the tick and the words.
   await page.keyboard.press("Control+p");
   await dialog.waitFor();
   expect(await dialog.getByRole("checkbox").isChecked(), "Uncontrolled Document should stay ticked");
-  expect((await dialog.getByLabel("Work Order").inputValue()) === "W245354", "the work order should be kept");
+  expect((await dialog.getByLabel("Text", { exact: true }).inputValue()) === "Work Order W245354", "the words should be kept");
   await page.keyboard.press("Escape");
   await dialog.waitFor({ state: "detached" });
 });

@@ -25,7 +25,7 @@ export function HelpDialog() {
         <strong>Save</strong> it back to your computer. Your files never leave your computer.
       </p>
       <p>
-        <strong>Print</strong> can write <strong>UNCONTROLLED DOCUMENT</strong> and a <strong>Work Order</strong> number across every printed page. Only the printout is
+        <strong>Print</strong> can write <strong>UNCONTROLLED DOCUMENT</strong> and words of your own (such as a work order number) across every printed page. Only the printout is
         marked; your PDF isn't changed.
       </p>
       <p className="muted">Coming next: watermarks saved into the PDF, then adding, removing and moving pages, and editing words and pictures.</p>

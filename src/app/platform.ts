@@ -56,7 +56,7 @@ export function helpRows(p: Platform) {
     [`${k.mod} + F`, "Find words (on the pages near where you are)"],
     [`${k.mod} + O`, "Open a PDF"],
     [`${k.mod} + S`, "Save the PDF to your computer"],
-    [`${k.mod} + P`, "Print (with an Uncontrolled Document or Work Order watermark if you like)"],
+    [`${k.mod} + P`, "Print (with an Uncontrolled Document watermark and your own words if you like)"],
     ["?", "Show this help"],
   ];
   return { mouse, keys };

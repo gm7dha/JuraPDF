@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { NO_MARK, UNCONTROLLED_TEXT, hasMark, layoutMark, parsePageRange, workOrderText } from "../src/model/printMark";
+import { NO_MARK, UNCONTROLLED_TEXT, hasMark, layoutMark, parsePageRange, ownText } from "../src/model/printMark";
 
 // Roughly Helvetica: letters about 0.6 of their size wide (bold a little wider).
 const measure = (text: string, size: number, bold: boolean) => text.length * size * (bold ? 0.66 : 0.56);
@@ -8,14 +8,14 @@ const measure = (text: string, size: number, bold: boolean) => text.length * siz
 describe("print watermark", () => {
   it("is off unless something is chosen", () => {
     expect(hasMark(NO_MARK)).toBe(false);
-    expect(hasMark({ uncontrolled: false, workOrder: "   " })).toBe(false);
+    expect(hasMark({ uncontrolled: false, text: "   " })).toBe(false);
     expect(layoutMark(NO_MARK, 595, 842, measure)).toBeNull();
-    expect(workOrderText({ uncontrolled: false, workOrder: " W245354 " })).toBe("Work Order: W245354");
+    expect(ownText({ uncontrolled: false, text: " W245354 " })).toBe("W245354");
   });
 
   it("writes UNCONTROLLED DOCUMENT corner to corner, rising to the right, within the page", () => {
     const [w, h] = [595, 842];
-    const layout = layoutMark({ uncontrolled: true, workOrder: "" }, w, h, measure)!;
+    const layout = layoutMark({ uncontrolled: true, text: "" }, w, h, measure)!;
     expect(layout.lines).toHaveLength(1);
     const line = layout.lines[0];
     expect(line.text).toBe(UNCONTROLLED_TEXT);
@@ -27,11 +27,11 @@ describe("print watermark", () => {
     expect(length).toBeGreaterThan(Math.hypot(w, h) * 0.5);
   });
 
-  it("puts the work order under it, smaller, on the same slant", () => {
+  it("puts your own words under it, smaller, on the same slant", () => {
     const [w, h] = [842, 595];
-    const layout = layoutMark({ uncontrolled: true, workOrder: "W245354" }, w, h, measure)!;
+    const layout = layoutMark({ uncontrolled: true, text: "Work Order W245354" }, w, h, measure)!;
     const [main, wo] = layout.lines;
-    expect(wo.text).toBe("Work Order: W245354");
+    expect(wo.text).toBe("Work Order W245354");
     expect(wo.size).toBeLessThan(main.size);
     // "Under" across the slant: further down the page and to the right of the main line.
     expect(wo.y).toBeGreaterThan(main.y);
@@ -41,16 +41,16 @@ describe("print watermark", () => {
     expect(Math.hypot(mid.x - w / 2, mid.y - h / 2)).toBeLessThan(main.size);
   });
 
-  it("writes a work order on its own, large", () => {
-    const layout = layoutMark({ uncontrolled: false, workOrder: "42" }, 595, 842, measure)!;
+  it("writes your own words on their own, large", () => {
+    const layout = layoutMark({ uncontrolled: false, text: "42" }, 595, 842, measure)!;
     expect(layout.lines).toHaveLength(1);
-    expect(layout.lines[0].text).toBe("Work Order: 42");
+    expect(layout.lines[0].text).toBe("42");
     expect(layout.lines[0].bold).toBe(true);
   });
 
-  it("keeps a very long work order on the page", () => {
+  it("keeps very long words on the page", () => {
     const wo = "X".repeat(60);
-    const layout = layoutMark({ uncontrolled: true, workOrder: wo }, 595, 842, measure)!;
+    const layout = layoutMark({ uncontrolled: true, text: wo }, 595, 842, measure)!;
     expect(measure(layout.lines[1].text, layout.lines[1].size, false)).toBeLessThanOrEqual(Math.hypot(595, 842) * 0.75);
   });
 });
