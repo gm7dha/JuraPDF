@@ -25,6 +25,8 @@ JuraPDF runs entirely in your browser. There's no account, nothing is uploaded, 
 - **Change pages**: pick pages in the page list (Ctrl/⌘-click or Shift-click), then turn, move (or drag), delete
   or add blank pages; bring in all the pages of another PDF (to join files); save picked pages as a new PDF (to split
   one up).
+- **Bookmarks** (the tab beside Pages): see the PDF's chapters and sections and click one to go there; add a bookmark
+  for the page you're on, rename, delete, move them about and put one inside another. They're saved in the PDF.
 - **Undo and Redo** any change.
 - **Use it with Claude**: an extension for the Claude desktop app (Help › Use JuraPDF with Claude) lets Claude read,
   watermark and rearrange your PDFs, in your JuraPDF folder or live on the PDF open in JuraPDF (**Connect to Claude**).

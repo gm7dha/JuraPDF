@@ -5,6 +5,16 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.5.1 — Bookmarks
+
+- **Bookmarks** sit beside **Pages** in the panel on the left: click the **Bookmarks** tab. It lists the PDF's own
+  chapters and sections (with any inside them, which you can fold away); click one to go to its page. The bookmark
+  for the page you're reading is marked as you move through the PDF.
+- **Add your own**: go to a page and press **+**, then type a name. You can also rename a bookmark (double-click it),
+  make it go to the page you're on, delete it, move it up or down, or put it inside the one above (and take it out
+  again). Each change can be undone, and the bookmarks are saved in the PDF, so other PDF readers show them too.
+- JuraPDF remembers whether you last had Pages or Bookmarks showing.
+
 ## v0.5 — JuraPDF with Claude
 
 - **An extension for the Claude desktop app** (Help › Use JuraPDF with Claude: download it, double-click, Install).

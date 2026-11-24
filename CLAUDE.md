@@ -42,6 +42,11 @@
 - Pages (`src/model/pages.ts` pure: picking and new orders; `src/pdf/pages.ts` writing): the page buttons in the
   ViewBar (`src/app/pageActions.ts`) work on the picked pages (`selected` in the store, cleared by every change, plain
   click = just go to the page) or else the page being read. Thumbnails are drag sources and drop targets for moving.
+- Bookmarks (`src/model/bookmarks.ts` pure tree changes by path; `src/pdf/bookmarks.ts` reads them from a pdf.js
+  document it's given and writes the whole outline with pdf-lib): the side panel (`SidePanel.tsx`, `sidePane` in the
+  store, remembered in localStorage `jurapdf.sidePane`) has Pages and Bookmarks tabs. `bookmarkActions.ts` keeps each
+  version's tree (with folding) in a WeakMap by pdf.js document; every change writes a new version (one undo step).
+  pdf-lib keeps page objects when pages move, so bookmarks follow them; ones to deleted pages show as going nowhere.
 - JuraPDF for Claude (`src/mcp/`, `src/live/`, `claude-extension/manifest.json`): JuraDAW's extension and live link
   (which are JuraCAD's) with the names changed, so a fix in one belongs in the others. Ports **47655–47664** (JuraCAD
   47615–47624, JuraDAW 47635–47644), path `/jurapdf-live`, sub-protocol `jurapdf-live.1`, `JURAPDF_LIVE_DEV=1` lets in

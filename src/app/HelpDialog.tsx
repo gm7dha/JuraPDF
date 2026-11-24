@@ -32,6 +32,10 @@ export function HelpDialog() {
         <strong>Watermark</strong> saves words or a picture into the pages. The page buttons in the bar under the top bar turn, move, delete and add pages, bring in pages from another PDF, and
         save some pages as a new PDF. They work on the pages picked in the page list, or else the page you're on. <strong>Undo</strong> takes back any change.
       </p>
+      <p>
+        <strong>Bookmarks</strong> (the tab beside <strong>Pages</strong> on the left) lists the PDF's chapters and sections: click one to go there. <strong>+</strong> bookmarks the page
+        you're on; you can rename (double-click), delete, move bookmarks up and down, put one inside another, and fold them away. They're saved in the PDF, so other PDF readers show them too.
+      </p>
       <p className="muted">Coming next: editing words and pictures on the pages.</p>
       <div className="platform-row">
         <span className="muted small">Shortcuts shown for</span>

@@ -15,7 +15,7 @@ import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import { extname, join } from "node:path";
 import { chromium } from "playwright";
-import { PDFDocument } from "pdf-lib";
+import { PDFDict, PDFDocument, PDFName } from "pdf-lib";
 
 const inCI = process.env.GITHUB_ACTIONS === "true";
 const annotate = (level, title, message) => {
@@ -452,6 +452,48 @@ await step("one whole page at a time: the wheel and keys flip pages", async () =
   // And back to pages one under another.
   await page.getByRole("button", { name: "One page at a time" }).click();
   await page.waitForFunction(() => document.querySelectorAll(".page").length === 3);
+});
+
+await step("bookmarks: add, rename, go to, move inside another, and Undo", async () => {
+  const label = () => page.evaluate(() => window.jurapdfStore.getState().past.at(-1)?.label);
+  await page.getByRole("tab", { name: "Bookmarks" }).click();
+  await page.getByText("This PDF has no bookmarks yet").waitFor();
+  // Bookmark page 1 and name it straight away.
+  await page.keyboard.press("Home");
+  await page.getByRole("button", { name: "Add a bookmark" }).click();
+  const box = page.getByRole("textbox", { name: "Bookmark name" });
+  await box.waitFor();
+  await box.fill("Start here");
+  await box.press("Enter");
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "rename bookmark to “Start here”");
+  // Bookmark page 3, keeping the name it's given.
+  await page.keyboard.press("End");
+  await page.waitForFunction(() => window.jurapdfStore.getState().currentPage === 2);
+  await page.getByRole("button", { name: "Add a bookmark" }).click();
+  await page.getByRole("textbox", { name: "Bookmark name" }).press("Escape");
+  const rows = page.getByRole("treeitem");
+  expect((await rows.count()) === 2, "two bookmarks");
+  expect((await rows.nth(0).textContent()).includes("Start here") && (await rows.nth(1).textContent()).includes("Page 3"), "in page order");
+  // Clicking a bookmark goes to its page.
+  await page.keyboard.press("Home");
+  await page.waitForFunction(() => window.jurapdfStore.getState().currentPage === 0);
+  await page.getByRole("button", { name: /^Page 3/ }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().currentPage === 2);
+  // Put "Page 3" inside "Start here".
+  await page.getByRole("button", { name: "Put it inside the one above" }).click();
+  await page.waitForFunction(() => document.querySelector('[role="treeitem"][aria-level="2"]')?.textContent?.includes("Page 3"));
+  expect((await label()) === "move bookmark", "moving is an undo step");
+  if (process.env.SMOKE_SCREENSHOT) await page.screenshot({ path: "smoke-bookmarks.png" });
+  // They're written into the PDF.
+  const bytes = Buffer.from(await page.evaluate(() => Array.from(window.jurapdfStore.getState().pdf.bytes)));
+  const doc = await PDFDocument.load(bytes);
+  const outlines = doc.catalog.lookup(PDFName.of("Outlines"), PDFDict);
+  expect(outlines.lookup(PDFName.of("First"), PDFDict).lookup(PDFName.of("Title")).decodeText() === "Start here", "the PDF holds the bookmarks");
+  // Undo takes them all away again (two adds, a rename and a move).
+  for (let i = 0; i < 4; i++) await page.keyboard.press("Control+z");
+  await page.getByText("This PDF has no bookmarks yet").waitFor();
+  await page.getByRole("tab", { name: "Pages" }).click();
+  await page.locator(".thumbnails").waitFor();
 });
 
 await step("Connect to Claude with no extension running says what to do", async () => {

@@ -20,6 +20,8 @@ export interface OpenPdf {
   password?: string;
 }
 
+export type SidePane = "pages" | "bookmarks";
+
 export type DialogName = "help" | "password" | "print" | "watermark" | null;
 
 /** A version of the PDF to go back or forward to, and what changed it (for "Undo add watermark"). */
@@ -57,6 +59,8 @@ interface State {
   /** A request for the page view to scroll to a page; `n` makes repeat requests for the same page count. */
   goTo: { page: number; n: number } | null;
   sidebar: boolean;
+  /** What the side panel shows: the pages, or the bookmarks. */
+  sidePane: SidePane;
   /** Show one whole page at a time (the wheel and keys flip pages), rather than pages one under another. */
   onePage: boolean;
   dialog: DialogName;
@@ -85,6 +89,7 @@ interface State {
   setCurrentPage(i: number): void;
   goToPage(i: number): void;
   toggleSidebar(): void;
+  setSidePane(p: SidePane): void;
   /** One page at a time on or off; it shows the whole page on, and fits the width off. */
   setOnePage(on: boolean): void;
   openDialog(d: DialogName): void;
@@ -103,6 +108,15 @@ let toastId = 0;
 
 /** "One page at a time" is remembered on this computer. */
 const ONE_PAGE_KEY = "jurapdf.onePage";
+/** So is which side panel shows. */
+const SIDE_PANE_KEY = "jurapdf.sidePane";
+function rememberedPane(): SidePane {
+  try {
+    return globalThis.localStorage?.getItem(SIDE_PANE_KEY) === "bookmarks" ? "bookmarks" : "pages";
+  } catch {
+    return "pages";
+  }
+}
 function remembered(key: string): boolean {
   try {
     return globalThis.localStorage?.getItem(key) === "1";
@@ -119,6 +133,7 @@ export const useStore = create<State>((set, get) => ({
   currentPage: 0,
   goTo: null,
   sidebar: true,
+  sidePane: rememberedPane(),
   onePage: remembered(ONE_PAGE_KEY),
   dialog: null,
   passwordFor: null,
@@ -173,6 +188,14 @@ export const useStore = create<State>((set, get) => ({
     set({ goTo: { page, n: (get().goTo?.n ?? 0) + 1 }, currentPage: page });
   },
   toggleSidebar: () => set({ sidebar: !get().sidebar }),
+  setSidePane(sidePane) {
+    try {
+      globalThis.localStorage?.setItem(SIDE_PANE_KEY, sidePane);
+    } catch {
+      // Not remembered; still works now.
+    }
+    set({ sidePane, sidebar: true });
+  },
   setOnePage(onePage) {
     if (onePage === get().onePage) return;
     try {
