@@ -8,7 +8,7 @@ JuraPDF runs entirely in your browser. There's no account, nothing is uploaded, 
 [JuraCAD](https://github.com/gm7dha/JuraCAD), [JuraCUT](https://github.com/gm7dha/JuraCUT) and
 [JuraDAW](https://github.com/gm7dha/JuraDAW), built the same way.
 
-> **Status: v0.4 preview.** It opens, shows and prints PDFs, adds watermarks saved into the PDF, prints with an "Uncontrolled Document" watermark and words of your own, and turns, moves, deletes, adds and joins pages. Editing words and pictures comes next. See the [roadmap](docs/DESIGN.md#roadmap).
+> **Status: v0.5 preview.** It opens, shows and prints PDFs, adds watermarks saved into the PDF, prints with an "Uncontrolled Document" watermark and words of your own, turns, moves, deletes, adds and joins pages, and works with Claude. Editing words and pictures comes next. See the [roadmap](docs/DESIGN.md#roadmap).
 
 ## What you can do today
 
@@ -26,6 +26,8 @@ JuraPDF runs entirely in your browser. There's no account, nothing is uploaded, 
   or add blank pages; bring in all the pages of another PDF (to join files); save picked pages as a new PDF (to split
   one up).
 - **Undo and Redo** any change.
+- **Use it with Claude**: an extension for the Claude desktop app (Help › Use JuraPDF with Claude) lets Claude read,
+  watermark and rearrange your PDFs, in your JuraPDF folder or live on the PDF open in JuraPDF (**Connect to Claude**).
 - **Print** all pages, the current page or the pages you choose, with an optional watermark across every printed page:
   **UNCONTROLLED DOCUMENT** and/or your own **Text** (e.g. "Work Order W245354"). Only the printout is marked.
 - **Install it as an app** (Chrome/Edge: the Install button) so it opens in its own window, works offline and opens

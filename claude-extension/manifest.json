@@ -1,0 +1,57 @@
+{
+  "manifest_version": "0.3",
+  "name": "jurapdf",
+  "display_name": "JuraPDF",
+  "version": "__VERSION__",
+  "description": "Ask Claude to work on your PDFs in plain English: add watermarks, turn, move, delete and add pages, join PDFs, save some pages as a new PDF, and read what the pages say. Works on PDFs in your JuraPDF folder, or live on the PDF open in JuraPDF.",
+  "long_description": "JuraPDF is a free, open-source PDF viewer and editor in your browser (https://gm7dha.github.io/JuraPDF/). With this extension, Claude can read a PDF's words and pages, add watermarks saved into the pages (words such as CONFIDENTIAL or DRAFT, or a PNG/JPG picture such as a logo), turn, move, delete and add pages, bring in the pages of another PDF (to join PDFs) and save some pages as a new PDF (to split one). It works on PDFs in the folder you choose (Documents/JuraPDF unless you pick another). With Live with Claude, click Connect to Claude in JuraPDF (Chrome, Edge, Firefox or Safari; in Safari it opens a small link window to keep open) and Claude works on the PDF you have open there, while you watch; every change is one step you can undo, and nothing is saved until you click Save. That link stays on your computer and only the JuraPDF website can use it. It only reads and writes files inside the folder you choose.",
+  "author": {
+    "name": "JuraPDF",
+    "url": "https://github.com/gm7dha/JuraPDF"
+  },
+  "homepage": "https://gm7dha.github.io/JuraPDF/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gm7dha/JuraPDF"
+  },
+  "license": "MIT",
+  "keywords": [
+    "pdf",
+    "watermark",
+    "pages",
+    "merge",
+    "split",
+    "jurapdf"
+  ],
+  "icon": "icon.png",
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.mjs",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/server/index.mjs",
+        "${user_config.pdf_folder}"
+      ]
+    }
+  },
+  "user_config": {
+    "pdf_folder": {
+      "type": "directory",
+      "title": "Folder for your PDFs",
+      "description": "The folder Claude opens PDFs (and watermark pictures) from and saves PDFs to. It can't read or write anywhere else.",
+      "default": "${DOCUMENTS}/JuraPDF",
+      "required": false
+    }
+  },
+  "tools": "__TOOLS__",
+  "compatibility": {
+    "platforms": [
+      "darwin",
+      "win32"
+    ],
+    "runtimes": {
+      "node": ">=18.0.0"
+    }
+  }
+}

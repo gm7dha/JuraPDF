@@ -35,7 +35,9 @@ from scanned pages), real-time collaboration or cloud storage.
 src/model      zoom.ts (zoom and page layout maths), pdfFile.ts (recognising and naming PDFs), printMark.ts (print watermark layout, page ranges), pages.ts (picking pages, new page orders), store.ts
 src/model      watermark.ts (watermark choices and where each copy goes, turned pages included)
 src/pdf        pdfjs.ts (loading, drawing pages and their words with pdf.js), watermark.ts (writing watermarks with pdf-lib), pages.ts (page changes with pdf-lib)
-src/app        React: TopBar, ViewBar (+ pageActions.ts), Thumbnails, PageView, PrintDialog (+ printing.ts), HelpDialog, PasswordDialog, App
+src/mcp        the Claude extension: server.ts, tools.ts, reading.ts (pdf.js in Node), session, live.ts, websocket.ts, files.ts
+src/live       Live with Claude, shared by the app and the extension (protocol, client, Safari's link window)
+src/app        React: TopBar (+ LiveButton, liveLink.ts), ViewBar (+ pageActions.ts), Thumbnails, PageView, PrintDialog (+ printing.ts), HelpDialog, PasswordDialog, App
 tests          Vitest, pure code only;  scripts/smoke-test.mjs drives the built app in headless Chromium
 ```
 
@@ -55,9 +57,11 @@ tests          Vitest, pure code only;  scripts/smoke-test.mjs drives the built 
 - **v0.4 (done)** — **pages**: pick pages in the page list (Ctrl/⌘-click, Shift-click), add blank pages, delete, drag
   to reorder or move up/down, turn, bring in pages from another PDF (joining), save chosen pages as a new PDF
   (splitting). Undo and redo for everything.
-- **v0.5** — **editing**: add words (text boxes), pictures and shapes (lines, boxes, arrows, highlights); move, resize,
+- **v0.5 (done)** — **JuraPDF with Claude** (asked for by the owner, as JuraCAD's and JuraDAW's): an extension for
+  the Claude desktop app with tools to read, watermark and change pages of PDFs in a chosen folder, and Live with
+  Claude on the PDF open in the tab.
+- **v0.6** — **editing**: add words (text boxes), pictures and shapes (lines, boxes, arrows, highlights); move, resize,
   replace or delete pictures already on a page; fix words already on a page (the old words are covered with the page's
   background and the new ones written in the closest matching font; short fixes only, as PDFs don't reflow).
-- **v0.6** — **bring in and save out**: pictures (JPG/PNG) to new pages; pages to PNG/JPG; all the words out as text.
-- **Later** — recent files, keeping work in the browser between visits, a Claude extension (as JuraCAD's and
-  JuraDAW's), comments and highlights, compressing large PDFs.
+- **v0.7** — **bring in and save out**: pictures (JPG/PNG) to new pages; pages to PNG/JPG; all the words out as text.
+- **Later** — recent files, keeping work in the browser between visits, comments and highlights, compressing large PDFs.

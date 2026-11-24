@@ -28,7 +28,11 @@ export function HelpDialog() {
         <strong>Print</strong> can write <strong>UNCONTROLLED DOCUMENT</strong> and words of your own (such as a work order number) across every printed page. Only the printout is
         marked; your PDF isn't changed.
       </p>
-      <p className="muted">Coming next: watermarks saved into the PDF, then adding, removing and moving pages, and editing words and pictures.</p>
+      <p>
+        <strong>Watermark</strong> saves words or a picture into the pages. The page buttons in the bar under the top bar turn, move, delete and add pages, bring in pages from another PDF, and
+        save some pages as a new PDF. They work on the pages picked in the page list, or else the page you're on. <strong>Undo</strong> takes back any change.
+      </p>
+      <p className="muted">Coming next: editing words and pictures on the pages.</p>
       <div className="platform-row">
         <span className="muted small">Shortcuts shown for</span>
         <div className="segmented two" role="radiogroup" aria-label="Keyboard type">
@@ -63,6 +67,41 @@ export function HelpDialog() {
           ))}
         </tbody>
       </table>
+      <h3 className="help-heading">Use JuraPDF with Claude</h3>
+      <p className="small">
+        Ask Claude, in the Claude desktop app, to do things with your PDFs in plain English. For example: "put a DRAFT watermark on every page", "join these two PDFs", "turn the
+        landscape pages the right way round", "save pages 3 to 5 as their own PDF" or "what does page 2 say?".
+      </p>
+      <ol className="small help-steps">
+        <li>
+          <a href={`${import.meta.env.BASE_URL}jurapdf-claude.mcpb`} download="jurapdf-claude.mcpb">
+            Download the JuraPDF extension for Claude
+          </a>
+          .
+        </li>
+        <li>Double-click the downloaded file (or drag it onto the Claude desktop app's window). Claude shows the install screen: click Install.</li>
+        <li>
+          Start a new chat in Claude. Claude works on PDFs in Documents › JuraPDF (you can choose another folder in the extension's settings), or live on the PDF open here (below).
+        </li>
+      </ol>
+      <h3 className="help-heading">Live with Claude</h3>
+      <p className="small">
+        Let Claude work on the PDF you have open here while you watch. With the extension installed and the Claude app open, click <b>Connect to Claude</b> in the top bar (nothing
+        connects until you do). The first time, your browser may ask whether JuraPDF can reach apps on this device: click Allow. A green <b>Live with Claude</b> badge shows while you're
+        connected.
+      </p>
+      <ul className="small help-steps">
+        <li>It works with every Claude chat that has JuraPDF, including chats you start after connecting (they're found within a few seconds).</li>
+        <li>
+          Each of Claude's changes is one step you can undo ({platform === "mac" ? "⌘Z" : "Ctrl+Z"}). Nothing is saved to your file until you click Save. If you both change something at
+          the same moment, Claude's change is turned back and it tries again, so nothing is lost. Claude waits while the Watermark or Print window is open.
+        </li>
+        <li>
+          Works in Chrome, Edge and Firefox. In Safari, Connect to Claude opens a small <b>JuraPDF ↔ Claude</b> window that passes messages along: allow the pop-up if Safari asks, and keep
+          that window open while you work.
+        </li>
+        <li>The link stays on this computer: only the JuraPDF website can use it, and Claude only reads and saves files in your JuraPDF folder.</li>
+      </ul>
       <p className="muted small">
         JuraPDF is free and open source (MIT):{" "}
         <a href="https://github.com/gm7dha/JuraPDF" target="_blank" rel="noreferrer">
