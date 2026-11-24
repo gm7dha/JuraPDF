@@ -8,9 +8,9 @@ import { PrintCancelled, pageWithMark, printPages } from "./printing";
 
 type Which = "all" | "current" | "range";
 
-/** The "Uncontrolled Document" tick is remembered on this computer; the work order is kept until JuraPDF closes. */
+/** The "Uncontrolled Document" tick is remembered on this computer; your own words are kept until JuraPDF closes. */
 const KEY = "jurapdf.print.uncontrolled";
-let lastWorkOrder = "";
+let lastText = "";
 
 function rememberedUncontrolled(): boolean {
   try {
@@ -26,12 +26,12 @@ export function PrintDialog() {
   const close = () => useStore.getState().openDialog(null);
   const [which, setWhich] = useState<Which>("all");
   const [range, setRange] = useState("");
-  const [mark, setMark] = useState<PrintMark>(() => ({ uncontrolled: rememberedUncontrolled(), workOrder: lastWorkOrder }));
+  const [mark, setMark] = useState<PrintMark>(() => ({ uncontrolled: rememberedUncontrolled(), text: lastText }));
   const [busy, setBusy] = useState<string | null>(null);
   const stop = useRef(false);
 
   useEffect(() => {
-    lastWorkOrder = mark.workOrder;
+    lastText = mark.text;
     try {
       localStorage.setItem(KEY, mark.uncontrolled ? "1" : "0");
     } catch {
@@ -124,14 +124,14 @@ export function PrintDialog() {
             </span>
           </label>
           <label className="field">
-            <span>Work Order</span>
+            <span>Text</span>
             <input
               className="text-box"
-              value={mark.workOrder}
-              placeholder="e.g. W245354 (leave empty for none)"
-              aria-label="Work Order"
+              value={mark.text}
+              placeholder="e.g. Work Order W245354 (leave empty for none)"
+              aria-label="Text"
               maxLength={60}
-              onChange={(e) => setMark({ ...mark, workOrder: e.target.value })}
+              onChange={(e) => setMark({ ...mark, text: e.target.value })}
               onKeyDown={(e) => e.key === "Enter" && void print()}
             />
           </label>

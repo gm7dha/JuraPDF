@@ -5,6 +5,11 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.2.1 — The Work Order box is now "Text"
+
+- The Print window's second watermark box is now called **Text**, so it can hold anything: a work order number
+  ("Work Order W245354"), a name, a date. It's printed exactly as you type it, under "UNCONTROLLED DOCUMENT".
+
 ## v0.2 — Print, with an "Uncontrolled Document" and Work Order watermark
 
 - **Print** (the Print button, or Ctrl + P): print every page, the page you're on, or the pages you choose (e.g. 1-3, 5).

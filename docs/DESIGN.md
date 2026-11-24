@@ -44,7 +44,7 @@ tests          Vitest, pure code only;  scripts/smoke-test.mjs drives the built 
   page list, page numbers, zoom (fit width, whole page, real size, Ctrl + scroll), selectable words, save, install,
   light/dark.
 - **v0.2 (done)** — **printing with a watermark** (the owner's first need, brought forward): all / current / chosen
-  pages, each on paper of its own size; tick "Uncontrolled Document" and/or type a Work Order number, written
+  pages, each on paper of its own size; tick "Uncontrolled Document" and/or type your own Text (e.g. a work order number), written
   see-through red corner to corner across every printed page (pages are printed as 150 dpi pictures with the mark drawn
   on, as Firefox's viewer prints). Only the printout is marked.
 - **v0.3** — **watermarks saved into the PDF**: words or a picture (PNG/JPG, e.g. a logo); font, size, colour, see-through amount, angle

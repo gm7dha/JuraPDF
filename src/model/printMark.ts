@@ -1,5 +1,6 @@
 /**
- * The print watermark: "UNCONTROLLED DOCUMENT" and/or a work order number,
+ * The print watermark: "UNCONTROLLED DOCUMENT" and/or words of your own
+ * (e.g. a work order number),
  * written large and see-through, corner to corner across each printed page.
  * Pure (the drawing itself is in src/app/printing.ts), so it can be tested.
  */
@@ -7,11 +8,11 @@
 export interface PrintMark {
   /** Write "UNCONTROLLED DOCUMENT" across the page. */
   uncontrolled: boolean;
-  /** A work order number (or anything else) to write too. Blank = none. */
-  workOrder: string;
+  /** Words of your own to write too (e.g. a work order number), exactly as typed. Blank = none. */
+  text: string;
 }
 
-export const NO_MARK: PrintMark = { uncontrolled: false, workOrder: "" };
+export const NO_MARK: PrintMark = { uncontrolled: false, text: "" };
 
 export const UNCONTROLLED_TEXT = "UNCONTROLLED DOCUMENT";
 
@@ -20,13 +21,12 @@ export const MARK_COLOUR = "#d1373a";
 export const MARK_ALPHA = 0.4;
 
 export function hasMark(mark: PrintMark): boolean {
-  return mark.uncontrolled || mark.workOrder.trim() !== "";
+  return mark.uncontrolled || mark.text.trim() !== "";
 }
 
-/** "Work Order: 12345" (or "" when there's none). */
-export function workOrderText(mark: PrintMark): string {
-  const wo = mark.workOrder.trim();
-  return wo ? `Work Order: ${wo}` : "";
+/** The words of your own, as typed (spaces round them taken off). */
+export function ownText(mark: PrintMark): string {
+  return mark.text.trim();
 }
 
 /** One line of the mark: its words, letter size and where its middle goes (page units, y down). */
@@ -47,7 +47,7 @@ export interface MarkLayout {
 /**
  * Lay the mark out on a page `w` × `h` (any units, y down). `measure(text, size, bold)`
  * gives a line's width. The main line fills about three quarters of the diagonal;
- * the work order sits under it, smaller, on the same slant.
+ * your own words sit under it, smaller, on the same slant.
  */
 export function layoutMark(mark: PrintMark, w: number, h: number, measure: (text: string, size: number, bold: boolean) => number): MarkLayout | null {
   if (!hasMark(mark) || w <= 0 || h <= 0) return null;
@@ -57,7 +57,7 @@ export function layoutMark(mark: PrintMark, w: number, h: number, measure: (text
   const cap = Math.min(w, h) * 0.14;
   const fit = (text: string, bold: boolean, most: number) => Math.min(most, room / Math.max(1e-6, measure(text, 1, bold)));
 
-  const wo = workOrderText(mark);
+  const wo = ownText(mark);
   const texts: { text: string; bold: boolean; size: number }[] = [];
   if (mark.uncontrolled) {
     texts.push({ text: UNCONTROLLED_TEXT, bold: true, size: fit(UNCONTROLLED_TEXT, true, cap) });
