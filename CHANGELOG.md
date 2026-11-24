@@ -5,6 +5,20 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.5 — JuraPDF with Claude
+
+- **An extension for the Claude desktop app** (Help › Use JuraPDF with Claude: download it, double-click, Install).
+  Then ask Claude in plain English, for example "put a DRAFT watermark on every page", "join Report and Appendix",
+  "turn the landscape pages the right way round", "save pages 3 to 5 as their own PDF" or "what does page 2 say?".
+  Claude can read the words on the pages, add watermarks (words or a picture), turn, move, delete and add pages,
+  bring in the pages of another PDF, save some pages as a new PDF, and undo its own changes.
+- It works on PDFs in your **JuraPDF folder** (Documents › JuraPDF, or another folder you choose in the extension's
+  settings). It can't read or write anywhere else.
+- **Live with Claude**: click **Connect to Claude** in the top bar and Claude works on the PDF you have open, while you
+  watch. Each of its changes is one step you can undo, and nothing is saved to your file until you click Save. Works
+  in Chrome, Edge and Firefox; in Safari a small link window opens and must stay open. The link stays on your
+  computer and only the JuraPDF website can use it.
+
 ## v0.4.1 — One page at a time
 
 - **One page at a time** (the new button beside the zoom buttons): the whole page fits in the window, and scrolling,

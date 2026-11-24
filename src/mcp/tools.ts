@@ -1,0 +1,549 @@
+/**
+ * The tools Claude has for working on PDFs with JuraPDF: each one checks what
+ * it's given (plain-English messages when something's wrong), changes the
+ * session's PDF with the app's own code (src/pdf/pages.ts, src/pdf/watermark.ts),
+ * and says what it did. While a JuraPDF tab is connected (Live with Claude) the
+ * same tools work on the PDF open there (src/mcp/live.ts).
+ */
+import { PDFDocument } from "pdf-lib";
+
+import { pagesLabel } from "../model/pages";
+import { looksLikePdf, paperName, PDF_EXTENSION, sizeLabel } from "../model/pdfFile";
+import { parsePageRange } from "../model/printMark";
+import { DEFAULT_WATERMARK, FONT_NAMES, PLACEMENT_NAMES, type FontChoice, type Placement, type WatermarkSettings } from "../model/watermark";
+import { addBlankPage, deletePages, extractPages, insertPdf, PageProblem, reorderPages, turnPages } from "../pdf/pages";
+import { addWatermark, LockedPdf, WatermarkProblem, type WatermarkPicture } from "../pdf/watermark";
+import { moveTo, sameOrder } from "../model/pages";
+import { InputError, bool, noExtras, num, object, oneOf, text } from "./args";
+import { isLocked, pageFacts, pageWords } from "./reading";
+import { Cancelled, type PdfDoc, type Session } from "./session";
+import { checkFree, fileNameFor, needFolder, say, writeOut, type ToolDef, type ToolResult } from "./toolKit";
+
+export type { ToolDef, ToolResult } from "./toolKit";
+
+/** How PDFs are described to the tools: sent to Claude with the server's instructions, and by the format_guide tool. */
+export const FORMAT_GUIDE = `How JuraPDF works with PDFs:
+- You work on one PDF at a time. Live with Claude (live_status): when the user's JuraPDF tab is connected, that's the PDF open there, and each change shows there at once as one step in its Undo list. Otherwise open one from the JuraPDF folder (list_pdfs, open_pdf), or start one (new_pdf), and save_pdf when done.
+- Pages are numbered from 1, as the user sees them. "pages" takes a number, a list of numbers, or text like "1-3, 5", "4-" (4 to the end), "all", "odd", "even" or "last".
+- Sizes are paper names (A4, Letter…) or millimetres; "landscape" means wider than tall. A page's "turn" is how it has been rotated to show (0, 90, 180 or 270 degrees clockwise).
+- describe_pdf gives the pages and a taste of their words; read_words gives the words of chosen pages (scanned pages, being pictures, have none).
+- Changes: add_watermark (words or a PNG/JPG picture from the folder, saved into the pages), turn_pages, delete_pages (one page must stay), move_pages, add_blank_pages, bring_in_pdf (all the pages of another PDF from the folder: this is how to join PDFs), save_pages_as_pdf (some pages as a new PDF in the folder: this is how to split one). undo takes back your last change.
+- Locked PDFs (with a password or protected against changes) can be read but not changed.
+- Talk to the user in plain words: "pages", "words", "picture", "see-through" — not PDF jargon.`;
+
+const COLOURS: Record<string, string> = { red: "#d1373a", grey: "#808080", gray: "#808080", blue: "#1f5fbf", black: "#000000", green: "#2e8b3a", orange: "#e07b00" };
+const SIZES: Record<string, [number, number]> = { A4: [595.28, 841.89], A3: [841.89, 1190.55], A5: [419.53, 595.28], Letter: [612, 792], Legal: [612, 1008] };
+const MOST_WORDS = 60_000;
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+function liveLine(s: Session): string {
+  return s.live ? s.live.status().text : "Live: not available in this copy of the extension. save_pdf saves the PDF in the JuraPDF folder to open in JuraPDF.";
+}
+
+/** The PDF being worked on, or a kind message saying how to get one. */
+function needDoc(s: Session): PdfDoc {
+  if (s.doc) return s.doc;
+  throw new InputError(
+    s.live?.connected
+      ? "JuraPDF is connected but has no PDF open. Ask the user to open one there."
+      : "No PDF is open yet. Use open_pdf (list_pdfs shows the PDFs in the JuraPDF folder) or new_pdf, or ask the user to connect their JuraPDF tab (live_status says how).",
+  );
+}
+
+/** Page numbers Claude gave (from 1) as page indexes (from 0), in order, no repeats. */
+export function pagesOf(v: unknown, count: number, where: string): number[] {
+  if (v === undefined || v === null || v === "") throw new InputError(`${where} is missing: give page numbers, e.g. 2, [1, 3] or "1-3, 5".`);
+  let words: string;
+  if (typeof v === "number") words = String(v);
+  else if (Array.isArray(v)) {
+    words = v
+      .map((p) => {
+        if (typeof p === "number" && Number.isInteger(p)) return String(p);
+        if (typeof p === "string" && p.trim()) return p.trim();
+        throw new InputError(`${where}: ${JSON.stringify(p)} isn't a page number.`);
+      })
+      .join(", ");
+  } else if (typeof v === "string") words = v;
+  else throw new InputError(`${where} should be page numbers, e.g. 2, [1, 3] or "1-3, 5".`);
+  const all = Array.from({ length: count }, (_, i) => i);
+  const t = words.trim().toLowerCase();
+  if (t === "all") return all;
+  if (t === "odd") return all.filter((i) => i % 2 === 0);
+  if (t === "even") {
+    if (count < 2) throw new InputError("This PDF has only one page, so there are no even pages.");
+    return all.filter((i) => i % 2 === 1);
+  }
+  const r = parsePageRange(t.replace(/\blast\b/g, String(count)), count);
+  if ("error" in r) throw new InputError(`${where}: ${r.error}`);
+  if (!r.pages.length) throw new InputError(`${where}: no pages given.`);
+  return r.pages.map((p) => p - 1);
+}
+
+/** A page number (from 1) something goes after: 0 = the start, "end" = after the last. */
+function placeOf(v: unknown, count: number, where: string): number {
+  if (typeof v === "string") {
+    const t = v.trim().toLowerCase();
+    if (t === "start" || t === "beginning") return 0;
+    if (t === "end" || t === "last") return count;
+  }
+  return num(v, where, { min: 0, max: count, integer: true });
+}
+
+/** Where moved pages go: just before page N (from 1; count + 1 = the end), "start" or "end". As an index, count = the end. */
+function beforeOf(v: unknown, count: number): number {
+  if (typeof v === "string") {
+    const t = v.trim().toLowerCase();
+    if (t === "start" || t === "beginning") return 0;
+    if (t === "end" || t === "last") return count;
+  }
+  return num(v, "before", { min: 1, max: count + 1, integer: true }) - 1;
+}
+
+/** A colour by name or "#rrggbb". */
+function colourOf(v: unknown): string {
+  if (v === undefined || v === null) return DEFAULT_WATERMARK.colour;
+  if (typeof v === "string") {
+    const t = v.trim().toLowerCase();
+    if (COLOURS[t]) return COLOURS[t];
+    if (/^#[0-9a-f]{6}$/.test(t)) return t;
+    if (/^[0-9a-f]{6}$/.test(t)) return `#${t}`;
+  }
+  throw new InputError(`colour: give ${Object.keys(COLOURS).filter((c) => c !== "gray").join(", ")}, or a colour like "#336699" (got ${JSON.stringify(v)}).`);
+}
+
+/** Words for a change of the PDF, for Claude and the user's Undo list. */
+async function describeDoc(doc: PdfDoc, opts: { words?: boolean } = {}): Promise<string> {
+  const facts = await pageFacts(doc.bytes);
+  const locked = await isLocked(doc.bytes);
+  const lines = [`${doc.name}: ${plural(facts.length, "page")}, ${sizeLabel(doc.bytes.length)}.${locked ? " It's locked against changes (it can be read, not changed)." : ""}`];
+  // Runs of pages the same size and turn, so a long PDF stays short to read.
+  let from = 0;
+  for (let i = 1; i <= facts.length; i++) {
+    const a = facts[from];
+    const b = facts[i];
+    if (b && paperName(a.width, a.height) === paperName(b.width, b.height) && a.turn === b.turn) continue;
+    const which = i - from === 1 ? `Page ${from + 1}` : `Pages ${from + 1}-${i}`;
+    lines.push(`- ${which}: ${paperName(a.width, a.height)}${a.width > a.height ? "" : " (portrait)"}${a.turn ? `, turned ${a.turn}°` : ""}`);
+    from = i;
+  }
+  if (opts.words) {
+    const shown = Math.min(facts.length, 30);
+    const words = await pageWords(doc.bytes, Array.from({ length: shown }, (_, i) => i));
+    lines.push("", "The start of each page's words:");
+    words.forEach((w, i) => lines.push(`- Page ${i + 1}: ${w ? `${w.replace(/\n/g, " / ").slice(0, 160)}${w.length > 160 ? "…" : ""}` : "(no words — blank, or a scanned picture)"}`));
+    if (facts.length > shown) lines.push(`(read_words gives the rest: pages ${shown + 1}-${facts.length}.)`);
+  }
+  return lines.join("\n");
+}
+
+/** Run a page change from src/pdf, turning its problems into messages for Claude. */
+async function change(s: Session, run: (bytes: Uint8Array<ArrayBuffer>) => Promise<Uint8Array<ArrayBuffer>>, label: string): Promise<PdfDoc> {
+  const doc = needDoc(s);
+  let bytes: Uint8Array<ArrayBuffer>;
+  try {
+    bytes = await run(doc.bytes);
+  } catch (e) {
+    if (e instanceof LockedPdf) throw new InputError("This PDF is locked against changes (it has a password or is protected), so it can't be changed. It can still be read.");
+    if (e instanceof PageProblem || e instanceof WatermarkProblem) throw new InputError(e.message);
+    throw e;
+  }
+  s.throwIfCancelled();
+  s.commit(bytes, label);
+  return s.doc!;
+}
+
+/** Read a PDF from the folder (for open_pdf and bring_in_pdf). */
+function readPdfFile(s: Session, filename: unknown): { name: string; bytes: Uint8Array<ArrayBuffer> } {
+  const folder = needFolder(s);
+  const path = folder.pathFor(text(filename, "filename"), [PDF_EXTENSION], "PDF");
+  const bytes = folder.read(path);
+  const name = path.split(/[\\/]/).pop() ?? "Document.pdf";
+  if (!looksLikePdf(bytes)) throw new InputError(`${name} doesn't look like a PDF inside. It may be damaged.`);
+  return { name, bytes };
+}
+
+const PAGES = { description: 'Page numbers from 1: a number, a list, or text like "1-3, 5", "all", "odd", "even", "last".' };
+
+export const TOOLS: ToolDef[] = [
+  {
+    name: "format_guide",
+    title: "How JuraPDF works",
+    description: "Read this first: how PDFs and pages are described to the other tools.",
+    inputSchema: { type: "object", properties: {} },
+    readOnly: true,
+    run: () => say(FORMAT_GUIDE),
+  },
+  {
+    name: "live_status",
+    title: "Is JuraPDF connected live?",
+    description: "Says whether the user's open JuraPDF tab is connected (Live with Claude), so changes show there as you make them — and how to connect if not.",
+    inputSchema: { type: "object", properties: {} },
+    readOnly: true,
+    run: (s) => say(liveLine(s)),
+  },
+  {
+    name: "describe_pdf",
+    title: "Look at the PDF",
+    description: "The PDF being worked on: its pages, their paper sizes and turns, and (unless \"words\": false) the start of each page's words.",
+    inputSchema: { type: "object", properties: { words: { type: "boolean", description: "Include the start of each page's words (true if left out)." } } },
+    readOnly: true,
+    async run(s, a) {
+      noExtras(a, ["words"], "describe_pdf");
+      const doc = needDoc(s);
+      return say(await describeDoc(doc, { words: bool(a.words, "words", true) }), s.live?.connected ? null : s.file ? `File: ${s.file}` : "Not saved to a file yet.", liveLine(s));
+    },
+  },
+  {
+    name: "read_words",
+    title: "Read the words",
+    description: "All the words on the chosen pages, page by page (scanned pages are pictures and have none).",
+    inputSchema: { type: "object", properties: { pages: PAGES }, required: ["pages"] },
+    readOnly: true,
+    async run(s, a) {
+      noExtras(a, ["pages"], "read_words");
+      const doc = needDoc(s);
+      const count = (await pageFacts(doc.bytes)).length;
+      const pages = pagesOf(a.pages, count, "pages");
+      const words = await pageWords(doc.bytes, pages);
+      const out: string[] = [];
+      let used = 0;
+      for (let k = 0; k < pages.length; k++) {
+        const block = `--- Page ${pages[k] + 1} ---\n${words[k] || "(no words — blank, or a scanned picture)"}`;
+        if (used + block.length > MOST_WORDS) {
+          out.push(`(That's as much as fits in one reply: ask for pages ${pages[k] + 1}-${pages[pages.length - 1] + 1} next.)`);
+          break;
+        }
+        out.push(block);
+        used += block.length;
+      }
+      return say(...out);
+    },
+  },
+  {
+    name: "list_pdfs",
+    title: "List the PDFs in the folder",
+    description: "The PDFs in the JuraPDF folder (and PNG/JPG pictures there, which add_watermark can use).",
+    inputSchema: { type: "object", properties: {} },
+    readOnly: true,
+    run(s) {
+      const folder = needFolder(s);
+      const pdfs = folder.list([PDF_EXTENSION]);
+      const pictures = folder.list([".png", ".jpg", ".jpeg"]);
+      return say(
+        pdfs.length ? `PDFs in ${folder.root}:` : `There are no PDFs in ${folder.root} yet. The user can put PDFs there for you to open.`,
+        ...pdfs.map((f) => `- ${f.name} (${sizeLabel(f.bytes)}, ${f.modified.toISOString().slice(0, 10)})`),
+        pictures.length > 0 && "Pictures (for add_watermark):",
+        ...pictures.map((f) => `- ${f.name}`),
+      );
+    },
+  },
+  {
+    name: "open_pdf",
+    title: "Open a PDF from the folder",
+    description: "Open a PDF from the JuraPDF folder to work on. When JuraPDF is connected live, it opens there too, in place of the user's PDF (they can Undo that).",
+    inputSchema: { type: "object", properties: { filename: { type: "string" } }, required: ["filename"] },
+    destructive: true,
+    async run(s, a) {
+      noExtras(a, ["filename"], "open_pdf");
+      const doc = readPdfFile(s, a.filename);
+      const facts = await pageFacts(doc.bytes).catch((e: Error) => {
+        throw new InputError(`${doc.name}: ${e.message}`);
+      });
+      if (!facts.length) throw new InputError(`${doc.name} has no pages.`);
+      s.reset(doc, doc.name);
+      s.label = `opened ${doc.name}`;
+      return say(`Opened ${doc.name}.`, await describeDoc(doc, { words: true }));
+    },
+  },
+  {
+    name: "new_pdf",
+    title: "Start a new PDF",
+    description: "Start a new PDF of blank pages (the one being worked on is dropped unless it was saved).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: 'Its file name, e.g. "Notes" (".pdf" is added).' },
+        pages: { type: "number", description: "How many blank pages, 1–200 (1 if left out)." },
+        size: { type: "string", enum: Object.keys(SIZES), description: "Paper size (A4 if left out)." },
+        landscape: { type: "boolean" },
+      },
+    },
+    destructive: true,
+    async run(s, a) {
+      noExtras(a, ["name", "pages", "size", "landscape"], "new_pdf");
+      const count = num(a.pages, "pages", { min: 1, max: 200, integer: true, fallback: 1 });
+      const size = oneOf(a.size, Object.keys(SIZES), "size", "A4");
+      const [w, h] = SIZES[size];
+      const wide = bool(a.landscape, "landscape");
+      const pdf = await PDFDocument.create();
+      for (let i = 0; i < count; i++) pdf.addPage(wide ? [h, w] : [w, h]);
+      const name = `${fileNameFor(text(a.name, "name", "New PDF")).replace(/\.pdf$/i, "")}${PDF_EXTENSION}`;
+      s.reset({ name, bytes: (await pdf.save()) as Uint8Array<ArrayBuffer> }, null);
+      s.label = `started ${name}`;
+      return say(`Started ${name}: ${plural(count, `blank ${size}${wide ? " landscape" : ""} page`)}.`);
+    },
+  },
+  {
+    name: "save_pdf",
+    title: "Save the PDF",
+    description: "Save the PDF in the JuraPDF folder, for the user to open in JuraPDF (or anything else that opens PDFs).",
+    inputSchema: { type: "object", properties: { filename: { type: "string", description: "Left out: the file it was opened from (or its name)." }, overwrite: { type: "boolean" } } },
+    run(s, a) {
+      noExtras(a, ["filename", "overwrite"], "save_pdf");
+      const doc = needDoc(s);
+      const folder = needFolder(s);
+      const given = typeof a.filename === "string" && a.filename.trim() ? a.filename : null;
+      const path = folder.pathFor(given ?? s.file ?? doc.name, [PDF_EXTENSION], "PDF");
+      const name = path.split(/[\\/]/).pop() ?? "";
+      // Saving again to the file it came from needs no asking.
+      if (name !== s.file) checkFree(s, path, a.overwrite);
+      writeOut(s, path, doc.bytes);
+      if (!s.live?.connected) s.file = name;
+      return say(
+        `Saved ${name} in ${folder.root}.`,
+        s.live?.connected ? "This is a copy: the user's own PDF is saved with Save in JuraPDF." : "The user can open it at https://gm7dha.github.io/JuraPDF/ with Open (or by dragging the file onto the window).",
+      );
+    },
+  },
+  {
+    name: "add_watermark",
+    title: "Add a watermark",
+    description:
+      'Add a watermark saved into the pages: words (e.g. "CONFIDENTIAL", "DRAFT", "UNCONTROLLED DOCUMENT") or a PNG/JPG picture from the JuraPDF folder (e.g. a logo). Corner to corner, see-through red, in front, on every page unless told otherwise.',
+    inputSchema: {
+      type: "object",
+      properties: {
+        words: { type: "string", description: "The words (one line, ordinary letters)." },
+        picture: { type: "string", description: "Instead of words: a PNG or JPG file in the JuraPDF folder." },
+        font: { type: "string", enum: Object.keys(FONT_NAMES), description: "HelveticaBold if left out." },
+        colour: { type: "string", description: `${Object.keys(COLOURS).filter((c) => c !== "gray").join(", ")} or "#rrggbb" (red if left out).` },
+        size: { description: '"fit" (fills the page, the usual) or a letter size in points, 4–400.' },
+        picture_width: { type: "number", description: "A picture's width, 5–100 % of the page (50 if left out)." },
+        angle: { description: '"diagonal" (corner to corner, the usual), "level", or degrees from -180 to 180 rising to the right.' },
+        placement: { type: "string", enum: Object.keys(PLACEMENT_NAMES), description: '"middle" if left out; "repeat" tiles it across the page.' },
+        see_through: { type: "number", description: "How see-through, 0 (solid) to 95 (barely there); 70 if left out." },
+        behind: { type: "boolean", description: "Behind what's on the page instead of in front (it can be hidden on scanned pages)." },
+        pages: { ...PAGES, description: `${PAGES.description} Every page if left out.` },
+      },
+    },
+    async run(s, a) {
+      noExtras(a, ["words", "picture", "font", "colour", "color", "size", "picture_width", "angle", "placement", "see_through", "behind", "pages"], "add_watermark");
+      const doc = needDoc(s);
+      const hasWords = typeof a.words === "string" && a.words.trim() !== "";
+      const hasPicture = typeof a.picture === "string" && a.picture.trim() !== "";
+      if (hasWords === hasPicture) throw new InputError('add_watermark: give either "words" or "picture" (one of them).');
+      const settings: WatermarkSettings = { ...DEFAULT_WATERMARK, kind: hasWords ? "words" : "picture", text: hasWords ? text(a.words, "words") : "" };
+      settings.font = oneOf(a.font, Object.keys(FONT_NAMES) as FontChoice[], "font", DEFAULT_WATERMARK.font);
+      settings.colour = colourOf(a.colour ?? a.color);
+      if (a.size !== undefined && a.size !== null && a.size !== "fit") {
+        settings.sizeMode = "set";
+        settings.size = num(a.size, "size", { min: 4, max: 400 });
+      }
+      settings.pictureWidth = num(a.picture_width, "picture_width", { min: 5, max: 100, fallback: DEFAULT_WATERMARK.pictureWidth });
+      if (a.angle === "level" || a.angle === "diagonal" || a.angle === undefined || a.angle === null) settings.angle = (a.angle as "level" | "diagonal" | undefined) ?? "diagonal";
+      else {
+        settings.angle = "custom";
+        settings.customAngle = num(a.angle, "angle", { min: -180, max: 180 });
+      }
+      settings.placement = oneOf(a.placement, Object.keys(PLACEMENT_NAMES) as Placement[], "placement", "middle");
+      settings.seeThrough = num(a.see_through, "see_through", { min: 0, max: 95, fallback: DEFAULT_WATERMARK.seeThrough });
+      settings.behind = bool(a.behind, "behind");
+      let picture: WatermarkPicture | undefined;
+      if (hasPicture) {
+        const folder = needFolder(s);
+        const path = folder.pathFor(text(a.picture, "picture"), [".png", ".jpg", ".jpeg"], "picture");
+        const bytes = folder.read(path);
+        const png = bytes[0] === 0x89 && bytes[1] === 0x50;
+        const jpg = bytes[0] === 0xff && bytes[1] === 0xd8;
+        if (!png && !jpg) throw new InputError(`${path.split(/[\\/]/).pop()} isn't a PNG or JPG picture inside.`);
+        picture = { bytes, type: png ? "png" : "jpg", name: path.split(/[\\/]/).pop() ?? "picture" };
+      }
+      const count = (await pageFacts(doc.bytes)).length;
+      const pages = a.pages === undefined || a.pages === null ? undefined : pagesOf(a.pages, count, "pages");
+      let on: number[] = [];
+      const what = hasWords ? `"${settings.text}"` : picture!.name;
+      const where = pages ? pagesLabel(pages) : "every page";
+      await change(
+        s,
+        async (bytes) => {
+          const out = await addWatermark(bytes, settings, picture, pages?.map((p) => p + 1));
+          on = out.pages;
+          return out.bytes as Uint8Array<ArrayBuffer>;
+        },
+        `added a ${what} watermark to ${where}`,
+      );
+      return say(`Added the ${what} watermark to ${on.length === count ? "every page" : pagesLabel(on.map((p) => p - 1))}${settings.behind ? ", behind what's on the page" : ""}.`);
+    },
+  },
+  {
+    name: "turn_pages",
+    title: "Turn pages",
+    description: "Turn pages a quarter turn clockwise (right) or anticlockwise (left), or upside down (half).",
+    inputSchema: { type: "object", properties: { pages: PAGES, direction: { type: "string", enum: ["right", "left", "half"] } }, required: ["pages", "direction"] },
+    async run(s, a) {
+      noExtras(a, ["pages", "direction"], "turn_pages");
+      const doc = needDoc(s);
+      const pages = pagesOf(a.pages, (await pageFacts(doc.bytes)).length, "pages");
+      const direction = oneOf(a.direction, ["right", "left", "half"] as const, "direction");
+      const by = direction === "right" ? 90 : direction === "left" ? -90 : 180;
+      const words = direction === "half" ? "upside down" : `a quarter turn ${direction === "right" ? "clockwise" : "anticlockwise"}`;
+      await change(s, (bytes) => turnPages(bytes, pages, by), `turned ${pagesLabel(pages)}`);
+      return say(`Turned ${pagesLabel(pages)} ${words}.`);
+    },
+  },
+  {
+    name: "delete_pages",
+    title: "Delete pages",
+    description: "Delete pages (a PDF keeps at least one page).",
+    inputSchema: { type: "object", properties: { pages: PAGES }, required: ["pages"] },
+    destructive: true,
+    async run(s, a) {
+      noExtras(a, ["pages"], "delete_pages");
+      const doc = needDoc(s);
+      const count = (await pageFacts(doc.bytes)).length;
+      const pages = pagesOf(a.pages, count, "pages");
+      await change(s, (bytes) => deletePages(bytes, pages), `deleted ${pagesLabel(pages)}`);
+      return say(`Deleted ${pagesLabel(pages)}. The PDF now has ${plural(count - pages.length, "page")}.`);
+    },
+  },
+  {
+    name: "move_pages",
+    title: "Move pages",
+    description: 'Move pages (kept in their order) to just before another page, numbered as the pages are now — or to the "start" or the "end".',
+    inputSchema: { type: "object", properties: { pages: PAGES, before: { description: 'The page they go just before (as numbered now), or "start" / "end".' } }, required: ["pages", "before"] },
+    async run(s, a) {
+      noExtras(a, ["pages", "before"], "move_pages");
+      const doc = needDoc(s);
+      const count = (await pageFacts(doc.bytes)).length;
+      const pages = pagesOf(a.pages, count, "pages");
+      const at = beforeOf(a.before, count);
+      const order = moveTo(count, pages, at);
+      if (sameOrder(order)) return say(`${pagesLabel(pages)[0].toUpperCase()}${pagesLabel(pages).slice(1)} ${pages.length === 1 ? "is" : "are"} already there: nothing changed.`);
+      await change(s, (bytes) => reorderPages(bytes, order), `moved ${pagesLabel(pages)}`);
+      const first = order.indexOf(pages[0]) + 1;
+      return say(`Moved ${pagesLabel(pages)}: ${pages.length === 1 ? "it's" : "they're"} now page${pages.length === 1 ? ` ${first}` : `s ${first}-${first + pages.length - 1}`}.`);
+    },
+  },
+  {
+    name: "add_blank_pages",
+    title: "Add blank pages",
+    description: "Add blank pages after a page (0 = at the very start), each the size and way round of the page before it.",
+    inputSchema: { type: "object", properties: { after: { description: 'The page they go after (0 = the start, "end" = after the last).' }, count: { type: "number", description: "How many, 1–100 (1 if left out)." } }, required: ["after"] },
+    async run(s, a) {
+      noExtras(a, ["after", "count"], "add_blank_pages");
+      const doc = needDoc(s);
+      const pageCount = (await pageFacts(doc.bytes)).length;
+      const after = placeOf(a.after, pageCount, "after");
+      const many = num(a.count, "count", { min: 1, max: 100, integer: true, fallback: 1 });
+      await change(
+        s,
+        async (bytes) => {
+          let out = bytes;
+          for (let i = 0; i < many; i++) out = await addBlankPage(out, after + i);
+          return out;
+        },
+        many === 1 ? "added a blank page" : `added ${many} blank pages`,
+      );
+      return say(`Added ${plural(many, "blank page")} ${after === 0 ? "at the start" : `after page ${after}`}: ${many === 1 ? `page ${after + 1}` : `pages ${after + 1}-${after + many}`}.`);
+    },
+  },
+  {
+    name: "bring_in_pdf",
+    title: "Bring in pages from another PDF",
+    description: "Put all the pages of another PDF from the JuraPDF folder after a page (0 = at the start). This is how to join PDFs.",
+    inputSchema: { type: "object", properties: { filename: { type: "string" }, after: { description: 'The page they go after (0 = the start, "end" = after the last; the end if left out).' } }, required: ["filename"] },
+    async run(s, a) {
+      noExtras(a, ["filename", "after"], "bring_in_pdf");
+      const doc = needDoc(s);
+      const count = (await pageFacts(doc.bytes)).length;
+      const other = readPdfFile(s, a.filename);
+      const after = a.after === undefined || a.after === null ? count : placeOf(a.after, count, "after");
+      let added = 0;
+      await change(
+        s,
+        async (bytes) => {
+          const out = await insertPdf(bytes, other.bytes, other.name, after);
+          added = out.added;
+          return out.bytes;
+        },
+        `brought in ${other.name}`,
+      );
+      return say(`Brought in ${plural(added, "page")} from ${other.name} ${after === 0 ? "at the start" : `after page ${after}`}: now ${added === 1 ? `page ${after + 1}` : `pages ${after + 1}-${after + added}`}. The PDF has ${plural(count + added, "page")}.`);
+    },
+  },
+  {
+    name: "save_pages_as_pdf",
+    title: "Save pages as a new PDF",
+    description: "Save some pages as a new PDF of their own in the JuraPDF folder (the PDF being worked on doesn't change). This is how to split a PDF.",
+    inputSchema: { type: "object", properties: { pages: PAGES, filename: { type: "string" }, overwrite: { type: "boolean" } }, required: ["pages", "filename"] },
+    async run(s, a) {
+      noExtras(a, ["pages", "filename", "overwrite"], "save_pages_as_pdf");
+      const doc = needDoc(s);
+      const folder = needFolder(s);
+      const pages = pagesOf(a.pages, (await pageFacts(doc.bytes)).length, "pages");
+      const path = folder.pathFor(text(a.filename, "filename"), [PDF_EXTENSION], "PDF");
+      checkFree(s, path, a.overwrite);
+      let bytes: Uint8Array<ArrayBuffer>;
+      try {
+        bytes = await extractPages(doc.bytes, pages);
+      } catch (e) {
+        if (e instanceof LockedPdf) throw new InputError("This PDF is locked against changes, so its pages can't be saved as a new PDF.");
+        throw e;
+      }
+      writeOut(s, path, bytes);
+      return say(`Saved ${pagesLabel(pages)} as ${path.split(/[\\/]/).pop()} in ${folder.root}.`);
+    },
+  },
+  {
+    name: "undo",
+    title: "Undo your last change",
+    description: "Take back the last change you made to the PDF (one step at a time).",
+    inputSchema: { type: "object", properties: {} },
+    run(s) {
+      const undone = s.undo();
+      if (!undone) return say(s.live?.connected ? "There's nothing of yours to undo here. (The user can undo any step in JuraPDF with its Undo button.)" : "There's nothing to undo.");
+      return say(`Took back: ${undone}.`);
+    },
+  },
+];
+
+// Running a tool
+
+export async function callTool(s: Session, name: string, args: unknown, signal?: AbortSignal): Promise<ToolResult> {
+  const tool = TOOLS.find((t) => t.name === name);
+  if (!tool) return { content: [{ type: "text", text: `There's no tool called "${name}". The tools are: ${TOOLS.map((t) => t.name).join(", ")}.` }], isError: true };
+  const run = async (): Promise<ToolResult> => {
+    // Cancelled while waiting its turn: don't start.
+    if (signal?.aborted) return cancelledResult();
+    const snap = s.snapshot();
+    s.signal = signal ?? null;
+    s.wroteFile = false;
+    try {
+      const a = args === undefined || args === null ? {} : object(args, "The input");
+      const result = await tool.run(s, a);
+      // Cancelled at the very end: the change is taken back too (unless a file was already written).
+      if (signal?.aborted && !s.wroteFile) {
+        s.restore(snap);
+        return cancelledResult();
+      }
+      return result;
+    } catch (e) {
+      s.restore(snap);
+      if (e instanceof Cancelled || (signal?.aborted && !s.wroteFile)) return cancelledResult();
+      if (e instanceof InputError) return { content: [{ type: "text", text: e.message }], isError: true };
+      if (e instanceof LockedPdf) return { content: [{ type: "text", text: "This PDF is locked (it has a password or is protected against changes), so it can't be changed or read here." }], isError: true };
+      const msg = e instanceof Error ? e.message : String(e);
+      return { content: [{ type: "text", text: `Something went wrong inside JuraPDF (${msg}). The PDF wasn't changed by this. Try describe_pdf, or a different approach.` }], isError: true };
+    } finally {
+      s.signal = null;
+    }
+  };
+  // One call at a time. Live: on the PDF open in the user's JuraPDF tab, with any change sent back to it.
+  return s.serial(() => (s.live ? s.live.call(s, name, run, signal) : run()));
+}
+
+/** What a cancelled call says (Claude has stopped waiting, so it's mostly for logs and tests). */
+export function cancelledResult(): ToolResult {
+  return { content: [{ type: "text", text: "Cancelled: the call was stopped before it finished, and nothing was changed." }], isError: true };
+}

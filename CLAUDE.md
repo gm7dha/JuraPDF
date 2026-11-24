@@ -42,6 +42,21 @@
 - Pages (`src/model/pages.ts` pure: picking and new orders; `src/pdf/pages.ts` writing): the page buttons in the
   ViewBar (`src/app/pageActions.ts`) work on the picked pages (`selected` in the store, cleared by every change, plain
   click = just go to the page) or else the page being read. Thumbnails are drag sources and drop targets for moving.
+- JuraPDF for Claude (`src/mcp/`, `src/live/`, `claude-extension/manifest.json`): JuraDAW's extension and live link
+  (which are JuraCAD's) with the names changed, so a fix in one belongs in the others. Ports **47655–47664** (JuraCAD
+  47615–47624, JuraDAW 47635–47644), path `/jurapdf-live`, sub-protocol `jurapdf-live.1`, `JURAPDF_LIVE_DEV=1` lets in
+  pages served on this computer (the smoke test). The PDF travels as base64 (`src/model/base64.ts`) with its file name
+  (`name` on hello/doc/change); `MAX_MESSAGE_BYTES` 150 MB. The session holds a `PdfDoc` {name, bytes}, Claude's own
+  undo list and a `label` per change ("turned page 2") that becomes the tab's undo step ("Claude: turned page 2",
+  `describeChange`). `tools.ts`: format_guide, live_status, describe_pdf, read_words, list_pdfs, open_pdf, new_pdf,
+  save_pdf, add_watermark, turn_pages, delete_pages, move_pages, add_blank_pages, bring_in_pdf, save_pages_as_pdf, undo —
+  page numbers from 1 (`pagesOf`), changes through `src/pdf/pages.ts` and `watermark.ts`. `reading.ts` reads words with
+  pdf.js's legacy build in Node (the worker imported into the bundle as `globalThis.pdfjsWorker`). `quietStdout.ts` is
+  imported first by server.ts so nothing pdf.js prints reaches stdout. In the app: `LiveButton` in the TopBar (with a
+  PDF open), `liveLink.ts` (busy while the Watermark/Print/password window is open), `applyClaudeChange` in editing.ts
+  (async: the client handles one message at a time). CI builds, packs (`dist/jurapdf-claude.mcpb`, linked from Help)
+  and checks it (`scripts/check-claude-extension.mjs`); the smoke test drives it live. Tests: liveProtocol,
+  liveRelay, liveLink, mcpTools.
 - App icons: edit `public/favicon.svg`, then `npm run icons` (set `CHROMIUM_PATH` if Playwright's own browser isn't
   installed).
 - Versions: `package.json` holds the version (shown as e.g. "v0.1" in the top bar); add each version's notes to the top

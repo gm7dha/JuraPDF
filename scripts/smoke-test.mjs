@@ -10,7 +10,9 @@
  */
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { tmpdir } from "node:os";
 import { extname, join } from "node:path";
 import { chromium } from "playwright";
 import { PDFDocument } from "pdf-lib";
@@ -98,8 +100,10 @@ await context.addInitScript(() => {
 });
 const page = await context.newPage();
 const problems = [];
+// Connect to Claude looks for the extension on each of its ports: the ones with nothing there say so in the console.
+const liveProbeRefused = (e) => /^WebSocket connection to 'ws:\/\/127\.0\.0\.1:476(5[5-9]|6[0-4])\/jurapdf-live' failed: .*net::ERR_CONNECTION_REFUSED/.test(e);
 page.on("console", (msg) => {
-  if (msg.type() === "error") problems.push(`Console error: ${msg.text()}`);
+  if (msg.type() === "error" && !liveProbeRefused(msg.text())) problems.push(`Console error: ${msg.text()}`);
 });
 page.on("pageerror", (err) => problems.push(`Page error: ${err.message}`));
 
@@ -449,6 +453,113 @@ await step("one whole page at a time: the wheel and keys flip pages", async () =
   await page.getByRole("button", { name: "One page at a time" }).click();
   await page.waitForFunction(() => document.querySelectorAll(".page").length === 3);
 });
+
+await step("Connect to Claude with no extension running says what to do", async () => {
+  await page.getByRole("button", { name: "Connect to Claude" }).click();
+  await page.locator('.modal:has-text("Not connected")').waitFor({ timeout: 60_000 });
+  expect((await page.locator(".modal .help-steps li").count()) >= 3, "advice on what to do when Claude isn't there");
+  await page.keyboard.press("Escape");
+});
+
+// With the extension built (CI builds it before this test): start it the way Claude does, connect, and let
+// "Claude" (this test, talking MCP to it) change the open PDF, which must show in the tab.
+const extensionServer = "build/claude-extension/server/index.mjs";
+if (existsSync(extensionServer)) {
+  await step("Live with Claude: Claude changes the open PDF", async () => {
+    const folder = mkdtempSync(join(tmpdir(), "jurapdf-smoke-live-"));
+    // JURAPDF_LIVE_DEV=1: this test serves JuraPDF from 127.0.0.1, which the shipped extension otherwise turns away.
+    const ext = spawn(process.execPath, [extensionServer, folder], { stdio: ["pipe", "pipe", "pipe"], env: { ...process.env, JURAPDF_LIVE_DEV: "1" } });
+    let extLog = "";
+    ext.stderr.on("data", (d) => (extLog += d));
+    const replies = new Map();
+    let pending = "";
+    ext.stdout.on("data", (d) => {
+      pending += d;
+      let nl;
+      while ((nl = pending.indexOf("\n")) >= 0) {
+        const line = pending.slice(0, nl).trim();
+        pending = pending.slice(nl + 1);
+        if (line) {
+          const msg = JSON.parse(line);
+          replies.get(msg.id)?.(msg);
+        }
+      }
+    });
+    let nextId = 1;
+    const mcp = (method, params) =>
+      new Promise((resolve, reject) => {
+        const id = nextId++;
+        const timer = setTimeout(() => reject(new Error(`The extension didn't answer ${method}\n${extLog.slice(-1500)}`)), 60_000);
+        replies.set(id, (m) => {
+          clearTimeout(timer);
+          resolve(m);
+        });
+        ext.stdin.write(JSON.stringify({ jsonrpc: "2.0", id, method, params }) + "\n");
+      });
+    const tool = async (name, args = {}) => {
+      const r = await mcp("tools/call", { name, arguments: args });
+      const text = (r.result?.content ?? []).map((c) => c.text).join("\n");
+      return { text, failed: !!(r.error || r.result?.isError) };
+    };
+    const done = async (name, args) => {
+      const r = await tool(name, args);
+      if (r.failed) throw new Error(`${name} failed: ${r.text}`);
+      return r.text;
+    };
+    const get = (fn) => page.evaluate(fn);
+    try {
+      await mcp("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "smoke", version: "1" } });
+      ext.stdin.write(JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }) + "\n");
+      for (let i = 0; i < 100 && !/Live link ready/.test(extLog); i++) await new Promise((r) => setTimeout(r, 100));
+      expect(/Live link ready/.test(extLog), `the extension's live link starting:\n${extLog.slice(-1500)}`);
+      await page.getByRole("button", { name: "Connect to Claude" }).click();
+      await page.locator(".live-badge").waitFor({ timeout: 30_000 });
+      const stepsBefore = await get(() => window.jurapdfStore.getState().past.length);
+      const described = await done("describe_pdf");
+      expect(/Smoke test\.pdf: 3 pages/.test(described) && /Page 1: Smoke page 1/.test(described), `Claude seeing the PDF that's open in the tab:\n${described}`);
+      const said = await done("turn_pages", { pages: 2, direction: "right" });
+      expect(/Live: this now shows in the user's open JuraPDF tab/.test(said), `Claude being told its change is on show:\n${said}`);
+      await page.waitForFunction(() => {
+        const [w, h] = window.jurapdfStore.getState().pdf.sizes[1];
+        return w > h;
+      }, null, { timeout: 15_000 });
+      await done("add_blank_pages", { after: "end" });
+      await page.waitForFunction(() => window.jurapdfStore.getState().pdf.sizes.length === 4, null, { timeout: 15_000 });
+      expect((await get(() => window.jurapdfStore.getState().past.length)) === stepsBefore + 2, "each of Claude's changes being one undo step");
+      await page.locator(".toast", { hasText: "Claude: added a blank page" }).waitFor();
+      // The user undoes Claude's blank page; Claude sees the PDF as it now is.
+      await page.keyboard.press("Control+z");
+      await page.waitForFunction(() => window.jurapdfStore.getState().pdf.sizes.length === 3);
+      let look = "";
+      for (let i = 0; i < 50 && !/: 3 pages/.test((look = await done("describe_pdf", { words: false }))); i++) await new Promise((r) => setTimeout(r, 100));
+      expect(/: 3 pages/.test(look), `Claude seeing that its page was undone:\n${look}`);
+      // With the Watermark window open Claude waits: its change is turned back and nothing is lost.
+      await page.getByRole("button", { name: "Watermark" }).click();
+      await page.getByRole("dialog", { name: "Watermark" }).waitFor();
+      const refused = await tool("delete_pages", { pages: 3 });
+      expect(refused.failed && /Watermark window open/.test(refused.text), `Claude's change being turned back while the Watermark window is open:\n${refused.text}`);
+      await page.keyboard.press("Escape");
+      await page.getByRole("dialog", { name: "Watermark" }).waitFor({ state: "detached" });
+      await done("add_watermark", { words: "FROM CLAUDE", pages: 1 });
+      await page.locator('.page[data-page="1"] .textLayer span', { hasText: "FROM CLAUDE" }).waitFor({ timeout: 15_000 });
+      // Disconnect from the badge.
+      await page.locator(".live-badge").click();
+      await page.locator(".modal button", { hasText: "Disconnect" }).click();
+      await page.getByRole("button", { name: "Connect to Claude" }).waitFor();
+      for (let i = 0; i < 50 && !/Live: not connected/.test(await done("live_status")); i++) await new Promise((r) => setTimeout(r, 100));
+      expect(/Live: not connected/.test(await done("live_status")), "the extension knowing the tab has gone");
+      // Back to the PDF the next steps expect.
+      for (let i = 0; i < 2; i++) await page.keyboard.press("Control+z");
+      await page.waitForFunction(() => {
+        const s = window.jurapdfStore.getState();
+        return s.pdf.sizes.length === 3 && s.pdf.sizes[1][0] < s.pdf.sizes[1][1];
+      });
+    } finally {
+      ext.kill();
+      rmSync(folder, { recursive: true, force: true });
+    }
+  });
+} else console.log("(The Claude extension isn't built, so Live with Claude wasn't tried: npm run build:claude first.)");
 
 await step("dark mode", async () => {
   await page.getByRole("button", { name: "Settings" }).click();

@@ -6,6 +6,7 @@ import { SHORT_VERSION } from "../version";
 import { openFromFile, saveToFile } from "./fileActions";
 import { Icons } from "./icons";
 import { browserKind, installApp, installSteps, isInstalledApp, useCanInstall } from "./install";
+import { LiveButton } from "./LiveButton";
 import { Modal } from "./Modal";
 import { detectPlatform, shortcut } from "./platform";
 import { setThemeChoice, themeChoice, type ThemeChoice } from "./theme";
@@ -69,6 +70,7 @@ export function TopBar() {
           </button>
         </>
       )}
+      {pdf && <LiveButton />}
       <button className="text-button" onClick={() => openDialog("watermark")} disabled={!pdf} title="Add a watermark (words or a picture) to the pages, saved into the PDF">
         <Icons.Stamp size={18} /> <span className="button-label">Watermark</span>
       </button>
