@@ -311,4 +311,12 @@ export const Icons = {
       <path d="M5 19 18 6M10 6h8v8" />
     </Svg>
   ),
+  /** Read words in pictures: a picture with lines of words coming out of it. */
+  ReadWords: (p: IconProps) => (
+    <Svg {...p}>
+      <rect x="3" y="4" width="10" height="10" rx="1.5" />
+      <path d="m3.5 12 3-3 2.5 2.5 1.5-1.5 2.5 2.5" />
+      <path d="M16 7h5M16 11h5M3 18h18M3 21h12" />
+    </Svg>
+  ),
 };

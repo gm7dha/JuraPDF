@@ -89,6 +89,48 @@ export function drawTextLayer(page: PDFPageProxy, container: HTMLElement, cssSca
   return { cancel: () => layer.cancel(), promise: layer.render() };
 }
 
+/**
+ * Keep only the ink: anything pale (a see-through watermark, a highlight, a
+ * coloured background) turns white, the rest grey to black, so faint marks
+ * don't muddle the words when they're read.
+ */
+function inkOnly(canvas: HTMLCanvasElement): void {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const px = image.data;
+  for (let i = 0; i < px.length; i += 4) {
+    const light = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+    const v = light > 165 ? 255 : Math.round(light * 0.6);
+    px[i] = px[i + 1] = px[i + 2] = v;
+  }
+  ctx.putImageData(image, 0, 0);
+}
+
+/**
+ * A page drawn finely for reading the words in its pictures (at `scale`
+ * pixels per point, kept under the drawing limit), with the boxes of the words
+ * it already has (points from its top-left as shown), so those aren't read twice.
+ */
+export async function pageForReading(doc: PDFDocumentProxy, index: number, scale: number): Promise<{ canvas: HTMLCanvasElement; scale: number; words: { x: number; y: number; width: number; height: number }[] }> {
+  const page = await doc.getPage(index + 1);
+  const unit = page.getViewport({ scale: 1 });
+  const fitted = Math.min(scale, Math.sqrt(MAX_PIXELS / (unit.width * unit.height)));
+  const canvas = document.createElement("canvas");
+  await drawPage(page, canvas, fitted, 1).promise;
+  inkOnly(canvas);
+  const words: { x: number; y: number; width: number; height: number }[] = [];
+  for (const item of (await page.getTextContent()).items) {
+    if (!("str" in item) || !item.str.trim()) continue;
+    const [a, b, , , e, f] = pdfjs.Util.transform(unit.transform, item.transform);
+    // Only words running across the page as shown: a slanted watermark's box would cover half the page.
+    if (Math.abs(b) > Math.abs(a) * 0.05 || a <= 0) continue;
+    const height = Math.hypot(a, b) || item.height;
+    words.push({ x: e, y: f - height, width: item.width, height: height * 1.2 });
+  }
+  return { canvas, scale: fitted, words };
+}
+
 /** True when an error is just a drawing that was stopped on purpose (the page scrolled away or the zoom changed). */
 export function isCancelled(e: unknown): boolean {
   return e instanceof Error && e.name === "RenderingCancelledException";

@@ -66,5 +66,5 @@ npm run smoke      # drive the built app in headless Chromium
 ## Licence
 
 JuraPDF is MIT licensed (see [LICENSE](LICENSE)). It uses [pdf.js](https://mozilla.github.io/pdf.js/) (Apache 2.0,
-with its standard fonts under their own free licences, shipped in `pdfjs/standard_fonts/`), [pdf-lib](https://pdf-lib.js.org) (MIT), [React](https://react.dev)
+with its standard fonts under their own free licences, shipped in `pdfjs/standard_fonts/`), [pdf-lib](https://pdf-lib.js.org) (MIT), [Tesseract](https://github.com/naptha/tesseract.js) (Apache 2.0, for reading words in pictures, shipped in `ocr/`), [React](https://react.dev)
 (MIT) and [Zustand](https://github.com/pmndrs/zustand) (MIT).

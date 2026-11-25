@@ -8,6 +8,7 @@ import { parsePageNumber, parseZoom, zoomIn, zoomLabel, zoomOut } from "../model
 import { SHAPE_NAMES, type ShapeKind } from "../model/additions";
 import { cancelAdding, startPicture, startShape, startWords } from "./addActions";
 import { Icons } from "./icons";
+import { readWordsInPictures } from "./ocrActions";
 import { addBlank, deleteChosen, insertFromFile, moveChosen, saveChosenAsNew, turnChosen } from "./pageActions";
 import { detectPlatform, shortcut } from "./platform";
 
@@ -29,6 +30,7 @@ export function ViewBar() {
   const draftKind = useStore((s) => s.draft?.kind ?? null);
   const placingShape = useStore((s) => (s.placing?.kind === "shape" ? s.placing.shape : null));
   const draftShape = useStore((s) => (s.draft?.kind === "shape" ? s.draft.shape : null));
+  const reading = useStore((s) => s.reading);
   const selected = useStore((s) => s.selected);
   const onePage = useStore((s) => s.onePage);
   const s = useStore.getState;
@@ -219,6 +221,21 @@ export function ViewBar() {
             </button>
           );
         })}
+        <button
+          type="button"
+          className={`icon-button${reading !== null ? " active" : ""}`}
+          onClick={() => void readWordsInPictures()}
+          disabled={reading !== null}
+          aria-label="Read words in pictures"
+          title={`Find the words in the pictures on ${which} (a scan or a photo), so they can be picked, copied and found`}
+        >
+          <Icons.ReadWords />
+        </button>
+        {reading !== null && (
+          <span className="reading-note muted" role="status">
+            Reading… {Math.round(reading * 100)}%
+          </span>
+        )}
       </div>
       <div className="topbar-spacer" />
       <span className="doc-facts muted" title="This page's paper size, how many pages the PDF has, and its file size">

@@ -11,7 +11,9 @@
   `platform.ts`, `easterEgg.ts` and the smoke test all began as JuraCUT's. Design and roadmap: `docs/DESIGN.md`.
 - Stack: TypeScript (strict, no unused locals or parameters), React 18, Vite 5, Zustand 5. PDFs are read and drawn by
   `pdfjs-dist` (pinned; `src/pdf/pdfjs.ts` is the only file that talks to it). Writing PDFs (watermarks and every edit
-  after) uses `pdf-lib` (MIT, pinned), only in `src/pdf/`. No other runtime dependencies, no CDNs: everything works offline.
+  after) uses `pdf-lib` (MIT, pinned), only in `src/pdf/`. Reading words in pictures uses `tesseract.js` 5.1.1 with
+  `@tesseract.js-data/eng` (Apache 2.0, pinned; Kevin chose it), only in `src/pdf/ocr.ts`, loaded on first use. No other runtime
+  dependencies, no CDNs: everything works offline.
 - pdf.js's character maps and standard fonts are served from `node_modules` in dev and copied to `dist/pdfjs/` by the
   plugin in `vite.config.ts`. The worker is imported with `?url`.
 - Units: page sizes are PDF points (72 to the inch), as pdf.js gives them (already turned for rotated pages). At 100%
@@ -62,6 +64,10 @@
   highlight, box, oval, line, arrow from (x1,y1) to (x2,y2); `addShape`, a highlight see-through with Multiply) are drawn by
   dragging on the page (PageView's pointerdown while `placing` is a shape) and changed in `ShapeDraft.tsx` (an SVG over the page). Words picked with the mouse get `PickedWordsBar` (Highlight, Copy):
   `pickedWordBoxes` reads the selection's boxes from the words layers, `highlightsFor` joins them per line, `addShapes` writes them as one step.
+- Reading words in pictures (`src/app/ocrActions.ts`, button "Read words in pictures"): `pageForReading` (pdfjs.ts) draws the page at
+  300 dpi with pale colours turned white (`inkOnly`) and lists the page's own level words; `readPicture` (src/pdf/ocr.ts) runs
+  Tesseract from `ocr/` (worker, core, eng.traineddata.gz, copied by `ocrFiles` in vite.config.ts); `wordsToAdd` (src/model/ocr.ts)
+  keeps sure words not already on the page; `addHiddenWords` writes them invisibly (render mode 3, squeezed to the word's width).
 - JuraPDF for Claude (`src/mcp/`, `src/live/`, `claude-extension/manifest.json`): JuraDAW's extension and live link
   (which are JuraCAD's) with the names changed, so a fix in one belongs in the others. Ports **47655–47664** (JuraCAD
   47615–47624, JuraDAW 47635–47644), path `/jurapdf-live`, sub-protocol `jurapdf-live.1`, `JURAPDF_LIVE_DEV=1` lets in

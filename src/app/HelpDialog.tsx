@@ -45,6 +45,10 @@ export function HelpDialog() {
         <strong>line</strong> and <strong>arrow</strong> buttons draw by dragging on a page (an arrow points to where you let go). Drag the round handles to change it, pick a colour
         and thickness, then <strong>Done</strong>. Or pick words with the mouse, and press <strong>Highlight</strong> on the little bar by them.
       </p>
+      <p>
+        <strong>Read words in pictures</strong> (the button after the arrow): finds the words in a scanned page or a photo, so they can be picked, copied, highlighted and found
+        with Ctrl+F. It runs on your computer; the first time it fetches its reader (about 7 MB), then it works offline.
+      </p>
       <p className="muted">Coming next: changing what's already on a page, and saving pages as pictures.</p>
       <div className="platform-row">
         <span className="muted small">Shortcuts shown for</span>

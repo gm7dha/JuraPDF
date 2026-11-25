@@ -80,6 +80,8 @@ interface State {
   future: Snapshot[];
   /** Waiting for a click on a page to put words or a picture there. */
   placing: Placing | null;
+  /** Reading the words in pictures: how far along (0–1), or null when not. */
+  reading: number | null;
   /** Words or a picture on a page, not yet written into the PDF. */
   draft: Draft | null;
   /** Pages picked in the page list (0 = first), and the page a Shift-click run starts from. */
@@ -92,6 +94,7 @@ interface State {
   undo(): void;
   redo(): void;
   setOpening(name: string | null): void;
+  setReading(reading: number | null): void;
   setPlacing(p: Placing | null): void;
   setDraft(d: Draft | null): void;
   setZoom(z: ZoomMode): void;
@@ -165,6 +168,7 @@ export const useStore = create<State>((set, get) => ({
   past: [],
   future: [],
   placing: null,
+  reading: null,
   draft: null,
   selected: [],
   anchor: null,
@@ -200,6 +204,7 @@ export const useStore = create<State>((set, get) => ({
   },
   setOpening: (opening) => set({ opening }),
   setPlacing: (placing) => set({ placing }),
+  setReading: (reading) => set({ reading }),
   setDraft: (draft) => set({ draft }),
   setZoom: (z) => set({ zoom: typeof z === "number" ? clampZoom(z) : z }),
   setShownZoom: (shownZoom) => set({ shownZoom }),
