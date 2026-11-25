@@ -140,6 +140,10 @@ describe("reading and changing a PDF", () => {
     expect(await ok(s, "add_words", { page: 1, words: "Signed: K. Pugh\n24 Nov 2026", x: 100, y: 700, size: 12, colour: "blue" })).toBe("Added the words to page 1, 100 points from the left and 700 from the top.");
     expect((await words(s))[0]).toContain("Signed: K. Pugh");
     expect(await ok(s, "add_picture", { page: 1, picture: "logo.png", x: 400, y: 50 })).toBe("Added logo.png to page 1: 72 × 72 points, its top-left corner 400 points from the left and 50 from the top.");
+    expect(await ok(s, "add_shape", { page: 1, shape: "highlight", x1: 100, y1: 690, x2: 220, y2: 704 })).toBe("Added a highlight to page 1.");
+    expect(await ok(s, "add_shape", { page: 1, shape: "arrow", x1: 300, y1: 300, x2: 200, y2: 200, colour: "blue", thickness: 3 })).toBe("Added an arrow to page 1.");
+    expect(await bad(s, "add_shape", { page: 1, shape: "star", x1: 1, y1: 1, x2: 50, y2: 50 })).toMatch(/shape/);
+    expect(await bad(s, "add_shape", { page: 1, shape: "box", x1: 10, y1: 10, x2: 10, y2: 10 })).toMatch(/same place/);
     expect(await bad(s, "add_words", { page: 1, words: "Tick ✓" })).toMatch(/✓/);
     expect(await bad(s, "add_words", { page: 99, words: "x" })).toMatch(/page must be/);
     expect(await bad(s, "add_picture", { page: 1, picture: "missing.png" })).toMatch(/no file called/);

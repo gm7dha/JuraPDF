@@ -3,9 +3,9 @@
  * Node for the tests and Claude). Where things go is worked out in
  * src/model/additions.ts.
  */
-import { StandardFontEmbedder, degrees, rgb } from "pdf-lib";
+import { BlendMode, LineCapStyle, StandardFontEmbedder, degrees, rgb } from "pdf-lib";
 
-import { lineStarts, linesOf, type PictureItem, type WordsItem } from "../model/additions";
+import { HIGHLIGHT_OPACITY, lineStarts, shapeInPage, linesOf, type PictureItem, type ShapeItem, type WordsItem } from "../model/additions";
 import { hexToRgb, toPageSpace, type FontChoice } from "../model/watermark";
 import { FONTS, arrange, existingContents, frameOf, loadForEditing, saveEdited } from "./watermark";
 
@@ -91,6 +91,39 @@ export async function addPicture(bytes: Uint8Array, item: PictureItem, picture: 
   // pdf-lib turns a picture about its bottom-left corner, so start from that corner as shown.
   const at = toPageSpace(frame, item.x, shownH - (item.y + item.height), 0);
   page.drawImage(image, { x: at.x, y: at.y, width: item.width, height: item.height, rotate: degrees(at.angle) });
+  arrange(page, before, false);
+  return save(doc);
+}
+
+/** Draw a highlight, box, oval, line or arrow on its page. Gives the new file. */
+export async function addShape(bytes: Uint8Array, item: ShapeItem): Promise<Uint8Array<ArrayBuffer>> {
+  const doc = await loadForEditing(bytes);
+  const page = pageOf(doc, item.page);
+  const { box, start, end, head } = shapeInPage(frameOf(page), item);
+  const [r, g, b] = hexToRgb(item.colour);
+  const color = rgb(r, g, b);
+  const thickness = Math.max(0.25, item.thickness);
+  const before = existingContents(page);
+  switch (item.shape) {
+    case "highlight":
+      // Multiplied into the page, so the words under it stay crisp and dark.
+      page.drawRectangle({ ...box, color, opacity: HIGHLIGHT_OPACITY, blendMode: BlendMode.Multiply });
+      break;
+    case "box":
+      page.drawRectangle({ ...box, borderColor: color, borderWidth: thickness });
+      break;
+    case "oval":
+      page.drawEllipse({ x: box.x + box.width / 2, y: box.y + box.height / 2, xScale: box.width / 2, yScale: box.height / 2, borderColor: color, borderWidth: thickness });
+      break;
+    case "line":
+    case "arrow":
+      page.drawLine({ start, end, thickness, color, lineCap: LineCapStyle.Round });
+      if (head) {
+        // pdf-lib draws SVG paths with y running down from the given origin.
+        page.drawSvgPath(`M ${head[0].x} ${-head[0].y} L ${head[1].x} ${-head[1].y} L ${head[2].x} ${-head[2].y} Z`, { x: 0, y: 0, color });
+      }
+      break;
+  }
   arrange(page, before, false);
   return save(doc);
 }

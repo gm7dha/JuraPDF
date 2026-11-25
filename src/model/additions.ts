@@ -4,7 +4,7 @@
  * top-left corner, like on screen; src/pdf/additions.ts turns them into the
  * page's own space and writes them.
  */
-import type { FontChoice } from "./watermark";
+import { toPageSpace, type FontChoice, type PageFrame } from "./watermark";
 
 /** Words typed onto a page (one or more lines, left-aligned). */
 export interface WordsItem {
@@ -33,7 +33,74 @@ export interface PictureItem {
   height: number;
 }
 
-export type AddItem = WordsItem | PictureItem;
+export type ShapeKind = "highlight" | "box" | "oval" | "line" | "arrow";
+
+/** A highlight, box, oval, line or arrow drawn on a page, from one point to another (points as shown, from the top-left). */
+export interface ShapeItem {
+  kind: "shape";
+  shape: ShapeKind;
+  page: number;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  /** "#rrggbb". */
+  colour: string;
+  /** How thick its lines are, in points (not used by a highlight, which is filled). */
+  thickness: number;
+}
+
+export type AddItem = WordsItem | PictureItem | ShapeItem;
+
+export const SHAPE_NAMES: Record<ShapeKind, string> = {
+  highlight: "Highlight",
+  box: "Box",
+  oval: "Oval",
+  line: "Line",
+  arrow: "Arrow",
+};
+
+/** How each shape starts out: a see-through yellow highlight; red boxes, ovals, lines and arrows. */
+export const SHAPE_STYLE: Record<ShapeKind, { colour: string; thickness: number }> = {
+  highlight: { colour: "#ffd400", thickness: 0 },
+  box: { colour: "#d1373a", thickness: 2 },
+  oval: { colour: "#d1373a", thickness: 2 },
+  line: { colour: "#d1373a", thickness: 2 },
+  arrow: { colour: "#d1373a", thickness: 2 },
+};
+
+/** How see-through a highlight is (the words under it still show). */
+export const HIGHLIGHT_OPACITY = 0.45;
+
+/** The box a shape fills (left, top, width, height), whichever way it was drawn. */
+export function shapeBox(s: Pick<ShapeItem, "x1" | "y1" | "x2" | "y2">): { x: number; y: number; width: number; height: number } {
+  return { x: Math.min(s.x1, s.x2), y: Math.min(s.y1, s.y2), width: Math.abs(s.x2 - s.x1), height: Math.abs(s.y2 - s.y1) };
+}
+
+/** A shape drawn with hardly any drag (a click) gets a sensible size instead. */
+export function sizedShape(s: ShapeItem): ShapeItem {
+  const { width, height } = shapeBox(s);
+  if (Math.max(width, height) >= 6) return s;
+  if (s.shape === "line" || s.shape === "arrow") return { ...s, x2: s.x1 + 100, y2: s.y1 };
+  if (s.shape === "highlight") return { ...s, x2: s.x1 + 120, y2: s.y1 + 14 };
+  return { ...s, x2: s.x1 + 100, y2: s.y1 + 60 };
+}
+
+/** An arrow's head: the three corners of its triangle, at (x2, y2), sized to the line's thickness. */
+export function arrowHead(s: Pick<ShapeItem, "x1" | "y1" | "x2" | "y2" | "thickness">): [number, number][] {
+  const len = Math.hypot(s.x2 - s.x1, s.y2 - s.y1) || 1;
+  const ux = (s.x2 - s.x1) / len;
+  const uy = (s.y2 - s.y1) / len;
+  const size = Math.min(len * 0.6, 6 + s.thickness * 3);
+  const bx = s.x2 - ux * size;
+  const by = s.y2 - uy * size;
+  const half = size * 0.45;
+  return [
+    [s.x2, s.y2],
+    [bx - uy * half, by + ux * half],
+    [bx + uy * half, by - ux * half],
+  ];
+}
 
 /** Lines are this many times the letter size apart. */
 export const LINE_HEIGHT = 1.2;
@@ -116,6 +183,7 @@ export function keepOnPage(x: number, y: number, w: number, h: number, pageW: nu
 
 /** What a change is called in the Undo list. */
 export function additionLabel(item: AddItem): string {
+  if (item.kind === "shape") return `add ${item.shape === "arrow" || item.shape === "oval" ? "an" : "a"} ${SHAPE_NAMES[item.shape].toLowerCase()} to page ${item.page + 1}`;
   if (item.kind === "picture") return `add a picture to page ${item.page + 1}`;
   const first = linesOf(item.text)[0] ?? "";
   return `add “${first.length > 30 ? `${first.slice(0, 29)}…` : first}” to page ${item.page + 1}`;
@@ -133,7 +201,29 @@ export interface ChosenPicture {
 }
 
 /** Waiting for a click on a page to put words or a chosen picture there. */
-export type Placing = { kind: "words" } | { kind: "picture"; picture: ChosenPicture };
+export type Placing = { kind: "words" } | { kind: "picture"; picture: ChosenPicture } | { kind: "shape"; shape: ShapeKind };
 
 /** Words or a picture on a page, being typed, moved or sized, not yet written into the PDF. */
-export type Draft = WordsItem | (PictureItem & { picture: ChosenPicture });
+export type Draft = WordsItem | (PictureItem & { picture: ChosenPicture }) | ShapeItem;
+
+type Pt = { x: number; y: number };
+
+/**
+ * Where a shape goes in the page's own space (y up, before the page's turn):
+ * the box it fills, its two ends (the line stopping inside an arrow's head) and
+ * an arrow's head.
+ */
+export function shapeInPage(frame: PageFrame, item: ShapeItem): { box: { x: number; y: number; width: number; height: number }; start: Pt; end: Pt; head: Pt[] | null } {
+  const shownH = frame.rotation % 180 ? frame.width : frame.height;
+  const at = (x: number, y: number): Pt => {
+    const p = toPageSpace(frame, x, shownH - y, 0);
+    return { x: p.x, y: p.y };
+  };
+  const a = at(item.x1, item.y1);
+  const z = at(item.x2, item.y2);
+  // Turning a page by quarter turns keeps boxes square to it, so a box is still its two corners.
+  const box = { x: Math.min(a.x, z.x), y: Math.min(a.y, z.y), width: Math.abs(z.x - a.x), height: Math.abs(z.y - a.y) };
+  if (item.shape !== "arrow") return { box, start: a, end: z, head: null };
+  const head = arrowHead(item);
+  return { box, start: a, end: at((head[1][0] + head[2][0]) / 2, (head[1][1] + head[2][1]) / 2), head: head.map(([x, y]) => at(x, y)) };
+}

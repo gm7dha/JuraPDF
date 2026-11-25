@@ -5,10 +5,19 @@ import { pagesLabel, targetPages } from "../model/pages";
 import { useStore } from "../model/store";
 import { paperName, sizeLabel } from "../model/pdfFile";
 import { parsePageNumber, parseZoom, zoomIn, zoomLabel, zoomOut } from "../model/zoom";
-import { cancelAdding, startPicture, startWords } from "./addActions";
+import { SHAPE_NAMES, type ShapeKind } from "../model/additions";
+import { cancelAdding, startPicture, startShape, startWords } from "./addActions";
 import { Icons } from "./icons";
 import { addBlank, deleteChosen, insertFromFile, moveChosen, saveChosenAsNew, turnChosen } from "./pageActions";
 import { detectPlatform, shortcut } from "./platform";
+
+const SHAPES: { shape: ShapeKind; icon: (p: { size?: number }) => JSX.Element; tip: string }[] = [
+  { shape: "highlight", icon: Icons.Highlight, tip: "Highlight: drag across words to colour them in, see-through so they still show" },
+  { shape: "box", icon: Icons.Box, tip: "Draw a box: drag from one corner to the other" },
+  { shape: "oval", icon: Icons.Oval, tip: "Draw an oval: drag across where it should go" },
+  { shape: "line", icon: Icons.Line, tip: "Draw a line: drag from one end to the other" },
+  { shape: "arrow", icon: Icons.Arrow, tip: "Draw an arrow: drag from its tail to where it points" },
+];
 
 export function ViewBar() {
   const pdf = useStore((s) => s.pdf);
@@ -18,6 +27,8 @@ export function ViewBar() {
   const sidebar = useStore((s) => s.sidebar);
   const placing = useStore((s) => s.placing?.kind ?? null);
   const draftKind = useStore((s) => s.draft?.kind ?? null);
+  const placingShape = useStore((s) => (s.placing?.kind === "shape" ? s.placing.shape : null));
+  const draftShape = useStore((s) => (s.draft?.kind === "shape" ? s.draft.shape : null));
   const selected = useStore((s) => s.selected);
   const onePage = useStore((s) => s.onePage);
   const s = useStore.getState;
@@ -193,6 +204,21 @@ export function ViewBar() {
         >
           <Icons.Picture />
         </button>
+        {SHAPES.map(({ shape, icon: Icon, tip }) => {
+          const on = placingShape === shape || draftShape === shape;
+          return (
+            <button
+              key={shape}
+              type="button"
+              className={`icon-button${on ? " active" : ""}`}
+              onClick={() => (on ? cancelAdding() : startShape(shape))}
+              aria-label={shape === "highlight" ? "Highlight" : `Draw ${shape === "oval" || shape === "arrow" ? "an" : "a"} ${SHAPE_NAMES[shape].toLowerCase()}`}
+              title={tip}
+            >
+              <Icon />
+            </button>
+          );
+        })}
       </div>
       <div className="topbar-spacer" />
       <span className="doc-facts muted" title="This page's paper size, how many pages the PDF has, and its file size">

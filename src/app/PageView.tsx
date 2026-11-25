@@ -12,7 +12,7 @@ import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefOb
 import { useStore } from "../model/store";
 import { CSS_PER_PT, PAGE_MARGIN_Y, currentPageAt, keepSpotInView, layoutPages, pagesInView, resolveZoom, wheelFlip, type PageBox, type Size } from "../model/zoom";
 import { drawPage, drawTextLayer, isCancelled, type PDFDocumentProxy } from "../pdf/pdfjs";
-import { placeAt } from "./addActions";
+import { endShapeDrag, placeAt, startShapeAt, updateDraft } from "./addActions";
 import { DraftBox } from "./DraftBox";
 
 export function PageView() {
@@ -256,12 +256,13 @@ const PageSlot = memo(function PageSlot({ doc, index, box, zoom, root }: SlotPro
     const el = text.current;
     if (!near || !el) return;
     let stopped = false;
-    let layer: Awaited<ReturnType<typeof drawTextLayer>> | null = null;
+    let layer: ReturnType<typeof drawTextLayer> | null = null;
     void (async () => {
       try {
         const page = await doc.getPage(index + 1);
         if (stopped) return;
-        layer = await drawTextLayer(page, el, CSS_PER_PT);
+        layer = drawTextLayer(page, el, CSS_PER_PT);
+        await layer.promise;
       } catch {
         // The page still shows; its words just can't be selected.
       }
@@ -277,6 +278,34 @@ const PageSlot = memo(function PageSlot({ doc, index, box, zoom, root }: SlotPro
     <div
       ref={ref}
       className={`page${drawn ? " drawn" : ""}`}
+      onPointerDown={(e) => {
+        // Drawing a shape: press, drag, let go.
+        if (e.button !== 0 || useStore.getState().placing?.kind !== "shape") return;
+        e.preventDefault();
+        const el = e.currentTarget;
+        const box = el.getBoundingClientRect();
+        const [pw, ph] = [box.width / cssScale, box.height / cssScale];
+        const pt = (ev: { clientX: number; clientY: number }) => [
+          Math.min(pw, Math.max(0, (ev.clientX - box.left) / cssScale)),
+          Math.min(ph, Math.max(0, (ev.clientY - box.top) / cssScale)),
+        ];
+        const [x, y] = pt(e);
+        startShapeAt(index, x, y);
+        el.setPointerCapture(e.pointerId);
+        const move = (ev: PointerEvent) => {
+          const [x2, y2] = pt(ev);
+          updateDraft({ x2, y2 });
+        };
+        const up = () => {
+          el.removeEventListener("pointermove", move);
+          el.removeEventListener("pointerup", up);
+          el.removeEventListener("pointercancel", up);
+          endShapeDrag();
+        };
+        el.addEventListener("pointermove", move);
+        el.addEventListener("pointerup", up);
+        el.addEventListener("pointercancel", up);
+      }}
       onClick={(e) => {
         if (!useStore.getState().placing) return;
         const box = e.currentTarget.getBoundingClientRect();

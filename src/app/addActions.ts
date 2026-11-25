@@ -2,10 +2,10 @@
  * Adding words or a picture to a page: choose what, click on a page to put it
  * there, move and size it, then Done writes it into the PDF (one undo step).
  */
-import { additionLabel, DEFAULT_WORDS, keepOnPage, startingPictureSize, type Draft } from "../model/additions";
+import { additionLabel, DEFAULT_WORDS, keepOnPage, SHAPE_NAMES, SHAPE_STYLE, sizedShape, startingPictureSize, type Draft, type ShapeKind } from "../model/additions";
 import { useStore } from "../model/store";
 import type { FontChoice } from "../model/watermark";
-import { AddProblem, addPicture, addWords, pictureType } from "../pdf/additions";
+import { AddProblem, addPicture, addShape, addWords, pictureType } from "../pdf/additions";
 import { LockedPdf } from "../pdf/watermark";
 import { applyChange } from "./editing";
 
@@ -28,6 +28,39 @@ export function startWords(): void {
   s.setDraft(null);
   s.setPlacing({ kind: "words" });
   say("Click on a page where the words should start. Esc stops.");
+}
+
+/** The last colour and thickness used for each shape, so the next one matches. */
+const lastShape: Record<ShapeKind, { colour: string; thickness: number }> = structuredClone(SHAPE_STYLE);
+
+/** Get ready to draw a shape (the next drag on a page draws it). */
+export function startShape(shape: ShapeKind): void {
+  const s = useStore.getState();
+  if (!s.pdf) return;
+  dropPicture();
+  s.setDraft(null);
+  s.setPlacing({ kind: "shape", shape });
+  say(
+    shape === "highlight"
+      ? "Click on a page and drag across the words to highlight them. Esc stops."
+      : `Click on a page and drag to draw the ${SHAPE_NAMES[shape].toLowerCase()}. Esc stops.`,
+  );
+}
+
+/** A press on a page while drawing a shape: it runs from here to wherever the pointer goes. */
+export function startShapeAt(page: number, x: number, y: number): void {
+  const s = useStore.getState();
+  if (s.placing?.kind !== "shape") return;
+  const shape = s.placing.shape;
+  s.setDraft({ kind: "shape", shape, page, x1: x, y1: y, x2: x, y2: y, ...lastShape[shape] });
+  s.setPlacing(null);
+  dropHint();
+}
+
+/** The drag that draws a shape has ended: a mere click gets a sensible size. */
+export function endShapeDrag(): void {
+  const d = useStore.getState().draft;
+  if (d?.kind === "shape") useStore.getState().setDraft(sizedShape(d));
 }
 
 /** Choose a picture, then get ready to put it on a page. */
@@ -63,6 +96,7 @@ export function placeAt(page: number, x: number, y: number): void {
   const size = s.pdf?.sizes[page];
   if (!s.placing || !size) return;
   const [pw, ph] = size;
+  if (s.placing.kind === "shape") return;
   if (s.placing.kind === "words") {
     const at = keepOnPage(x, y - lastWords.size * 0.6, lastWords.size * 4, lastWords.size * 1.2, pw, ph);
     s.setDraft({ kind: "words", page, x: at.x, y: at.y, text: "", ...lastWords });
@@ -82,6 +116,7 @@ export function updateDraft(change: Partial<Draft>): void {
   if (!s.draft) return;
   const next = { ...s.draft, ...change } as Draft;
   if (next.kind === "words") lastWords = { font: next.font, size: next.size, colour: next.colour };
+  if (next.kind === "shape") lastShape[next.shape] = { colour: next.colour, thickness: next.thickness };
   s.setDraft(next);
 }
 
@@ -110,7 +145,9 @@ export async function finishAdding(): Promise<void> {
     const bytes =
       draft.kind === "words"
         ? await addWords(s.pdf.bytes, draft)
-        : await addPicture(s.pdf.bytes, { kind: "picture", page: draft.page, x: draft.x, y: draft.y, width: draft.width, height: draft.height }, draft.picture);
+        : draft.kind === "shape"
+          ? await addShape(s.pdf.bytes, draft)
+          : await addPicture(s.pdf.bytes, { kind: "picture", page: draft.page, x: draft.x, y: draft.y, width: draft.width, height: draft.height }, draft.picture);
     await applyChange(bytes, additionLabel(draft));
     cancelAdding();
   } catch (e) {
