@@ -81,12 +81,12 @@ export function drawPage(page: PDFPageProxy, canvas: HTMLCanvasElement, cssScale
 }
 
 /** Lay the page's words over the drawing (invisible) so they can be selected, copied and found with Ctrl+F. */
-export async function drawTextLayer(page: PDFPageProxy, container: HTMLElement, cssScale: number): Promise<pdfjs.TextLayer> {
+export function drawTextLayer(page: PDFPageProxy, container: HTMLElement, cssScale: number): { cancel(): void; promise: Promise<void> } {
   const viewport = page.getViewport({ scale: cssScale });
   container.replaceChildren();
   const layer = new pdfjs.TextLayer({ textContentSource: page.streamTextContent(), container, viewport });
-  await layer.render();
-  return layer;
+  // Handed back at once, so a page whose PDF changes mid-way can stop it before its words land.
+  return { cancel: () => layer.cancel(), promise: layer.render() };
 }
 
 /** True when an error is just a drawing that was stopped on purpose (the page scrolled away or the zoom changed). */

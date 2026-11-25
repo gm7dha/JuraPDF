@@ -5,6 +5,15 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.6.2 — Highlights and shapes
+
+- **Highlight words**: the marker button, then drag across the words. They're coloured in with see-through yellow
+  (or any colour you pick), so they still show and print.
+- **Draw a box, oval, line or arrow** to point something out: pick it, drag on the page, then drag its round handles
+  to change it and choose a colour and thickness. **Done** puts it on the page (one Undo step); Esc leaves it off.
+- Claude can do the same with its new **add_shape**.
+- Fixed: after Undo, the words of the version before could sometimes still be picked up when selecting text.
+
 ## v0.6.1 — Snappier
 
 - **Long PDFs open, scroll and change much faster.** Timed with a 2,000-page PDF:

@@ -569,6 +569,70 @@ await step("adding words and a picture to pages", async () => {
   expect((await label()) !== "add a picture to page 2", "Undo takes the picture back");
 });
 
+await step("highlighting and drawing an arrow, then Undo", async () => {
+  const label = () => page.evaluate(() => window.jurapdfStore.getState().past.at(-1)?.label);
+  await page.keyboard.press("Home");
+  // Highlight: drag across part of page 1, Done, and the page turns yellow there.
+  await page.getByRole("button", { name: "Highlight" }).click();
+  const p1 = await page.locator('.page[data-page="1"]').boundingBox();
+  await page.mouse.move(p1.x + p1.width * 0.3, p1.y + p1.height * 0.7);
+  await page.mouse.down();
+  await page.mouse.move(p1.x + p1.width * 0.7, p1.y + p1.height * 0.75, { steps: 5 });
+  await page.mouse.up();
+  await page.locator(".shape-draft").waitFor();
+  await page.getByRole("button", { name: "Done" }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "add a highlight to page 1");
+  const yellow = () =>
+    page.evaluate(() => {
+      const c = document.querySelector('.page[data-page="1"] canvas');
+      if (!c) return false;
+      const [r, g, b] = c.getContext("2d").getImageData(Math.round(c.width * 0.5), Math.round(c.height * 0.725), 1, 1).data;
+      return r > 200 && g > 180 && b < 150;
+    });
+  await page.waitForFunction(
+    () => {
+      const c = document.querySelector('.page[data-page="1"] canvas');
+      if (!c) return false;
+      const [r, g, b] = c.getContext("2d").getImageData(Math.round(c.width * 0.5), Math.round(c.height * 0.725), 1, 1).data;
+      return r > 200 && g > 180 && b < 150;
+    },
+    null,
+    { timeout: 15_000 },
+  );
+
+  // Arrow: drag it, move its point by the round handle, Done.
+  await page.getByRole("button", { name: "Draw an arrow" }).click();
+  await page.mouse.move(p1.x + p1.width * 0.2, p1.y + p1.height * 0.3);
+  await page.mouse.down();
+  await page.mouse.move(p1.x + p1.width * 0.4, p1.y + p1.height * 0.3, { steps: 5 });
+  await page.mouse.up();
+  const handle = page.locator(".shape-handle").nth(1);
+  const h = await handle.boundingBox();
+  await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(h.x + h.width / 2 + 40, h.y + h.height / 2 + 40, { steps: 4 });
+  await page.mouse.up();
+  const end = await page.evaluate(() => window.jurapdfStore.getState().draft);
+  expect(end?.kind === "shape" && end.y2 > end.y1 + 20, `dragging the handle should move the arrow's point: ${JSON.stringify(end)}`);
+  if (process.env.SMOKE_SCREENSHOT) await page.screenshot({ path: "smoke-shapes.png" });
+  await page.getByRole("button", { name: "Done" }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "add an arrow to page 1");
+
+  for (let i = 0; i < 2; i++) await page.keyboard.press("Control+z");
+  await page.waitForFunction(() => window.jurapdfStore.getState().future.length >= 2);
+  await page.waitForFunction(
+    () => {
+      const c = document.querySelector('.page[data-page="1"] canvas');
+      if (!c) return false;
+      const [r, g, b] = c.getContext("2d").getImageData(Math.round(c.width * 0.5), Math.round(c.height * 0.725), 1, 1).data;
+      return !(r > 200 && g > 180 && b < 150);
+    },
+    null,
+    { timeout: 15_000 },
+  );
+  expect(!(await yellow()) && (await label()) !== "add a highlight to page 1", "Undo takes the highlight away");
+});
+
 await step("Connect to Claude with no extension running says what to do", async () => {
   await page.getByRole("button", { name: "Connect to Claude" }).click();
   await page.locator('.modal:has-text("Not connected")').waitFor({ timeout: 60_000 });

@@ -11,12 +11,13 @@ import { FONT_NAMES, type FontChoice } from "../model/watermark";
 import { textWidth } from "../pdf/additions";
 import { cancelAdding, finishAdding, updateDraft } from "./addActions";
 import { Icons } from "./icons";
+import { ShapeDraft } from "./ShapeDraft";
 import { detectPlatform } from "./platform";
 
 const isMac = () => detectPlatform() === "mac";
 
 /** Follow a drag from a pointer press, calling `move` with how far it has gone in points. */
-function dragFrom(e: ReactPointerEvent, scale: number, move: (dx: number, dy: number) => void): void {
+export function dragFrom(e: ReactPointerEvent, scale: number, move: (dx: number, dy: number) => void): void {
   if (e.button !== 0) return;
   e.preventDefault();
   e.stopPropagation();
@@ -47,6 +48,7 @@ export function DraftBox({ index, scale }: { index: number; scale: number }) {
 
   if (!draft || !size) return null;
   const [pw, ph] = size;
+  if (draft.kind === "shape") return <ShapeDraft draft={draft} scale={scale} pageW={pw} pageH={ph} />;
 
   /** Move by (dx, dy) points from where it was when the drag began. */
   const startMove = (e: ReactPointerEvent) => {

@@ -1764,3 +1764,41 @@ span.bookmark-fold {
   padding: 0 12px;
   font-size: 13px;
 }
+
+/* A shape being drawn: it covers the page, but only the shape and its handles catch the pointer. */
+.shape-draft {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.shape-highlight {
+  mix-blend-mode: multiply;
+}
+
+.shape-grab {
+  stroke: transparent;
+  fill: none;
+  pointer-events: stroke;
+  cursor: move;
+  touch-action: none;
+}
+
+.shape-grab.fill {
+  fill: transparent;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+  pointer-events: all;
+}
+
+.shape-handle {
+  fill: var(--accent);
+  stroke: #fff;
+  stroke-width: 2;
+  pointer-events: all;
+  cursor: crosshair;
+  touch-action: none;
+}

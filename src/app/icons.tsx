@@ -280,4 +280,35 @@ export const Icons = {
       <path d="M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3" />
     </Svg>
   ),
+  /** Highlight: a marker pen over a stripe. */
+  Highlight: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="m14.5 4.5 5 5-7.5 7.5H7v-5z" />
+      <path d="M3 21h18" strokeWidth={3} opacity={0.5} />
+    </Svg>
+  ),
+  /** Draw a box. */
+  Box: (p: IconProps) => (
+    <Svg {...p}>
+      <rect x="4" y="6" width="16" height="12" rx="1" />
+    </Svg>
+  ),
+  /** Draw an oval. */
+  Oval: (p: IconProps) => (
+    <Svg {...p}>
+      <ellipse cx="12" cy="12" rx="8.5" ry="6" />
+    </Svg>
+  ),
+  /** Draw a line. */
+  Line: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M5 19 19 5" />
+    </Svg>
+  ),
+  /** Draw an arrow. */
+  Arrow: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M5 19 18 6M10 6h8v8" />
+    </Svg>
+  ),
 };

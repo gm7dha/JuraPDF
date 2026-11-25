@@ -40,7 +40,12 @@ export function HelpDialog() {
         <strong>Add words</strong> (the T button) and <strong>Add a picture</strong> (the picture button): click on a page where it should go, then type, or drag the picture and its round corner to
         place and size it. <strong>Done</strong> puts it on the page; Esc leaves it off.
       </p>
-      <p className="muted">Coming next: shapes and highlights, and changing what's already on a page.</p>
+      <p>
+        <strong>Highlight</strong> (the marker button): drag across words to colour them in, see-through so they still show. The <strong>box</strong>, <strong>oval</strong>,{" "}
+        <strong>line</strong> and <strong>arrow</strong> buttons draw by dragging on a page (an arrow points to where you let go). Drag the round handles to change it, pick a colour
+        and thickness, then <strong>Done</strong>.
+      </p>
+      <p className="muted">Coming next: changing what's already on a page, and saving pages as pictures.</p>
       <div className="platform-row">
         <span className="muted small">Shortcuts shown for</span>
         <div className="segmented two" role="radiogroup" aria-label="Keyboard type">

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { PDFDocument, degrees } from "pdf-lib";
+import { PDFDict, PDFDocument, PDFName, degrees } from "pdf-lib";
 import { OPS, getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 
-import { additionLabel, cleanSize, keepOnPage, lineStarts, linesOf, startingPictureSize, wordsHeight, type WordsItem } from "../src/model/additions";
-import { AddProblem, addPicture, addWords, pictureType, textWidth, unwritable } from "../src/pdf/additions";
+import { additionLabel, arrowHead, cleanSize, shapeBox, shapeInPage, sizedShape, type ShapeItem, keepOnPage, lineStarts, linesOf, startingPictureSize, wordsHeight, type WordsItem } from "../src/model/additions";
+import { AddProblem, addPicture, addShape, addWords, pictureType, textWidth, unwritable } from "../src/pdf/additions";
 
 const STANDARD_FONTS = new URL("../node_modules/pdfjs-dist/standard_fonts/", import.meta.url).pathname;
 
@@ -158,6 +158,63 @@ describe("writing words and pictures", () => {
       expect(box.bottom).toBeCloseTo(160, 1);
     }
     await expect(addPicture(bytes, { kind: "picture", page: 0, x: 0, y: 0, width: 1, height: 1 }, { bytes: new Uint8Array([1, 2]), type: "png", name: "bad.png" })).rejects.toThrow(/bad.png/);
+  });
+});
+
+const shape = (over: Partial<ShapeItem> = {}): ShapeItem => ({ kind: "shape", shape: "box", page: 0, x1: 100, y1: 200, x2: 300, y2: 260, colour: "#ff0000", thickness: 2, ...over });
+
+describe("shapes", () => {
+  it("fill the box between their two points, whichever way they were drawn", () => {
+    expect(shapeBox(shape({ x1: 300, y1: 260, x2: 100, y2: 200 }))).toEqual({ x: 100, y: 200, width: 200, height: 60 });
+  });
+
+  it("get a sensible size from a click", () => {
+    expect(shapeBox(sizedShape(shape({ x2: 101, y2: 201 })))).toEqual({ x: 100, y: 200, width: 100, height: 60 });
+    expect(sizedShape(shape({ shape: "arrow", x2: 100, y2: 200 }))).toMatchObject({ x2: 200, y2: 200 });
+    expect(sizedShape(shape())).toEqual(shape());
+  });
+
+  it("put an arrow's head at its end, pointing along it", () => {
+    const [tip, left, right] = arrowHead({ x1: 0, y1: 0, x2: 100, y2: 0, thickness: 2 });
+    expect(tip).toEqual([100, 0]);
+    expect(left[0]).toBeCloseTo(88, 5);
+    expect(right[0]).toBeCloseTo(88, 5);
+    expect(left[1]).toBeCloseTo(-right[1], 5);
+    expect(Math.abs(left[1])).toBeGreaterThan(4);
+  });
+
+  it("land where they were drawn on upright and turned pages", () => {
+    const upright = { x: 0, y: 0, width: 595, height: 842, rotation: 0 };
+    // As shown, y runs down from the top; the page's own space runs up from the bottom.
+    expect(shapeInPage(upright, shape()).box).toEqual({ x: 100, y: 842 - 260, width: 200, height: 60 });
+    // A page turned a quarter shows 842 wide and 595 tall; a shown box comes out on its side in the page's own space.
+    const turned = { x: 0, y: 0, width: 595, height: 842, rotation: 90 };
+    const box = shapeInPage(turned, shape()).box;
+    expect(box).toEqual({ x: 200, y: 100, width: 60, height: 200 });
+    const arrow = shapeInPage(upright, shape({ shape: "arrow", x1: 100, y1: 100, x2: 200, y2: 100 }));
+    expect(arrow.head![0]).toEqual({ x: 200, y: 742 });
+    expect(arrow.end.x).toBeLessThan(200);
+  });
+
+  it("are written into the page (a highlight see-through and multiplied in)", async () => {
+    let bytes: Uint8Array = await testPdf();
+    for (const s of ["highlight", "box", "oval", "line", "arrow"] as const) bytes = await addShape(bytes, shape({ shape: s, page: s === "arrow" ? 1 : 0 }));
+    const doc = await PDFDocument.load(bytes);
+    const states = doc.getPage(0).node.Resources()!.lookup(PDFName.of("ExtGState"), PDFDict);
+    const modes = states.keys().map((k) => String(states.lookup(k, PDFDict).get(PDFName.of("BM")) ?? ""));
+    expect(modes).toContain("/Multiply");
+    const { doc: read, page } = await open(bytes, 0);
+    const ops = await page.getOperatorList();
+    // The box, the oval and the line are drawn as outlines; the highlight is filled.
+    expect(ops.fnArray.filter((f) => f === OPS.stroke || f === OPS.closeStroke).length).toBeGreaterThanOrEqual(3);
+    expect(ops.fnArray.filter((f) => f === OPS.fill || f === OPS.eoFill).length).toBeGreaterThanOrEqual(1);
+    await read.destroy();
+    await expect(addShape(bytes, shape({ page: 9 }))).rejects.toThrow(/no page 10/);
+  });
+
+  it("are named for Undo", () => {
+    expect(additionLabel(shape({ shape: "highlight" }))).toBe("add a highlight to page 1");
+    expect(additionLabel(shape({ shape: "arrow", page: 1 }))).toBe("add an arrow to page 2");
   });
 });
 
