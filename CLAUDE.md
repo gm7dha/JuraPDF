@@ -69,6 +69,10 @@
   picture (`src/pdf/pictures.ts`: `parseContent` (src/model/contentStream.ts) walks the page's instructions tracking q/Q/cm to find
   each image `Do`; `changePicture` replaces just that command with `q M cm /Name Do Q` (`moveMatrix`/`placeMatrix` in
   src/model/pictures.ts) or nothing; draft kind "existing" with a canvas-cropped preview). Pictures inside forms aren't found.
+- Bring in and save out: Bring in (`insertFromFile` → `bringIn` in pageActions.ts, `pickFiles` in fileActions.ts) takes PDFs and
+  PNG/JPG (`insertPictures` in src/pdf/pages.ts: one page each, sized like its neighbours, turned to suit). `exportActions.ts`:
+  `savePagesAsPictures` (`pagePicture` in pdfjs.ts at `PICTURE_DPI` 200; several pages in a zip from `makeZip`, src/model/zip.ts,
+  stored not squeezed) and `saveWordsAsText` (`pageText`/`documentText`, src/model/textOut.ts). Saving goes through `writeFile`.
 - Reading words in pictures (`src/app/ocrActions.ts`, button "Read words in pictures"): `pageForReading` (pdfjs.ts) draws the page at
   300 dpi with pale colours turned white (`inkOnly`) and lists the page's own level words; `readPicture` (src/pdf/ocr.ts) runs
   Tesseract from `ocr/` (worker, core, eng.traineddata.gz, copied by `ocrFiles` in vite.config.ts); `wordsToAdd` (src/model/ocr.ts)

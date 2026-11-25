@@ -72,5 +72,6 @@ tests          Vitest, pure code only;  scripts/smoke-test.mjs drives the built 
 - **v0.6.5 (done)** — **change what's already on a page**: move, resize, swap or delete pictures already on a page; fix
   words already on a page (the old words are covered with white and the new ones written in the closest matching font;
   short fixes only, as PDFs don't reflow).
-- **v0.7** — **bring in and save out**: pictures (JPG/PNG) to new pages; pages to PNG/JPG; all the words out as text.
+- **v0.7 (done)** — **bring in and save out**: pictures (JPG/PNG) to new pages; pages to PNG (several in a zip); all the
+  words out as text.
 - **Later** — recent files, keeping work in the browser between visits, comments and highlights, compressing large PDFs.

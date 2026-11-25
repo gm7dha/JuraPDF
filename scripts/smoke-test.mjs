@@ -756,6 +756,40 @@ await step("changing words and a picture already on a page", async () => {
   expect(!(await label())?.includes("page 1 to"), "Undo takes the changes back");
 });
 
+await step("bringing in a picture as a page, and saving pages as pictures and the words as text", async () => {
+  await page.keyboard.press("Home");
+  const count = () => page.evaluate(() => window.jurapdfStore.getState().pdf.sizes.length);
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAIAAAB7QOjdAAAAEElEQVR4nGP4z8DAwMDAAAAN/gH/w+1JvwAAAABJRU5ErkJggg==", "base64");
+  const [chooser] = await Promise.all([page.waitForEvent("filechooser"), page.getByRole("button", { name: "Bring in pages from another PDF or pictures" }).click()]);
+  await chooser.setFiles({ name: "Photo.png", mimeType: "image/png", buffer: png });
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "bring in Photo.png as a page");
+  expect((await count()) === 4, `a picture becomes one new page: ${await count()}`);
+
+  // One page as a picture.
+  await page.evaluate(() => window.jurapdfStore.getState().setSelected([]));
+  await page.evaluate(() => window.jurapdfStore.getState().goToPage(0));
+  const [one] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Save pages as pictures" }).click()]);
+  expect(one.suggestedFilename() === "Smoke test - page 1.png", `saved as ${one.suggestedFilename()}`);
+  const pic = await readFile(await one.path());
+  expect(pic.subarray(1, 4).toString() === "PNG" && pic.readUInt32BE(16) > 1500, `page 1 as a PNG about 200 dots to the inch wide: ${pic.readUInt32BE(16)}`);
+
+  // Several pages go in a zip.
+  await page.evaluate(() => window.jurapdfStore.getState().setSelected([0, 1]));
+  const [zip] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Save pages as pictures" }).click()]);
+  expect(zip.suggestedFilename() === "Smoke test (pages 1 and 2).zip", `saved as ${zip.suggestedFilename()}`);
+  const zipped = await readFile(await zip.path());
+  expect(zipped.readUInt32LE(0) === 0x04034b50 && zipped.includes("Smoke test - page 2.png"), "the zip holds the pictures");
+
+  // All the words as text.
+  const [txt] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Save the words as text" }).click()]);
+  const text = (await readFile(await txt.path())).toString("utf8");
+  expect(txt.suggestedFilename() === "Smoke test.txt" && /--- Page 1 ---\nSmoke page 1/.test(text) && /--- Page 3 ---/.test(text), `the words as text: ${text.slice(0, 200)}`);
+
+  await page.evaluate(() => window.jurapdfStore.getState().setSelected([]));
+  await page.keyboard.press("Control+z");
+  await page.waitForFunction(() => window.jurapdfStore.getState().pdf.sizes.length === 3);
+});
+
 await step("Connect to Claude with no extension running says what to do", async () => {
   await page.getByRole("button", { name: "Connect to Claude" }).click();
   await page.locator('.modal:has-text("Not connected")').waitFor({ timeout: 60_000 });

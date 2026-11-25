@@ -8,6 +8,7 @@ import { parsePageNumber, parseZoom, zoomIn, zoomLabel, zoomOut } from "../model
 import { SHAPE_NAMES, type ShapeKind } from "../model/additions";
 import { cancelAdding, startChanging, startPicture, startShape, startWords } from "./addActions";
 import { Icons } from "./icons";
+import { savePagesAsPictures, saveWordsAsText } from "./exportActions";
 import { readWordsInPictures } from "./ocrActions";
 import { addBlank, deleteChosen, insertFromFile, moveChosen, saveChosenAsNew, turnChosen } from "./pageActions";
 import { detectPlatform, shortcut } from "./platform";
@@ -180,11 +181,17 @@ export function ViewBar() {
         <button type="button" className="icon-button" onClick={() => void addBlank()} aria-label="Add a blank page" title={`Add a blank page after ${which}`}>
           <Icons.AddPage />
         </button>
-        <button type="button" className="icon-button" onClick={() => void insertFromFile()} aria-label="Bring in pages from another PDF" title={`Bring in all the pages of another PDF, after ${which}`}>
+        <button type="button" className="icon-button" onClick={() => void insertFromFile()} aria-label="Bring in pages from another PDF or pictures" title={`Bring in all the pages of another PDF, or pictures (PNG or JPG) as new pages, after ${which}`}>
           <Icons.BringIn />
         </button>
         <button type="button" className="icon-button" onClick={() => void saveChosenAsNew()} aria-label="Save pages as a new PDF" title={`Save ${these} as a new PDF`}>
           <Icons.SaveOut />
+        </button>
+        <button type="button" className="icon-button" onClick={() => void savePagesAsPictures()} aria-label="Save pages as pictures" title={`Save ${these} as pictures (PNG; several pages come in a zip file)`}>
+          <Icons.SavePicture />
+        </button>
+        <button type="button" className="icon-button" onClick={() => void saveWordsAsText()} aria-label="Save the words as text" title="Save all the words in this PDF as a text file">
+          <Icons.SaveText />
         </button>
       </div>
       <span className="viewbar-divider" />

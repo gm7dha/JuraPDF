@@ -319,4 +319,19 @@ export const Icons = {
       <path d="M16 7h5M16 11h5M3 18h18M3 21h12" />
     </Svg>
   ),
+  /** Save pages as pictures: a picture with an arrow out. */
+  SavePicture: (p: IconProps) => (
+    <Svg {...p}>
+      <rect x="3" y="5" width="12" height="11" rx="1.5" />
+      <path d="m3.5 14 3.5-3.5 3 3 1.5-1.5 3 3" />
+      <path d="M18 9v10M14.5 15.5 18 19l3.5-3.5" />
+    </Svg>
+  ),
+  /** Save the words as text: lines of words with an arrow out. */
+  SaveText: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M4 6h11M4 10h11M4 14h7" />
+      <path d="M18 9v10M14.5 15.5 18 19l3.5-3.5" />
+    </Svg>
+  ),
 };
