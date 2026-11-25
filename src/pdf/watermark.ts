@@ -131,6 +131,9 @@ export async function loadForEditing(bytes: Uint8Array): Promise<PDFDocument> {
   if (kept) {
     // Taken out: whatever is done with it now, it no longer matches these bytes.
     lastSaved.delete(bytes);
+    // pdf-lib carries on drawing into the stream it last drew a page with, but that stream was already
+    // written out when it was saved, so anything more drawn there would be lost: start new ones.
+    for (const page of kept.getPages()) Object.assign(page, { contentStream: undefined, contentStreamRef: undefined });
     return kept;
   }
   try {

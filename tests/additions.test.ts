@@ -160,3 +160,13 @@ describe("writing words and pictures", () => {
     await expect(addPicture(bytes, { kind: "picture", page: 0, x: 0, y: 0, width: 1, height: 1 }, { bytes: new Uint8Array([1, 2]), type: "png", name: "bad.png" })).rejects.toThrow(/bad.png/);
   });
 });
+
+describe("one change after another on the same page", () => {
+  it("keeps everything drawn by each", async () => {
+    let bytes: Uint8Array = await testPdf();
+    bytes = await addWords(bytes, words({ text: "First" }));
+    bytes = await addWords(bytes, words({ text: "Second", y: 300 }));
+    bytes = await addWords(bytes, words({ text: "Third", y: 400 }));
+    expect((await textOn(bytes, 0)).map((i) => i.str)).toEqual(["First", "Second", "Third"]);
+  });
+});
