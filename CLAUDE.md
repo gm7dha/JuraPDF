@@ -15,7 +15,9 @@
   `@tesseract.js-data/eng` (Apache 2.0, pinned; Kevin chose it), only in `src/pdf/ocr.ts`, loaded on first use. No other runtime
   dependencies, no CDNs: everything works offline.
 - pdf.js's character maps and standard fonts are served from `node_modules` in dev and copied to `dist/pdfjs/` by the
-  plugin in `vite.config.ts`. The worker is imported with `?url`.
+  plugin in `vite.config.ts`. The worker comes from `virtual:pdfjs-worker-url` (`pdfjsWorker` in vite.config.ts): pdf.js's
+  worker with JPGs carrying EXIF sent to pdf.js's own decoder, so `isImageDecoderSupported: true` (the browser unpacks
+  other JPGs, ~10× quicker) can't turn photos; the build fails if the patched spot moves. The smoke test checks it.
 - Units: page sizes are PDF points (72 to the inch), as pdf.js gives them (already turned for rotated pages). At 100%
   a page shows at real size: `CSS_PER_PT` = 96 / 72 CSS pixels per point (`src/model/zoom.ts`).
 - The page view (`src/app/PageView.tsx`) lays every page out from `layoutPages` (pure) but only puts pages within 2.5
@@ -46,7 +48,7 @@
 - One page at a time (`onePage` in the store, remembered in localStorage `jurapdf.onePage`): PageView lays out only
   the page being read (fitted on its own, zoom "page"); the wheel flips pages through `wheelFlip` (zoom.ts) once a
   zoomed-in page can't scroll further (`wheelResting`: a glide is let go by after a flip, a fresh flick after a pause isn't), the pages
-  either side are drawn ahead (`drawAhead` in `src/app/pageCanvases.ts`, which keeps the last 8 drawings per version for any slot), and App's shortcuts flip with ↑/↓/Page Up/Page Down.
+  ahead are drawn early (`pagesAhead` in zoom.ts: three on in the flick direction, one back; `drawAhead` in `src/app/pageCanvases.ts`, which keeps the last 8 drawings per version for any slot), and App's shortcuts flip with ↑/↓/Page Up/Page Down.
 - Pages (`src/model/pages.ts` pure: picking and new orders; `src/pdf/pages.ts` writing): the page buttons in the
   ViewBar (`src/app/pageActions.ts`) work on the picked pages (`selected` in the store, cleared by every change, plain
   click = just go to the page) or else the page being read. Thumbnails are drag sources and drop targets for moving.

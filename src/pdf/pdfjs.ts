@@ -5,7 +5,7 @@
  */
 import * as pdfjs from "pdfjs-dist";
 import type { PDFDocumentProxy, PDFPageProxy, RenderTask } from "pdfjs-dist";
-import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import workerUrl from "virtual:pdfjs-worker-url";
 
 import type { Size } from "../model/zoom";
 
@@ -37,6 +37,9 @@ export async function loadPdf(bytes: Uint8Array, password?: string): Promise<PDF
     cMapPacked: true,
     standardFontDataUrl: `${base}pdfjs/standard_fonts/`,
     isEvalSupported: false,
+    // Let Chrome and Edge unpack JPG pictures themselves: far quicker for scanned pages.
+    // (The worker is changed so JPGs with a "which way up" note still go the slow, careful way: see vite.config.ts.)
+    isImageDecoderSupported: true,
   });
   try {
     return await task.promise;

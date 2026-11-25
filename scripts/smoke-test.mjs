@@ -15,7 +15,7 @@ import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import { extname, join } from "node:path";
 import { chromium } from "playwright";
-import { PDFDict, PDFDocument, PDFName } from "pdf-lib";
+import { concatTransformationMatrix, drawObject, PDFDict, PDFDocument, PDFName, popGraphicsState, pushGraphicsState } from "pdf-lib";
 
 const inCI = process.env.GITHUB_ACTIONS === "true";
 const annotate = (level, title, message) => {
@@ -903,6 +903,46 @@ await step("dark mode", async () => {
   expect((await page.evaluate(() => document.documentElement.dataset.theme)) === "dark", "should be dark");
   await page.getByRole("radio", { name: "Light" }).click();
   await page.keyboard.press("Escape");
+});
+
+// Chrome unpacks JPG pictures itself (quick), but one carrying a "which way up" note (EXIF) must still come out as
+// it's stored in the PDF: pdf.js's worker is changed to send those the careful way (pdfjsWorker in vite.config.ts).
+await step("a JPG picture with a 'which way up' note isn't turned", async () => {
+  const plain = await page.evaluate(() => {
+    const c = document.createElement("canvas");
+    [c.width, c.height] = [400, 200];
+    const g = c.getContext("2d");
+    g.fillStyle = "#fff";
+    g.fillRect(0, 0, 400, 200);
+    g.fillStyle = "#f00";
+    g.fillRect(0, 0, 200, 200);
+    return c.toDataURL("image/jpeg", 0.95).split(",")[1];
+  });
+  const jpg = Buffer.from(plain, "base64");
+  // An EXIF note saying "turn a quarter to the right" (orientation 6), just after the start.
+  const exif = Buffer.from("ffe10022457869660000" + "4d4d002a00000008" + "0001" + "011200030000000100060000" + "00000000", "hex");
+  const raw = Buffer.concat([jpg.subarray(0, 2), exif, jpg.subarray(2)]);
+  const doc = await PDFDocument.create();
+  const img = doc.context.register(doc.context.stream(raw, { Type: "XObject", Subtype: "Image", Width: 400, Height: 200, ColorSpace: "DeviceRGB", BitsPerComponent: 8, Filter: "DCTDecode" }));
+  const pg = doc.addPage([400, 200]);
+  const name = pg.node.newXObject("Im", img);
+  pg.pushOperators(pushGraphicsState(), concatTransformationMatrix(400, 0, 0, 200, 0, 0), drawObject(name), popGraphicsState());
+  page.once("dialog", (d) => void d.accept());
+  await page.evaluate(async (b64) => {
+    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const dt = new DataTransfer();
+    dt.items.add(new File([bytes], "Turned photo.pdf", { type: "application/pdf" }));
+    window.dispatchEvent(new DragEvent("drop", { dataTransfer: dt, bubbles: true, cancelable: true }));
+  }, Buffer.from(await doc.save()).toString("base64"));
+  await page.waitForFunction(() => window.jurapdfStore.getState().pdf?.fileName === "Turned photo.pdf" && document.querySelector('.page[data-page="1"].drawn'), null, { timeout: 15_000 });
+  await page.waitForTimeout(500);
+  const [left, top] = await page.evaluate(() => {
+    const c = document.querySelector('.page[data-page="1"] canvas');
+    const g = c.getContext("2d");
+    const at = (x, y) => [...g.getImageData(Math.round(c.width * x), Math.round(c.height * y), 1, 1).data].slice(0, 3);
+    return [at(0.1, 0.5), at(0.5, 0.1)];
+  });
+  expect(left[0] > 200 && left[1] < 80 && top[1] > 200, `the left half is red and the top middle white: ${left} / ${top}`);
 });
 
 if (process.env.SMOKE_SCREENSHOT) {
