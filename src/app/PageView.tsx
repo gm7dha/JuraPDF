@@ -10,8 +10,9 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 
 import { useStore } from "../model/store";
-import { CSS_PER_PT, PAGE_MARGIN_Y, currentPageAt, keepSpotInView, layoutPages, pagesInView, resolveZoom, wheelFlip, type PageBox, type Size } from "../model/zoom";
+import { CSS_PER_PT, PAGE_MARGIN_Y, currentPageAt, keepSpotInView, layoutPages, pagesInView, resolveZoom, WHEEL_PAUSE, wheelFlip, wheelResting, type PageBox, type Size } from "../model/zoom";
 import { drawPage, drawTextLayer, isCancelled, type PDFDocumentProxy } from "../pdf/pdfjs";
+import { drawAhead, keepCanvas, keptCanvas } from "./pageCanvases";
 import { endShapeDrag, placeAt, startShapeAt, updateDraft } from "./addActions";
 import { DraftBox } from "./DraftBox";
 
@@ -54,6 +55,19 @@ export function PageView() {
     const next = pagesInView(layoutRef.current.boxes, el.scrollTop, el.clientHeight, el.clientHeight * 2.5);
     setRange((r) => (r[0] === next[0] && r[1] === next[1] ? r : next));
   };
+
+  // One page at a time: draw the pages either side ahead of time, so flipping to them is instant.
+  useEffect(() => {
+    if (!onePage || !pdf || view[0] <= 0) return;
+    const doc = pdf.doc;
+    const timer = setTimeout(() => {
+      for (const n of [shownPage + 1, shownPage - 1, shownPage + 2]) {
+        const size = allSizes[n];
+        if (size) void drawAhead(doc, n, resolveZoom(zoomMode, [size], view) * CSS_PER_PT);
+      }
+    }, 120);
+    return () => clearTimeout(timer);
+  }, [onePage, pdf, shownPage, zoomMode, view, allSizes]);
 
   // Where the window was scrolled to, kept as it scrolls (the browser may clamp it before we can read it after a zoom).
   const scrollPos = useRef({ top: 0, left: 0 });
@@ -139,6 +153,7 @@ export function PageView() {
     if (!el) return;
     let turned = 0;
     let restUntil = 0;
+    let lastWheel = 0;
     const onWheel = (e: WheelEvent) => {
       if (!e.ctrlKey && !e.metaKey) {
         if (!onePageRef.current || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
@@ -149,12 +164,16 @@ export function PageView() {
           return;
         }
         e.preventDefault();
-        // After a flip, let the rest of that wheel turn (a trackpad's glide) go by.
-        if (performance.now() < restUntil) return;
+        // After a flip, let the rest of that wheel turn (a trackpad's glide) go by; a fresh turn after a pause flips at once.
+        const now = performance.now();
+        const gap = now - lastWheel;
+        lastWheel = now;
+        if (wheelResting(now, restUntil, gap)) return;
+        if (gap >= WHEEL_PAUSE) turned = 0;
         const r = wheelFlip(turned, dy, false);
         turned = r.total;
         if (r.flip) {
-          restUntil = performance.now() + 350;
+          restUntil = now + 350;
           const s = useStore.getState();
           const count = s.pdf?.sizes.length ?? 0;
           const next = s.currentPage + r.flip;
@@ -202,11 +221,12 @@ const PageSlot = memo(function PageSlot({ doc, index, box, zoom, root }: SlotPro
   const ref = useRef<HTMLDivElement>(null);
   const holder = useRef<HTMLDivElement>(null);
   const text = useRef<HTMLDivElement>(null);
-  const [near, setNear] = useState(false);
+  const cssScale = zoom * CSS_PER_PT;
+  // A page drawn a moment ago (or ahead of time) counts as near straight away, so it shows at once.
+  const [near, setNear] = useState(() => !!keptCanvas(doc, index, cssScale));
   const [drawn, setDrawn] = useState(false);
   /** The version of the PDF the page was last drawn from. */
   const drawnFrom = useRef<PDFDocumentProxy | null>(null);
-  const cssScale = zoom * CSS_PER_PT;
 
   useEffect(() => {
     const el = ref.current;
@@ -217,10 +237,18 @@ const PageSlot = memo(function PageSlot({ doc, index, box, zoom, root }: SlotPro
   }, [root]);
 
   // Draw the page when it comes near, and again (sharp) after the zoom settles.
-  useEffect(() => {
+  // (Before the window is painted, so a kept drawing shows without a blank moment.)
+  useLayoutEffect(() => {
     if (!near) {
       holder.current?.replaceChildren();
       setDrawn(false);
+      return;
+    }
+    const ready = keptCanvas(doc, index, cssScale);
+    if (ready && holder.current) {
+      if (holder.current.firstChild !== ready) holder.current.replaceChildren(ready);
+      drawnFrom.current = doc;
+      setDrawn(true);
       return;
     }
     let stopped = false;
@@ -235,6 +263,7 @@ const PageSlot = memo(function PageSlot({ doc, index, box, zoom, root }: SlotPro
           await task.promise;
           if (stopped || !holder.current) return;
           holder.current.replaceChildren(canvas);
+          keepCanvas(doc, index, cssScale, canvas);
           drawnFrom.current = doc;
           setDrawn(true);
         } catch (e) {

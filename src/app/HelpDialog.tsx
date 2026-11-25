@@ -43,7 +43,7 @@ export function HelpDialog() {
       <p>
         <strong>Highlight</strong> (the marker button): drag across words to colour them in, see-through so they still show. The <strong>box</strong>, <strong>oval</strong>,{" "}
         <strong>line</strong> and <strong>arrow</strong> buttons draw by dragging on a page (an arrow points to where you let go). Drag the round handles to change it, pick a colour
-        and thickness, then <strong>Done</strong>.
+        and thickness, then <strong>Done</strong>. Or pick words with the mouse, and press <strong>Highlight</strong> on the little bar by them.
       </p>
       <p className="muted">Coming next: changing what's already on a page, and saving pages as pictures.</p>
       <div className="platform-row">

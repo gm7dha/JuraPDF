@@ -3,7 +3,7 @@
  * Node for the tests and Claude). Where things go is worked out in
  * src/model/additions.ts.
  */
-import { BlendMode, LineCapStyle, StandardFontEmbedder, degrees, rgb } from "pdf-lib";
+import { BlendMode, LineCapStyle, StandardFontEmbedder, degrees, rgb, type PDFPage } from "pdf-lib";
 
 import { HIGHLIGHT_OPACITY, lineStarts, shapeInPage, linesOf, type PictureItem, type ShapeItem, type WordsItem } from "../model/additions";
 import { hexToRgb, toPageSpace, type FontChoice } from "../model/watermark";
@@ -97,13 +97,27 @@ export async function addPicture(bytes: Uint8Array, item: PictureItem, picture: 
 
 /** Draw a highlight, box, oval, line or arrow on its page. Gives the new file. */
 export async function addShape(bytes: Uint8Array, item: ShapeItem): Promise<Uint8Array<ArrayBuffer>> {
+  return addShapes(bytes, [item]);
+}
+
+/** Several shapes at once (e.g. a highlight over each line of the words picked), as one change. */
+export async function addShapes(bytes: Uint8Array, items: ShapeItem[]): Promise<Uint8Array<ArrayBuffer>> {
   const doc = await loadForEditing(bytes);
-  const page = pageOf(doc, item.page);
-  const { box, start, end, head } = shapeInPage(frameOf(page), item);
+  for (const index of [...new Set(items.map((i) => i.page))]) {
+    const page = pageOf(doc, index);
+    const frame = frameOf(page);
+    const before = existingContents(page);
+    for (const item of items.filter((i) => i.page === index)) drawShape(page, frame, item);
+    arrange(page, before, false);
+  }
+  return save(doc);
+}
+
+function drawShape(page: PDFPage, frame: ReturnType<typeof frameOf>, item: ShapeItem): void {
+  const { box, start, end, head } = shapeInPage(frame, item);
   const [r, g, b] = hexToRgb(item.colour);
   const color = rgb(r, g, b);
   const thickness = Math.max(0.25, item.thickness);
-  const before = existingContents(page);
   switch (item.shape) {
     case "highlight":
       // Multiplied into the page, so the words under it stay crisp and dark.
@@ -124,8 +138,6 @@ export async function addShape(bytes: Uint8Array, item: ShapeItem): Promise<Uint
       }
       break;
   }
-  arrange(page, before, false);
-  return save(doc);
 }
 
 /** PNG or JPG, from the file's first bytes (null for anything else). */

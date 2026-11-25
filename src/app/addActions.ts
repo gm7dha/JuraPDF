@@ -2,10 +2,10 @@
  * Adding words or a picture to a page: choose what, click on a page to put it
  * there, move and size it, then Done writes it into the PDF (one undo step).
  */
-import { additionLabel, DEFAULT_WORDS, keepOnPage, SHAPE_NAMES, SHAPE_STYLE, sizedShape, startingPictureSize, type Draft, type ShapeKind } from "../model/additions";
+import { additionLabel, DEFAULT_WORDS, highlightsFor, type Rect, type ShapeItem, keepOnPage, SHAPE_NAMES, SHAPE_STYLE, sizedShape, startingPictureSize, type Draft, type ShapeKind } from "../model/additions";
 import { useStore } from "../model/store";
 import type { FontChoice } from "../model/watermark";
-import { AddProblem, addPicture, addShape, addWords, pictureType } from "../pdf/additions";
+import { AddProblem, addPicture, addShape, addShapes, addWords, pictureType } from "../pdf/additions";
 import { LockedPdf } from "../pdf/watermark";
 import { applyChange } from "./editing";
 
@@ -130,6 +130,58 @@ export function cancelAdding(): void {
 }
 
 let busy = false;
+
+/** The boxes (in points, per page) of the words picked with the mouse, from the pages' words layers. */
+export function pickedWordBoxes(): Map<number, Rect[]> {
+  const out = new Map<number, Rect[]>();
+  const sel = window.getSelection();
+  const sizes = useStore.getState().pdf?.sizes;
+  if (!sel || sel.isCollapsed || !sel.rangeCount || !sizes) return out;
+  const range = sel.getRangeAt(0);
+  for (const pageEl of document.querySelectorAll<HTMLElement>(".page[data-page]")) {
+    const layer = pageEl.querySelector(".textLayer");
+    const index = Number(pageEl.dataset.page) - 1;
+    const size = sizes[index];
+    if (!layer || !size || !range.intersectsNode(layer)) continue;
+    const box = pageEl.getBoundingClientRect();
+    const scale = box.width / size[0];
+    const rects: Rect[] = [];
+    const walker = document.createTreeWalker(layer, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (!range.intersectsNode(node) || !node.textContent?.trim()) continue;
+      const part = document.createRange();
+      part.selectNodeContents(node);
+      if (node === range.startContainer) part.setStart(node, range.startOffset);
+      if (node === range.endContainer) part.setEnd(node, range.endOffset);
+      for (const r of part.getClientRects()) {
+        rects.push({ x: (r.left - box.left) / scale, y: (r.top - box.top) / scale, width: r.width / scale, height: r.height / scale });
+      }
+    }
+    if (rects.length) out.set(index, rects);
+  }
+  return out;
+}
+
+/** Highlight the words picked with the mouse (one undo step, however many lines and pages). */
+export async function highlightPicked(): Promise<void> {
+  const s = useStore.getState();
+  if (busy || !s.pdf) return;
+  const items: ShapeItem[] = [];
+  for (const [page, rects] of pickedWordBoxes()) items.push(...highlightsFor(page, rects, lastShape.highlight.colour));
+  if (!items.length) return;
+  const pages = [...new Set(items.map((i) => i.page + 1))];
+  busy = true;
+  try {
+    const bytes = await addShapes(s.pdf.bytes, items);
+    await applyChange(bytes, pages.length === 1 ? `highlight words on page ${pages[0]}` : `highlight words on pages ${pages[0]}–${pages[pages.length - 1]}`);
+    window.getSelection()?.removeAllRanges();
+  } catch (e) {
+    if (e instanceof LockedPdf) say("This PDF is locked against changes, so nothing can be highlighted.", "error");
+    else say(`Couldn't highlight them: ${e instanceof Error ? e.message : String(e)}`, "error");
+  } finally {
+    busy = false;
+  }
+}
 
 /** Write the words or picture into the PDF. */
 export async function finishAdding(): Promise<void> {

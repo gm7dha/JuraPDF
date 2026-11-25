@@ -1802,3 +1802,35 @@ span.bookmark-fold {
   cursor: crosshair;
   touch-action: none;
 }
+
+/* Beside words picked with the mouse: Highlight and Copy. */
+.picked-bar {
+  position: fixed;
+  z-index: 30;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.picked-button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.picked-button:hover {
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}

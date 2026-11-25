@@ -5,6 +5,8 @@ import {
   MAX_ZOOM,
   pagesInView,
   wheelFlip,
+  wheelResting,
+  WHEEL_PAUSE,
   MIN_ZOOM,
   PAGE_GAP,
   PAGE_MARGIN_X,
@@ -120,6 +122,14 @@ describe("one page at a time: the wheel flips pages", () => {
   });
   it("scrolls the page instead while it can", () => {
     expect(wheelFlip(60, 100, true)).toEqual({ total: 0, flip: 0 });
+  });
+  it("lets a trackpad's glide go by after a flip, but flips again at once for a fresh turn of the wheel", () => {
+    // The glide: events every 16 ms carry on after the flip.
+    expect(wheelResting(1100, 1350, 16)).toBe(true);
+    // A fresh flick after a pause.
+    expect(wheelResting(1100, 1350, WHEEL_PAUSE + 10)).toBe(false);
+    // The rest is over.
+    expect(wheelResting(1400, 1350, 16)).toBe(false);
   });
 });
 

@@ -148,6 +148,19 @@ export function keepSpotInView(
 /** How far the wheel must turn (CSS pixels) to flip to the next page when showing one page at a time. */
 export const FLIP_DISTANCE = 80;
 
+/** A pause between wheel events this long (ms) means a new turn of the wheel, not the same glide. */
+export const WHEEL_PAUSE = 70;
+
+/**
+ * Whether to let a wheel event go by after a flip: until `restUntil`, unless
+ * the wheel paused first (`gap` ms since the last event), which is a fresh
+ * turn of the wheel (flicking quickly through pages) rather than a trackpad's
+ * glide carrying on.
+ */
+export function wheelResting(now: number, restUntil: number, gap: number): boolean {
+  return now < restUntil && gap < WHEEL_PAUSE;
+}
+
 /**
  * One page at a time: add a wheel turn to the turn so far and say whether to
  * flip a page (+1 next, −1 previous). A turn the other way starts again.

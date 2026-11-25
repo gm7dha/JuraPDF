@@ -5,6 +5,14 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.6.3 — Quicker page flips, highlight picked words
+
+- **One page at a time flips straight away.** The pages either side are drawn ahead while you read, so the next
+  one is already there; pages just looked at are kept for a moment too. A quick flick of the mouse wheel now flips
+  again at once, while a trackpad's glide still only turns one page.
+- **Pick words with the mouse, then Highlight.** A small bar appears by the words you've picked: Highlight colours
+  them in (see-through, line by line, across pages too, as one Undo step), and Copy copies them.
+
 ## v0.6.2 — Highlights and shapes
 
 - **Highlight words**: the marker button, then drag across the words. They're coloured in with see-through yellow

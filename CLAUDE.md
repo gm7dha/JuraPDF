@@ -43,7 +43,8 @@
   `tests/watermark.test.ts` reads the result back with pdf.js (legacy build) to check where the words landed.
 - One page at a time (`onePage` in the store, remembered in localStorage `jurapdf.onePage`): PageView lays out only
   the page being read (fitted on its own, zoom "page"); the wheel flips pages through `wheelFlip` (zoom.ts) once a
-  zoomed-in page can't scroll further, and App's shortcuts flip with ↑/↓/Page Up/Page Down.
+  zoomed-in page can't scroll further (`wheelResting`: a glide is let go by after a flip, a fresh flick after a pause isn't), the pages
+  either side are drawn ahead (`drawAhead` in `src/app/pageCanvases.ts`, which keeps the last 8 drawings per version for any slot), and App's shortcuts flip with ↑/↓/Page Up/Page Down.
 - Pages (`src/model/pages.ts` pure: picking and new orders; `src/pdf/pages.ts` writing): the page buttons in the
   ViewBar (`src/app/pageActions.ts`) work on the picked pages (`selected` in the store, cleared by every change, plain
   click = just go to the page) or else the page being read. Thumbnails are drag sources and drop targets for moving.
@@ -59,7 +60,8 @@
   the store: the next click on a page) and the `draft` (`DraftBox.tsx`, drawn inside the page at `cssScale`), Done
   writes one undo step. Live with Claude is busy while either is open. Claude tools: add_words, add_picture, add_shape. Shapes (`ShapeItem`:
   highlight, box, oval, line, arrow from (x1,y1) to (x2,y2); `addShape`, a highlight see-through with Multiply) are drawn by
-  dragging on the page (PageView's pointerdown while `placing` is a shape) and changed in `ShapeDraft.tsx` (an SVG over the page).
+  dragging on the page (PageView's pointerdown while `placing` is a shape) and changed in `ShapeDraft.tsx` (an SVG over the page). Words picked with the mouse get `PickedWordsBar` (Highlight, Copy):
+  `pickedWordBoxes` reads the selection's boxes from the words layers, `highlightsFor` joins them per line, `addShapes` writes them as one step.
 - JuraPDF for Claude (`src/mcp/`, `src/live/`, `claude-extension/manifest.json`): JuraDAW's extension and live link
   (which are JuraCAD's) with the names changed, so a fix in one belongs in the others. Ports **47655–47664** (JuraCAD
   47615–47624, JuraDAW 47635–47644), path `/jurapdf-live`, sub-protocol `jurapdf-live.1`, `JURAPDF_LIVE_DEV=1` lets in
