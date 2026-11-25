@@ -74,4 +74,6 @@ tests          Vitest, pure code only;  scripts/smoke-test.mjs drives the built 
   short fixes only, as PDFs don't reflow).
 - **v0.7 (done)** — **bring in and save out**: pictures (JPG/PNG) to new pages; pages to PNG (several in a zip); all the
   words out as text.
+- **v0.7.1 (done)** — scanned pages unpacked by the browser (about ten times quicker), and one page at a time
+  reads three pages ahead in the direction you're flicking.
 - **Later** — recent files, keeping work in the browser between visits, comments and highlights, compressing large PDFs.

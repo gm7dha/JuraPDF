@@ -152,6 +152,15 @@ export const FLIP_DISTANCE = 80;
 export const WHEEL_PAUSE = 70;
 
 /**
+ * One page at a time: which pages to draw ahead, most wanted first. Three
+ * further on in the way you're going (−1 back, +1 on), then one the other way.
+ */
+export function pagesAhead(page: number, way: 1 | -1, count: number): number[] {
+  const order = [page + way, page + 2 * way, page + 3 * way, page - way];
+  return order.filter((n) => n >= 0 && n < count);
+}
+
+/**
  * Whether to let a wheel event go by after a flip: until `restUntil`, unless
  * the wheel paused first (`gap` ms since the last event), which is a fresh
  * turn of the wheel (flicking quickly through pages) rather than a trackpad's

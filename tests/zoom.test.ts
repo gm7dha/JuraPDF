@@ -6,6 +6,7 @@ import {
   pagesInView,
   wheelFlip,
   wheelResting,
+  pagesAhead,
   WHEEL_PAUSE,
   MIN_ZOOM,
   PAGE_GAP,
@@ -147,5 +148,16 @@ describe("pages to have on hand", () => {
       const want = boxes.map((b, i) => [b, i] as const).filter(([b]) => b.top + b.height >= top - 400 && b.top <= top + 800 + 400).map(([, i]) => i);
       expect(pagesInView(boxes, top, 800, 400)).toEqual([want[0], want[want.length - 1]]);
     }
+  });
+});
+
+describe("pagesAhead", () => {
+  it("draws three on in the way you're going, then one back", () => {
+    expect(pagesAhead(5, 1, 20)).toEqual([6, 7, 8, 4]);
+    expect(pagesAhead(5, -1, 20)).toEqual([4, 3, 2, 6]);
+  });
+  it("stays within the PDF", () => {
+    expect(pagesAhead(0, -1, 3)).toEqual([1]);
+    expect(pagesAhead(1, 1, 3)).toEqual([2, 0]);
   });
 });

@@ -5,6 +5,15 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.7.1 — Quicker flicking through scanned pages
+
+- **Scanned pages show much sooner.** Pages that are photos or scans used to take up to half a second each the first
+  time they were shown, while JuraPDF unpacked the picture. In Chrome and Edge it now lets the browser unpack them,
+  about ten times quicker (around 50 ms a page). Photos that carry a "which way up" note are still unpacked the
+  careful way so they never come out turned.
+- **One page at a time reads ahead.** It now gets the next three pages ready in the direction you're flicking (and
+  one the other way), so flicking quickly through a long scan keeps up.
+
 ## v0.7 — Bring in and save out
 
 - **Pictures as new pages.** The "bring in" button now takes PNG and JPG pictures as well as PDFs (several at once

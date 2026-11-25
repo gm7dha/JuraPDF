@@ -1,5 +1,5 @@
 import { defineConfig } from "vitest/config";
-import type { Plugin } from "vite";
+import { transformWithEsbuild, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -50,6 +50,60 @@ function pdfjsFiles(): Plugin {
 }
 
 /**
+ * pdf.js's background worker, with one small change so pictures (scanned
+ * pages) show much sooner. Chrome and Edge can unpack JPG pictures themselves,
+ * about ten times quicker than pdf.js does, but pdf.js leaves that off because
+ * a JPG that carries a "which way up" note (EXIF) came out turned. The change
+ * sends just those JPGs the slow way, so the quick way can be switched on for
+ * the rest (`isImageDecoderSupported` in src/pdf/pdfjs.ts). Imported as
+ * "virtual:pdfjs-worker-url"; the build fails if pdf.js changes under it.
+ */
+function pdfjsWorker(): Plugin {
+  const id = "virtual:pdfjs-worker-url";
+  const file = fileURLToPath(new URL("./node_modules/pdfjs-dist/build/pdf.worker.mjs", import.meta.url));
+  const anchor = `        case 0xffc2:
+          numComponents = data[offset + (2 + 1 + 2 + 2)];
+          break markerLoop;
+`;
+  const exifCheck = `        case 0xffe1:
+          if (data[offset + 2] === 0x45 && data[offset + 3] === 0x78 && data[offset + 4] === 0x69 && data[offset + 5] === 0x66) {
+            return false;
+          }
+          break;
+`;
+  const patched = () => {
+    const src = readFileSync(file, "utf8");
+    const at = src.indexOf(anchor);
+    if (at < 0 || src.indexOf(anchor, at + 1) >= 0 || !src.includes("static canUseImageDecoder(data, colorTransform = -1)")) {
+      throw new Error("pdf.js's worker has changed: update the JPG change in vite.config.ts (pdfjsWorker)");
+    }
+    return src.slice(0, at + anchor.length) + exifCheck + src.slice(at + anchor.length);
+  };
+  let serving = false;
+  return {
+    name: "jurapdf-pdfjs-worker",
+    configResolved(config) {
+      serving = config.command === "serve";
+    },
+    resolveId: (source) => (source === id ? `\0${id}` : null),
+    async load(loaded) {
+      if (loaded !== `\0${id}`) return null;
+      if (serving) return `export default ${JSON.stringify(`${base}pdfjs/pdf.worker.mjs`)};`;
+      const { code } = await transformWithEsbuild(patched(), "pdf.worker.mjs", { minify: true, legalComments: "none" });
+      const ref = this.emitFile({ type: "asset", name: "pdf.worker.min.mjs", source: code });
+      return `export default import.meta.ROLLUP_FILE_URL_${ref};`;
+    },
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (!req.url?.match(/\/pdfjs\/pdf\.worker\.mjs(?:\?.*)?$/)) return next();
+        res.setHeader("Content-Type", "text/javascript");
+        res.end(patched());
+      });
+    },
+  };
+}
+
+/**
  * Tesseract (reading words in pictures) needs its worker, its engine and the
  * English letters it's learned, beside the app under ocr/. Fetched only when
  * words are first read (then kept), so they cost nothing until used.
@@ -81,7 +135,7 @@ function ocrFiles(): Plugin {
 
 export default defineConfig({
   base,
-  plugins: [react(), pdfjsFiles(), ocrFiles()],
+  plugins: [react(), pdfjsFiles(), pdfjsWorker(), ocrFiles()],
   define: {
     __APP_VERSION__: JSON.stringify(version),
   },

@@ -10,7 +10,7 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 
 import { useStore } from "../model/store";
-import { CSS_PER_PT, PAGE_MARGIN_Y, currentPageAt, keepSpotInView, layoutPages, pagesInView, resolveZoom, WHEEL_PAUSE, wheelFlip, wheelResting, type PageBox, type Size } from "../model/zoom";
+import { CSS_PER_PT, PAGE_MARGIN_Y, currentPageAt, keepSpotInView, layoutPages, pagesAhead, pagesInView, resolveZoom, WHEEL_PAUSE, wheelFlip, wheelResting, type PageBox, type Size } from "../model/zoom";
 import { drawPage, drawTextLayer, isCancelled, type PDFDocumentProxy } from "../pdf/pdfjs";
 import { drawAhead, keepCanvas, keptCanvas } from "./pageCanvases";
 import { endShapeDrag, placeAt, startShapeAt, updateDraft } from "./addActions";
@@ -56,16 +56,22 @@ export function PageView() {
     setRange((r) => (r[0] === next[0] && r[1] === next[1] ? r : next));
   };
 
-  // One page at a time: draw the pages either side ahead of time, so flipping to them is instant.
+  // One page at a time: draw the pages ahead of time (mostly the way you're going), so flipping to them is instant.
+  const lastShown = useRef({ page: 0, way: 1 as 1 | -1 });
   useEffect(() => {
     if (!onePage || !pdf || view[0] <= 0) return;
     const doc = pdf.doc;
+    const last = lastShown.current;
+    if (shownPage !== last.page) last.way = shownPage < last.page ? -1 : 1;
+    last.page = shownPage;
+    const way = last.way;
     const timer = setTimeout(() => {
-      for (const n of [shownPage + 1, shownPage - 1, shownPage + 2]) {
+      for (const n of pagesAhead(shownPage, way, allSizes.length)) {
         const size = allSizes[n];
         if (size) void drawAhead(doc, n, resolveZoom(zoomMode, [size], view) * CSS_PER_PT);
       }
-    }, 120);
+      // A moment after the page itself was asked for, so it's drawn first.
+    }, 30);
     return () => clearTimeout(timer);
   }, [onePage, pdf, shownPage, zoomMode, view, allSizes]);
 
