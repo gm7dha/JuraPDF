@@ -6,7 +6,7 @@
 import { PDFDict, PDFHexString, PDFName, PDFNull, PDFNumber, PDFString, type PDFRef } from "pdf-lib";
 
 import type { Bookmark } from "../model/bookmarks";
-import { loadForEditing } from "./watermark";
+import { loadForEditing, saveEdited } from "./watermark";
 
 /** The parts of a pdf.js document that reading bookmarks needs. */
 interface OutlineSource {
@@ -73,7 +73,7 @@ export async function writeBookmarks(bytes: Uint8Array, tree: Bookmark[]): Promi
   if (!tree.length) {
     doc.catalog.delete(outlines);
     if (doc.catalog.get(pageMode) === PDFName.of("UseOutlines")) doc.catalog.delete(pageMode);
-    return doc.save() as Promise<Uint8Array<ArrayBuffer>>;
+    return saveEdited(doc);
   }
 
   /** Writes a list under `parent`; gives its first and last and how many show when it's open. */
@@ -106,5 +106,5 @@ export async function writeBookmarks(bytes: Uint8Array, tree: Bookmark[]): Promi
   const top = writeList(tree, root);
   ctx.assign(root, ctx.obj({ Type: PDFName.of("Outlines"), First: top.first, Last: top.last, Count: PDFNumber.of(top.shown) }));
   doc.catalog.set(outlines, root);
-  return doc.save() as Promise<Uint8Array<ArrayBuffer>>;
+  return saveEdited(doc);
 }

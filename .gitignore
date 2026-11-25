@@ -7,3 +7,4 @@ coverage/
 smoke.png
 smoke-*.png
 build/
+.bench/

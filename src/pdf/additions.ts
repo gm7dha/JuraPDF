@@ -7,7 +7,7 @@ import { StandardFontEmbedder, degrees, rgb } from "pdf-lib";
 
 import { lineStarts, linesOf, type PictureItem, type WordsItem } from "../model/additions";
 import { hexToRgb, toPageSpace, type FontChoice } from "../model/watermark";
-import { FONTS, arrange, existingContents, frameOf, loadForEditing } from "./watermark";
+import { FONTS, arrange, existingContents, frameOf, loadForEditing, saveEdited } from "./watermark";
 
 /** Something stops the words or picture being added; the message says what. */
 export class AddProblem extends Error {}
@@ -41,7 +41,7 @@ export function unwritable(font: FontChoice, text: string): string {
   return [...bad].join(" ");
 }
 
-const save = (doc: Awaited<ReturnType<typeof loadForEditing>>) => doc.save() as Promise<Uint8Array<ArrayBuffer>>;
+const save = saveEdited;
 
 function pageOf(doc: Awaited<ReturnType<typeof loadForEditing>>, n: number) {
   if (n < 0 || n >= doc.getPageCount()) throw new AddProblem(`This PDF has no page ${n + 1}.`);

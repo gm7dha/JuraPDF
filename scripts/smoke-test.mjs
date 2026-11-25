@@ -114,7 +114,7 @@ const step = async (name, fn) => {
     console.log(`✓ ${name}`);
   } catch (e) {
     failed = true;
-    annotate("error", `Smoke test: ${name}`, e instanceof Error ? e.message : String(e));
+    annotate("error", `Smoke test: ${name}`, e instanceof Error ? `${e.message}${process.env.SMOKE_DEBUG ? `\n${e.stack}` : ""}` : String(e));
   }
 };
 const expect = (ok, message) => {

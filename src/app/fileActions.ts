@@ -8,7 +8,11 @@
 import { isPdfName, looksLikePdf, PDF_EXTENSION, PDF_MIME, nameFromFileName } from "../model/pdfFile";
 import { hasUnsavedChanges, useStore } from "../model/store";
 import { loadPdf, NeedsPassword, pageSizes } from "../pdf/pdfjs";
+import { primeForEditing, sizesNow } from "../pdf/watermark";
 import { downloadFile, safeFileName } from "./download";
+
+/** From this many pages on, page sizes are read with pdf-lib when opening (see sizesNow). */
+const MANY_PAGES = 300;
 
 // The File System Access API isn't in TypeScript's built-in types yet.
 interface WritableFile {
@@ -125,10 +129,13 @@ export async function openFile(file: File, password?: string): Promise<boolean> 
     }
     if (!password && !okToReplace()) return false;
     const doc = await loadPdf(bytes, password);
-    const sizes = await pageSizes(doc);
+    // Very long PDFs: their page sizes come quicker from reading the file once than from pdf.js page by page.
+    const sizes = (!password && doc.numPages > MANY_PAGES ? await sizesNow(bytes) : null) ?? (await pageSizes(doc));
     s.askPassword(null);
     s.setPdf({ fileName: file.name, bytes, doc, sizes, password, openId: ++opened });
     document.title = `${nameFromFileName(file.name)} · JuraPDF`;
+    // Once the first pages are showing, get it ready for changes in the background, so the first one is quick.
+    if (!password && doc.numPages <= MANY_PAGES) setTimeout(() => void primeForEditing(bytes), 1500);
     return true;
   } catch (e) {
     if (e instanceof NeedsPassword) {

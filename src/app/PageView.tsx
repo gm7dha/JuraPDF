@@ -2,14 +2,15 @@
  * The pages, one under another, in a scrolling window, or one whole page at a
  * time (the wheel, arrows and Page Up/Down flip pages).
  *
- * Only pages near the window are drawn (and pages far away are let go), so
- * even very long PDFs open quickly and don't use much memory. While the zoom
+ * Only pages near the window are on the page at all (and drawn), and pages far
+ * away are let go, so even PDFs with thousands of pages open quickly, scroll
+ * smoothly and don't use much memory. While the zoom
  * changes, the old drawing is stretched until the sharp one is ready.
  */
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 
 import { useStore } from "../model/store";
-import { CSS_PER_PT, PAGE_MARGIN_Y, currentPageAt, keepSpotInView, layoutPages, resolveZoom, wheelFlip, type PageBox, type Size } from "../model/zoom";
+import { CSS_PER_PT, PAGE_MARGIN_Y, currentPageAt, keepSpotInView, layoutPages, pagesInView, resolveZoom, wheelFlip, type PageBox, type Size } from "../model/zoom";
 import { drawPage, drawTextLayer, isCancelled, type PDFDocumentProxy } from "../pdf/pdfjs";
 import { placeAt } from "./addActions";
 import { DraftBox } from "./DraftBox";
@@ -43,6 +44,17 @@ export function PageView() {
   const zoom = view[0] > 0 ? resolveZoom(zoomMode, sizes, view) : 1;
   const layout = useMemo(() => layoutPages(sizes, zoom), [sizes, zoom]);
 
+  // The pages near the window (two and a half windows above and below): only these are on the page (drawn when within one and a half).
+  const [range, setRange] = useState<[number, number]>([0, 4]);
+  const layoutRef = useRef(layout);
+  layoutRef.current = layout;
+  const updateRange = () => {
+    const el = scroller.current;
+    if (!el) return;
+    const next = pagesInView(layoutRef.current.boxes, el.scrollTop, el.clientHeight, el.clientHeight * 2.5);
+    setRange((r) => (r[0] === next[0] && r[1] === next[1] ? r : next));
+  };
+
   // Where the window was scrolled to, kept as it scrolls (the browser may clamp it before we can read it after a zoom).
   const scrollPos = useRef({ top: 0, left: 0 });
   // Where the zoom should stay put: a height in the window (the pointer for Ctrl + scroll, otherwise the top).
@@ -63,7 +75,8 @@ export function PageView() {
     anchor.current = 0;
     before.current = { boxes: layout.boxes, width: layout.width, zoom };
     useStore.getState().setShownZoom(zoom);
-  }, [layout, zoom]);
+    updateRange();
+  }, [layout, zoom, view]);
 
   // A new PDF starts at the top.
   useLayoutEffect(() => {
@@ -73,6 +86,7 @@ export function PageView() {
     el.scrollLeft = 0;
     scrollPos.current = { top: 0, left: 0 };
     before.current = null;
+    updateRange();
   }, [pdf?.openId]);
 
   // Where the view was scrolled to for a page asked for (until it's scrolled elsewhere).
@@ -95,6 +109,7 @@ export function PageView() {
     // The page asked for stays the current one while the view stays put, even when it can't
     // scroll to the top of the window (the last pages of a PDF).
     jumped.current = el.scrollTop;
+    updateRange();
   }, [goTo]);
 
   // Keep the page number up to date while scrolling.
@@ -103,6 +118,7 @@ export function PageView() {
     const el = scroller.current;
     if (!el) return;
     scrollPos.current = { top: el.scrollTop, left: el.scrollLeft };
+    updateRange();
     if (onePageRef.current) return;
     if (jumped.current !== null && Math.abs(el.scrollTop - jumped.current) < 2) return;
     jumped.current = null;
@@ -164,9 +180,10 @@ export function PageView() {
     <div className={`page-scroller${onePage ? " one-page" : ""}${placing ? " placing" : ""}`} ref={scroller} onScroll={onScroll} tabIndex={-1} aria-label="Pages">
       <div className="page-stack" style={{ height: layout.height, minWidth: layout.width }}>
         {pdf &&
-          layout.boxes.map((box, i) => (
-            <PageSlot key={first + i} doc={pdf.doc} index={first + i} box={box} zoom={zoom} root={scroller} />
-          ))}
+          layout.boxes.slice(range[0], range[1] + 1).map((box, k) => {
+            const i = range[0] + k;
+            return <PageSlot key={first + i} doc={pdf.doc} index={first + i} box={box} zoom={zoom} root={scroller} />;
+          })}
       </div>
     </div>
   );
@@ -187,6 +204,8 @@ const PageSlot = memo(function PageSlot({ doc, index, box, zoom, root }: SlotPro
   const text = useRef<HTMLDivElement>(null);
   const [near, setNear] = useState(false);
   const [drawn, setDrawn] = useState(false);
+  /** The version of the PDF the page was last drawn from. */
+  const drawnFrom = useRef<PDFDocumentProxy | null>(null);
   const cssScale = zoom * CSS_PER_PT;
 
   useEffect(() => {
@@ -216,12 +235,14 @@ const PageSlot = memo(function PageSlot({ doc, index, box, zoom, root }: SlotPro
           await task.promise;
           if (stopped || !holder.current) return;
           holder.current.replaceChildren(canvas);
+          drawnFrom.current = doc;
           setDrawn(true);
         } catch (e) {
           if (!isCancelled(e) && !stopped) console.warn(`Page ${index + 1} couldn't be drawn`, e);
         }
       },
-      holder.current?.firstChild ? 140 : 0,
+      // While zooming, wait for the zoom to settle (the old drawing is stretched meanwhile); a change to the PDF shows straight away.
+      holder.current?.firstChild && drawnFrom.current === doc ? 140 : 0,
     );
     return () => {
       stopped = true;

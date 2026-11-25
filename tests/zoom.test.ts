@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   CSS_PER_PT,
   MAX_ZOOM,
+  pagesInView,
   wheelFlip,
   MIN_ZOOM,
   PAGE_GAP,
@@ -119,5 +120,22 @@ describe("one page at a time: the wheel flips pages", () => {
   });
   it("scrolls the page instead while it can", () => {
     expect(wheelFlip(60, 100, true)).toEqual({ total: 0, flip: 0 });
+  });
+});
+
+describe("pages to have on hand", () => {
+  const boxes = Array.from({ length: 1000 }, (_, i) => ({ top: 10 + i * 110, height: 100 }));
+  it("finds the pages near the window", () => {
+    expect(pagesInView(boxes, 0, 300, 0)).toEqual([0, 2]);
+    expect(pagesInView(boxes, 1100, 300, 0)).toEqual([9, 12]);
+    expect(pagesInView(boxes, 1100, 300, 220)).toEqual([7, 14]);
+    expect(pagesInView(boxes, 999_999, 300, 0)).toEqual([999, 999]);
+    expect(pagesInView([], 0, 300, 0)).toEqual([0, -1]);
+  });
+  it("agrees with looking at every page", () => {
+    for (const top of [0, 57, 5000, 54_321, 109_000]) {
+      const want = boxes.map((b, i) => [b, i] as const).filter(([b]) => b.top + b.height >= top - 400 && b.top <= top + 800 + 400).map(([, i]) => i);
+      expect(pagesInView(boxes, top, 800, 400)).toEqual([want[0], want[want.length - 1]]);
+    }
   });
 });

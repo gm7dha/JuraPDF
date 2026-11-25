@@ -4,6 +4,7 @@ import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 
 import { moveBy, moveTo, pagesLabel, pickPages, sameOrder, targetPages } from "../src/model/pages";
 import { PageProblem, addBlankPage, deletePages, extractPages, insertPdf, reorderPages, turnPages } from "../src/pdf/pages";
+import { keptSizes } from "../src/pdf/watermark";
 
 const STANDARD_FONTS = new URL("../node_modules/pdfjs-dist/standard_fonts/", import.meta.url).pathname;
 
@@ -106,5 +107,45 @@ describe("changing pages", () => {
 
   it("saves chosen pages as a new PDF", async () => {
     expect(await words(await extractPages(await pdfOf(["A", "B", "C"]), [2, 0]))).toEqual(["C", "A"]);
+  });
+});
+
+describe("changes one after another", () => {
+  it("give the same pages as reading each version afresh", async () => {
+    const start = await pdfOf(["A", "B", "C", "D", "E"]);
+    // Each change works on the version the last one saved (kept ready, not read again).
+    let kept: Uint8Array = await deletePages(start, [1]);
+    kept = await reorderPages(kept, [3, 0, 1, 2]);
+    kept = await turnPages(kept, [0], 90);
+    kept = await addBlankPage(kept, 2);
+    kept = await deletePages(kept, [4]);
+    const part = await extractPages(kept, [1, 3]);
+    // The same, from copies of the bytes (so nothing kept can be used).
+    let fresh: Uint8Array = await deletePages(start.slice(), [1]);
+    for (const step of [(b: Uint8Array) => reorderPages(b, [3, 0, 1, 2]), (b: Uint8Array) => turnPages(b, [0], 90), (b: Uint8Array) => addBlankPage(b, 2), (b: Uint8Array) => deletePages(b, [4])]) fresh = await step(fresh.slice());
+    expect(await readPages(kept)).toEqual(await readPages(fresh));
+    expect((await readPages(kept)).map((p) => p[0])).toEqual(["E", "A", "", "C"]);
+    expect((await readPages(part)).map((p) => p[0])).toEqual(["A", "C"]);
+  });
+});
+
+describe("page sizes from the kept PDF", () => {
+  it("match what pdf.js shows, turned and cropped pages too", async () => {
+    const doc = await PDFDocument.create();
+    doc.addPage([595, 842]);
+    doc.addPage([595, 842]).setRotation(degrees(90));
+    const cropped = doc.addPage([600, 800]);
+    cropped.setCropBox(50, 100, 400, 500);
+    const outside = doc.addPage([300, 300]);
+    outside.setCropBox(200, 200, 500, 500);
+    doc.addPage([842, 595]).setRotation(degrees(270));
+    const bytes = await turnPages(await doc.save(), [4], 180);
+    const kept = keptSizes(bytes)!;
+    const shown = await readPages(bytes);
+    expect(kept).toEqual(shown.map(([, w, h]) => [w, h]));
+    expect(keptSizes(new Uint8Array(bytes))).toBeNull();
+    // Straight after a delete, too.
+    const fewer = await deletePages(bytes, [0, 1]);
+    expect(keptSizes(fewer)).toHaveLength(3);
   });
 });

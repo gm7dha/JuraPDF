@@ -16,8 +16,13 @@
   plugin in `vite.config.ts`. The worker is imported with `?url`.
 - Units: page sizes are PDF points (72 to the inch), as pdf.js gives them (already turned for rotated pages). At 100%
   a page shows at real size: `CSS_PER_PT` = 96 / 72 CSS pixels per point (`src/model/zoom.ts`).
-- The page view (`src/app/PageView.tsx`) lays every page out from `layoutPages` (pure) and only draws pages near the
-  window (IntersectionObserver), letting far ones go. On a zoom change the old canvas is stretched until the new one is
+- The page view (`src/app/PageView.tsx`) lays every page out from `layoutPages` (pure) but only puts pages within 2.5
+  windows on the page (`pagesInView`, found by halving), and only draws those within 1.5 (IntersectionObserver), letting
+  far ones go. The page list does the same (`thumbLayout`, absolutely placed pictures). Speed (`npm run bench`, a
+  2,000-page PDF): edits keep the pdf-lib document they saved (`saveEdited`/`loadForEditing` in src/pdf/watermark.ts,
+  keyed by the saved bytes; pdf-lib's page list is refreshed as removePage leaves it stale), load and save in one go,
+  and `keptSizes` gives the new sizes; a newly opened PDF is primed in the background (`primeForEditing`), or for
+  more than 300 pages read with pdf-lib for its sizes (`sizesNow`). On a zoom change the old canvas is stretched until the new one is
   drawn (a short delay), and `keepSpotInView` keeps the same spot under the pointer / at the top. The words layer is
   pdf.js's `TextLayer`, built once per page at scale 1 and resized by the `--scale-factor` CSS variable.
 - Everything outside `src/app` and `src/pdf` is pure and tested in Node (`tests/*.test.ts`). `scripts/smoke-test.mjs`
