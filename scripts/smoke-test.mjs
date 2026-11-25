@@ -672,6 +672,38 @@ await step("picking words with the mouse and highlighting them", async () => {
   await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label !== "highlight words on page 1");
 });
 
+await step("reading the words in a picture so they can be picked", async () => {
+  // A picture of words (made here), put on page 3.
+  const png = await page.evaluate(() => {
+    const c = document.createElement("canvas");
+    c.width = 1200;
+    c.height = 260;
+    const g = c.getContext("2d");
+    g.fillStyle = "#fff";
+    g.fillRect(0, 0, c.width, c.height);
+    g.fillStyle = "#111";
+    g.font = "bold 110px Arial, Helvetica, sans-serif";
+    g.fillText("INVOICE 4815", 50, 170);
+    return c.toDataURL("image/png").split(",")[1];
+  });
+  const [chooser] = await Promise.all([page.waitForEvent("filechooser"), page.getByRole("button", { name: "Add a picture" }).click()]);
+  await chooser.setFiles({ name: "Scan.png", mimeType: "image/png", buffer: Buffer.from(png, "base64") });
+  await page.locator('.page[data-page="3"]').scrollIntoViewIfNeeded();
+  const p3 = await page.locator('.page[data-page="3"]').boundingBox();
+  // Below the page's own words and black box, on clear paper.
+  await page.mouse.click(p3.x + p3.width / 2, p3.y + p3.height * 0.75);
+  await page.getByRole("button", { name: "Done" }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "add a picture to page 3");
+  await page.evaluate(() => window.jurapdfStore.getState().goToPage(2));
+  await page.getByRole("button", { name: "Read words in pictures" }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "read the words in the pictures on page 3", null, { timeout: 90_000 });
+  await page.waitForFunction(() => /INVOICE\s*4815/.test(document.querySelector('.page[data-page="3"] .textLayer')?.textContent ?? ""), null, { timeout: 15_000 });
+  const told = await page.evaluate(() => window.jurapdfStore.getState().toasts.map((t) => t.text).join(" | "));
+  expect(/Found 2 words in the pictures on page 3/.test(told), `it should say what it found: ${told}`);
+  for (let i = 0; i < 2; i++) await page.keyboard.press("Control+z");
+  await page.waitForFunction(() => !document.querySelector('.page[data-page="3"] .textLayer')?.textContent?.includes("INVOICE"), null, { timeout: 15_000 });
+});
+
 await step("Connect to Claude with no extension running says what to do", async () => {
   await page.getByRole("button", { name: "Connect to Claude" }).click();
   await page.locator('.modal:has-text("Not connected")').waitFor({ timeout: 60_000 });

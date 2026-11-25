@@ -5,6 +5,15 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.6.4 — Read the words in pictures
+
+- **Read words in pictures** (the new button after the arrow): JuraPDF finds the words in the pictures on the page
+  you're reading (or the pages you've picked), such as a scanned letter or a photo of a receipt, and writes them in
+  invisibly, exactly over where they show. Then they can be picked, copied, highlighted and found with Ctrl+F like
+  any other words. One Undo step takes them away again.
+- It uses Tesseract, a free text reader that runs on your computer: nothing is sent anywhere. The first time, its
+  files (about 7 MB) are fetched; after that it works offline. English letters only for now.
+
 ## v0.6.3 — Quicker page flips, highlight picked words
 
 - **One page at a time flips straight away.** The pages either side are drawn ahead while you read, so the next

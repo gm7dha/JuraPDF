@@ -24,6 +24,7 @@ from scanned pages), real-time collaboration or cloud storage.
 | UI | React + Zustand | As the sister apps |
 | Reading and drawing PDFs | Mozilla's pdf.js (`pdfjs-dist`, Apache 2.0) in a worker | The most faithful free PDF renderer for browsers; writing one is not realistic |
 | Writing PDFs (from v0.3) | `pdf-lib` (MIT) | Adds pages, words, pictures and drawing to existing PDFs in the browser |
+| Reading words in pictures (from v0.6.4) | Tesseract (`tesseract.js` and its English data, Apache 2.0) in a worker | Kevin chose it (2026-11-25): the standard free reader; its ~7 MB of files ship with the app under `ocr/` and are fetched only when first used, then work offline |
 | Edits | Kept as a list of changes, applied to the original file when saving | The original is never damaged; edits can be undone |
 | Units | PDF points (1/72 in); 100% zoom = real size (96 CSS px per inch) | As Chrome's and Adobe's viewers |
 | Delivery | PWA on GitHub Pages; opens `.pdf` files once installed | Installs on Windows and macOS, offline, free |
@@ -66,7 +67,9 @@ tests          Vitest, pure code only;  scripts/smoke-test.mjs drives the built 
 - **v0.6 (done)** — **add words and pictures**: click on a page to place typed words (font, size, colour, several
   lines) or a PNG/JPG picture (drag to move, corner to size), Done writes them into the page; Claude's add_words and
   add_picture tools.
-- **v0.6.x** — **more editing**: shapes (lines, boxes, arrows, highlights); move, resize,
+- **v0.6.2–v0.6.4 (done)** — shapes and highlights (v0.6.2); quicker one-page flips and Highlight for words picked
+  with the mouse (v0.6.3); reading the words in pictures (scans, photos) so they can be picked and copied (v0.6.4).
+- **v0.6.x** — **more editing**: move, resize,
   replace or delete pictures already on a page; fix words already on a page (the old words are covered with the page's
   background and the new ones written in the closest matching font; short fixes only, as PDFs don't reflow).
 - **v0.7** — **bring in and save out**: pictures (JPG/PNG) to new pages; pages to PNG/JPG; all the words out as text.

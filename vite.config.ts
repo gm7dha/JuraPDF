@@ -49,9 +49,39 @@ function pdfjsFiles(): Plugin {
   };
 }
 
+/**
+ * Tesseract (reading words in pictures) needs its worker, its engine and the
+ * English letters it's learned, beside the app under ocr/. Fetched only when
+ * words are first read (then kept), so they cost nothing until used.
+ */
+function ocrFiles(): Plugin {
+  const at = (path: string) => fileURLToPath(new URL(`./node_modules/${path}`, import.meta.url));
+  const files: Record<string, string> = {
+    "worker.min.js": at("tesseract.js/dist/worker.min.js"),
+    "tesseract-core-simd-lstm.wasm.js": at("tesseract.js-core/tesseract-core-simd-lstm.wasm.js"),
+    "tesseract-core-lstm.wasm.js": at("tesseract.js-core/tesseract-core-lstm.wasm.js"),
+    "eng.traineddata.gz": at("@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz"),
+  };
+  return {
+    name: "jurapdf-ocr-files",
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const m = req.url?.match(/\/ocr\/([\w.-]+)(?:\?.*)?$/);
+        const file = m && files[m[1]];
+        if (!file) return next();
+        res.setHeader("Content-Type", m[1].endsWith(".gz") ? "application/gzip" : "text/javascript");
+        res.end(readFileSync(file));
+      });
+    },
+    generateBundle() {
+      for (const [name, file] of Object.entries(files)) this.emitFile({ type: "asset", fileName: `ocr/${name}`, source: readFileSync(file) });
+    },
+  };
+}
+
 export default defineConfig({
   base,
-  plugins: [react(), pdfjsFiles()],
+  plugins: [react(), pdfjsFiles(), ocrFiles()],
   define: {
     __APP_VERSION__: JSON.stringify(version),
   },

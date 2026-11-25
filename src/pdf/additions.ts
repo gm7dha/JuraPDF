@@ -3,9 +3,27 @@
  * Node for the tests and Claude). Where things go is worked out in
  * src/model/additions.ts.
  */
-import { BlendMode, LineCapStyle, StandardFontEmbedder, degrees, rgb, type PDFPage } from "pdf-lib";
+import {
+  BlendMode,
+  LineCapStyle,
+  StandardFontEmbedder,
+  TextRenderingMode,
+  beginText,
+  degrees,
+  endText,
+  popGraphicsState,
+  pushGraphicsState,
+  rgb,
+  rotateAndSkewTextDegreesAndTranslate,
+  setCharacterSqueeze,
+  setFontAndSize,
+  setTextRenderingMode,
+  showText,
+  type PDFPage,
+} from "pdf-lib";
 
 import { HIGHLIGHT_OPACITY, lineStarts, shapeInPage, linesOf, type PictureItem, type ShapeItem, type WordsItem } from "../model/additions";
+import type { HiddenWord } from "../model/ocr";
 import { hexToRgb, toPageSpace, type FontChoice } from "../model/watermark";
 import { FONTS, arrange, existingContents, frameOf, loadForEditing, saveEdited } from "./watermark";
 
@@ -138,6 +156,36 @@ function drawShape(page: PDFPage, frame: ReturnType<typeof frameOf>, item: Shape
       }
       break;
   }
+}
+
+/**
+ * Write words found in a page's pictures onto it, invisibly, each stretched
+ * over the word it was read from, so the words can be picked, copied and
+ * searched where they show. Letters the built-in font can't write are left out.
+ */
+export async function addHiddenWords(bytes: Uint8Array, page: number, words: HiddenWord[]): Promise<Uint8Array<ArrayBuffer>> {
+  const doc = await loadForEditing(bytes);
+  const p = pageOf(doc, page);
+  const font = await doc.embedFont(FONTS.Helvetica);
+  const key = p.node.newFontDictionary(font.name, font.ref);
+  const frame = frameOf(p);
+  const shownH = frame.rotation % 180 ? frame.width : frame.height;
+  const ops = [pushGraphicsState(), beginText(), setTextRenderingMode(TextRenderingMode.Invisible)];
+  for (const w of words) {
+    const text = [...w.text].filter((ch) => !unwritable("Helvetica", ch)).join("");
+    if (!text) continue;
+    // Letters about as tall as the word's box; the baseline a fifth of the way up from its bottom.
+    const size = Math.max(1, w.height * 0.95);
+    const natural = font.widthOfTextAtSize(text, size);
+    const squeeze = natural > 0 ? Math.max(1, Math.min(1000, (w.width / natural) * 100)) : 100;
+    const at = toPageSpace(frame, w.x, shownH - (w.y + w.height * 0.8), 0);
+    ops.push(setFontAndSize(key, size), setCharacterSqueeze(squeeze), rotateAndSkewTextDegreesAndTranslate(at.angle, 0, 0, at.x, at.y), showText(font.encodeText(text)));
+  }
+  ops.push(endText(), popGraphicsState());
+  const before = existingContents(p);
+  p.pushOperators(...ops);
+  arrange(p, before, false);
+  return save(doc);
 }
 
 /** PNG or JPG, from the file's first bytes (null for anything else). */
