@@ -9,7 +9,7 @@ import { cleanSize, keepOnPage, linesOf, LINE_HEIGHT, MAX_WORD_SIZE, MIN_WORD_SI
 import { useStore } from "../model/store";
 import { FONT_NAMES, type FontChoice } from "../model/watermark";
 import { textWidth } from "../pdf/additions";
-import { cancelAdding, finishAdding, updateDraft } from "./addActions";
+import { cancelAdding, deleteExisting, finishAdding, replaceExisting, updateDraft } from "./addActions";
 import { Icons } from "./icons";
 import { ShapeDraft } from "./ShapeDraft";
 import { detectPlatform } from "./platform";
@@ -113,15 +113,27 @@ export function DraftBox({ index, scale }: { index: number; scale: number }) {
     };
     body = (
       <>
-        <img className="draft-picture" src={draft.picture.url} alt={draft.picture.name} draggable={false} onPointerDown={startMove} style={{ width: boxW * scale, height: boxH * scale }} />
+        <img
+          className="draft-picture"
+          src={draft.kind === "existing" ? draft.preview : draft.picture.url}
+          alt={draft.kind === "existing" ? "The picture" : draft.picture.name}
+          draggable={false} onPointerDown={startMove} style={{ width: boxW * scale, height: boxH * scale }} />
         <span className="draft-size" role="presentation" title="Drag to make the picture bigger or smaller" onPointerDown={startSize} />
       </>
     );
   }
 
+  // What's being changed is hidden (shown as white) where it was, as it will be once it's done.
+  const was = draft.kind === "existing" ? draft.from : draft.kind === "words" ? draft.cover : undefined;
+  const hole = was && (
+    <div className="draft-hole" style={{ left: was.x * scale, top: was.y * scale, width: was.width * scale, height: was.height * scale }} />
+  );
+
   return (
+    <>
+    {hole}
     <div className={`draft ${draft.kind}`} style={{ left: draft.x * scale, top: draft.y * scale }} onKeyDown={keys} onClick={(e) => e.stopPropagation()}>
-      <div className="draft-bar" role="toolbar" aria-label={draft.kind === "words" ? "Words to add" : "Picture to add"}>
+      <div className="draft-bar" role="toolbar" aria-label={draft.kind === "words" ? (draft.cover ? "Words to change" : "Words to add") : draft.kind === "existing" ? "Picture to change" : "Picture to add"}>
         <button type="button" className="icon-button small draft-move" onPointerDown={startMove} aria-label="Move" title="Drag to move it">
           <Icons.Move size={15} />
         </button>
@@ -146,6 +158,16 @@ export function DraftBox({ index, scale }: { index: number; scale: number }) {
             <input type="color" aria-label="Colour" title="Colour" value={draft.colour} onChange={(e) => updateDraft({ colour: e.target.value })} />
           </>
         )}
+        {draft.kind === "existing" && (
+          <>
+            <button type="button" className="icon-button small" onClick={() => void replaceExisting()} aria-label="Swap the picture" title="Swap it for another picture (PNG or JPG), in the same place">
+              <Icons.Picture size={15} />
+            </button>
+            <button type="button" className="icon-button small" onClick={() => void deleteExisting()} aria-label="Delete the picture" title="Take the picture off the page">
+              <Icons.Bin size={15} />
+            </button>
+          </>
+        )}
         <button type="button" className="primary-button draft-done" onClick={() => void finishAdding()} title={`Put it on the page (${isMac() ? "⌘" : "Ctrl"}+Enter)`}>
           Done
         </button>
@@ -155,5 +177,6 @@ export function DraftBox({ index, scale }: { index: number; scale: number }) {
       </div>
       {body}
     </div>
+    </>
   );
 }

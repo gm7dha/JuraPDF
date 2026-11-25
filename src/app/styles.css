@@ -1841,3 +1841,12 @@ span.bookmark-fold {
   font-size: 12px;
   white-space: nowrap;
 }
+
+/* Where a picture or words being changed were: white, as they'll be once it's done. */
+.draft-hole {
+  position: absolute;
+  z-index: 3;
+  background: #fff;
+  outline: 1px dashed var(--line);
+  pointer-events: none;
+}

@@ -6,7 +6,7 @@ import { useStore } from "../model/store";
 import { paperName, sizeLabel } from "../model/pdfFile";
 import { parsePageNumber, parseZoom, zoomIn, zoomLabel, zoomOut } from "../model/zoom";
 import { SHAPE_NAMES, type ShapeKind } from "../model/additions";
-import { cancelAdding, startPicture, startShape, startWords } from "./addActions";
+import { cancelAdding, startChanging, startPicture, startShape, startWords } from "./addActions";
 import { Icons } from "./icons";
 import { readWordsInPictures } from "./ocrActions";
 import { addBlank, deleteChosen, insertFromFile, moveChosen, saveChosenAsNew, turnChosen } from "./pageActions";
@@ -31,6 +31,7 @@ export function ViewBar() {
   const placingShape = useStore((s) => (s.placing?.kind === "shape" ? s.placing.shape : null));
   const draftShape = useStore((s) => (s.draft?.kind === "shape" ? s.draft.shape : null));
   const reading = useStore((s) => s.reading);
+  const changing = useStore((s) => s.placing?.kind === "change" || s.draft?.kind === "existing" || (s.draft?.kind === "words" && !!s.draft.cover));
   const selected = useStore((s) => s.selected);
   const onePage = useStore((s) => s.onePage);
   const s = useStore.getState;
@@ -190,7 +191,16 @@ export function ViewBar() {
       <div className="page-tools" role="group" aria-label="Add to a page">
         <button
           type="button"
-          className={`icon-button${placing === "words" || draftKind === "words" ? " active" : ""}`}
+          className={`icon-button${changing ? " active" : ""}`}
+          onClick={() => (changing ? cancelAdding() : startChanging())}
+          aria-label="Change what's on a page"
+          title="Change what's already on a page: click a picture to move, resize, swap or delete it, or click some words to fix them"
+        >
+          <Icons.Pencil />
+        </button>
+        <button
+          type="button"
+          className={`icon-button${placing === "words" || (draftKind === "words" && !changing) ? " active" : ""}`}
           onClick={() => (placing === "words" ? cancelAdding() : startWords())}
           aria-label="Add words"
           title="Add words to a page: click where they should go, then type"

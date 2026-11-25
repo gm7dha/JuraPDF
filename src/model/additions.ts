@@ -20,6 +20,8 @@ export interface WordsItem {
   size: number;
   /** "#rrggbb". */
   colour: string;
+  /** Changing words already on the page: the old words' box, covered over with white first. */
+  cover?: Rect;
 }
 
 /** A picture (PNG or JPG) put onto a page. */
@@ -186,6 +188,7 @@ export function additionLabel(item: AddItem): string {
   if (item.kind === "shape") return `add ${item.shape === "arrow" || item.shape === "oval" ? "an" : "a"} ${SHAPE_NAMES[item.shape].toLowerCase()} to page ${item.page + 1}`;
   if (item.kind === "picture") return `add a picture to page ${item.page + 1}`;
   const first = linesOf(item.text)[0] ?? "";
+  if (item.cover) return `change words on page ${item.page + 1} to “${first.length > 30 ? `${first.slice(0, 29)}…` : first}”`;
   return `add “${first.length > 30 ? `${first.slice(0, 29)}…` : first}” to page ${item.page + 1}`;
 }
 
@@ -201,10 +204,32 @@ export interface ChosenPicture {
 }
 
 /** Waiting for a click on a page to put words or a chosen picture there. */
-export type Placing = { kind: "words" } | { kind: "picture"; picture: ChosenPicture } | { kind: "shape"; shape: ShapeKind };
+export type Placing = { kind: "words" } | { kind: "picture"; picture: ChosenPicture } | { kind: "shape"; shape: ShapeKind } | { kind: "change" };
+
+/** A picture already on the page, being moved or sized. */
+export interface ExistingPicture {
+  kind: "existing";
+  page: number;
+  /** Which picture on the page (see src/pdf/pictures.ts). */
+  n: number;
+  /** Where it is now, and where it was (points from the page's top-left as shown). */
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  from: Rect;
+  /** A copy of how it looks, to show while it's moved (a data URL). */
+  preview: string;
+}
 
 /** Words or a picture on a page, being typed, moved or sized, not yet written into the PDF. */
-export type Draft = WordsItem | (PictureItem & { picture: ChosenPicture }) | ShapeItem;
+export type Draft = WordsItem | (PictureItem & { picture: ChosenPicture }) | ShapeItem | ExistingPicture;
+
+/** The line of words a click landed on (boxes in points), or null. */
+export function lineAt<T extends Rect>(lines: T[], x: number, y: number): T | null {
+  const hits = lines.filter((l) => x >= l.x - 1 && x <= l.x + l.width + 1 && y >= l.y - 1 && y <= l.y + l.height + 1);
+  return hits.sort((a, b) => a.width * a.height - b.width * b.height)[0] ?? null;
+}
 
 type Pt = { x: number; y: number };
 

@@ -704,6 +704,58 @@ await step("reading the words in a picture so they can be picked", async () => {
   await page.waitForFunction(() => !document.querySelector('.page[data-page="3"] .textLayer')?.textContent?.includes("INVOICE"), null, { timeout: 15_000 });
 });
 
+await step("changing words and a picture already on a page", async () => {
+  const label = () => page.evaluate(() => window.jurapdfStore.getState().past.at(-1)?.label);
+  await page.keyboard.press("Home");
+  await page.waitForFunction(() => document.querySelector('.page[data-page="1"] .textLayer')?.textContent?.includes("Smoke page 1"), null, { timeout: 15_000 });
+  // Words: click on them, retype, Done.
+  await page.getByRole("button", { name: "Change what's on a page" }).click();
+  const span = await page.locator('.page[data-page="1"] .textLayer span', { hasText: "Smoke page 1" }).first().boundingBox();
+  await page.mouse.click(span.x + span.width / 2, span.y + span.height / 2);
+  const box = page.getByRole("textbox", { name: "Words to add" });
+  await box.waitFor();
+  expect((await box.inputValue()) === "Smoke page 1", `the words to change start as they were: ${await box.inputValue()}`);
+  await box.fill("Changed page 1");
+  if (process.env.SMOKE_SCREENSHOT) await page.screenshot({ path: "smoke-change-words.png" });
+  await page.getByRole("button", { name: "Done" }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "change words on page 1 to “Changed page 1”");
+  await page.waitForFunction(() => document.querySelector('.page[data-page="1"] .textLayer')?.textContent?.includes("Changed page 1"), null, { timeout: 15_000 });
+
+  // A picture: put one on page 1, then move it and take it off again.
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAIAAAB7QOjdAAAAEElEQVR4nGP4z8DAwMDAAAAN/gH/w+1JvwAAAABJRU5ErkJggg==", "base64");
+  const [chooser] = await Promise.all([page.waitForEvent("filechooser"), page.getByRole("button", { name: "Add a picture" }).click()]);
+  await chooser.setFiles({ name: "Stamp.png", mimeType: "image/png", buffer: png });
+  await page.waitForFunction(() => window.jurapdfStore.getState().placing?.kind === "picture");
+  const p1 = await page.locator('.page[data-page="1"]').boundingBox();
+  await page.mouse.click(p1.x + p1.width * 0.5, p1.y + p1.height * 0.45);
+  await page.getByRole("button", { name: "Done" }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "add a picture to page 1");
+  await page.getByRole("button", { name: "Change what's on a page" }).click();
+  await page.mouse.click(p1.x + p1.width * 0.5, p1.y + p1.height * 0.45);
+  await page.locator(".draft-picture").waitFor();
+  const before = await page.locator(".draft-picture").boundingBox();
+  await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(before.x + before.width / 2 - 100, before.y + before.height / 2 + 50, { steps: 4 });
+  await page.mouse.up();
+  if (process.env.SMOKE_SCREENSHOT) await page.screenshot({ path: "smoke-change-picture.png" });
+  await page.getByRole("button", { name: "Done" }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "move a picture on page 1");
+  // Click where it now is, and delete it.
+  await page.getByRole("button", { name: "Change what's on a page" }).click();
+  await page.mouse.click(before.x + before.width / 2 - 100, before.y + before.height / 2 + 50);
+  await page.getByRole("button", { name: "Delete the picture" }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "delete a picture on page 1");
+  // Clicking where nothing is says so kindly.
+  await page.getByRole("button", { name: "Change what's on a page" }).click();
+  await page.mouse.click(p1.x + p1.width * 0.9, p1.y + p1.height * 0.3);
+  await page.getByText("There's no picture or words just there").waitFor();
+  await page.keyboard.press("Escape");
+  for (let i = 0; i < 4; i++) await page.keyboard.press("Control+z");
+  await page.waitForFunction(() => document.querySelector('.page[data-page="1"] .textLayer')?.textContent?.includes("Smoke page 1"), null, { timeout: 15_000 });
+  expect(!(await label())?.includes("page 1 to"), "Undo takes the changes back");
+});
+
 await step("Connect to Claude with no extension running says what to do", async () => {
   await page.getByRole("button", { name: "Connect to Claude" }).click();
   await page.locator('.modal:has-text("Not connected")').waitFor({ timeout: 60_000 });

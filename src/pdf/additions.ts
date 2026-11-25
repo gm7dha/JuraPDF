@@ -68,7 +68,7 @@ function pageOf(doc: Awaited<ReturnType<typeof loadForEditing>>, n: number) {
 
 /** Write words onto their page. Gives the new file. */
 export async function addWords(bytes: Uint8Array, item: WordsItem): Promise<Uint8Array<ArrayBuffer>> {
-  if (!linesOf(item.text).length) throw new AddProblem("Type some words first.");
+  if (!linesOf(item.text).length && !item.cover) throw new AddProblem("Type some words first.");
   const bad = unwritable(item.font, item.text);
   if (bad) throw new AddProblem(`These letters can't be written with the built-in fonts (they cover English and most European letters): ${bad}`);
   const doc = await loadForEditing(bytes);
@@ -78,6 +78,12 @@ export async function addWords(bytes: Uint8Array, item: WordsItem): Promise<Uint
   const shownH = frame.rotation % 180 ? frame.width : frame.height;
   const [r, g, b] = hexToRgb(item.colour);
   const before = existingContents(page);
+  if (item.cover) {
+    // Changing words already there: cover the old ones with white first.
+    const c = item.cover;
+    const at = toPageSpace(frame, c.x, shownH - (c.y + c.height), 0);
+    page.drawRectangle({ x: at.x, y: at.y, width: c.width, height: c.height, color: rgb(1, 1, 1), rotate: degrees(at.angle) });
+  }
   for (const line of lineStarts(item)) {
     const at = toPageSpace(frame, line.x, shownH - line.y, 0);
     page.drawText(line.text, { x: at.x, y: at.y, size: item.size, font, color: rgb(r, g, b), rotate: degrees(at.angle) });
