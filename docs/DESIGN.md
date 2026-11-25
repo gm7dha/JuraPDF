@@ -69,8 +69,8 @@ tests          Vitest, pure code only;  scripts/smoke-test.mjs drives the built 
   add_picture tools.
 - **v0.6.2–v0.6.4 (done)** — shapes and highlights (v0.6.2); quicker one-page flips and Highlight for words picked
   with the mouse (v0.6.3); reading the words in pictures (scans, photos) so they can be picked and copied (v0.6.4).
-- **v0.6.x** — **more editing**: move, resize,
-  replace or delete pictures already on a page; fix words already on a page (the old words are covered with the page's
-  background and the new ones written in the closest matching font; short fixes only, as PDFs don't reflow).
+- **v0.6.5 (done)** — **change what's already on a page**: move, resize, swap or delete pictures already on a page; fix
+  words already on a page (the old words are covered with white and the new ones written in the closest matching font;
+  short fixes only, as PDFs don't reflow).
 - **v0.7** — **bring in and save out**: pictures (JPG/PNG) to new pages; pages to PNG/JPG; all the words out as text.
 - **Later** — recent files, keeping work in the browser between visits, comments and highlights, compressing large PDFs.

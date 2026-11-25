@@ -64,6 +64,11 @@
   highlight, box, oval, line, arrow from (x1,y1) to (x2,y2); `addShape`, a highlight see-through with Multiply) are drawn by
   dragging on the page (PageView's pointerdown while `placing` is a shape) and changed in `ShapeDraft.tsx` (an SVG over the page). Words picked with the mouse get `PickedWordsBar` (Highlight, Copy):
   `pickedWordBoxes` reads the selection's boxes from the words layers, `highlightsFor` joins them per line, `addShapes` writes them as one step.
+- Changing what's on a page (pencil, `placing` {kind: "change"}, `startChanging`/`pickToChange` in addActions.ts): a click picks a
+  run of words (`wordRuns` in pdfjs.ts; draft = words with `cover`, written by `addWords` as a white box then the words) or a
+  picture (`src/pdf/pictures.ts`: `parseContent` (src/model/contentStream.ts) walks the page's instructions tracking q/Q/cm to find
+  each image `Do`; `changePicture` replaces just that command with `q M cm /Name Do Q` (`moveMatrix`/`placeMatrix` in
+  src/model/pictures.ts) or nothing; draft kind "existing" with a canvas-cropped preview). Pictures inside forms aren't found.
 - Reading words in pictures (`src/app/ocrActions.ts`, button "Read words in pictures"): `pageForReading` (pdfjs.ts) draws the page at
   300 dpi with pale colours turned white (`inkOnly`) and lists the page's own level words; `readPicture` (src/pdf/ocr.ts) runs
   Tesseract from `ocr/` (worker, core, eng.traineddata.gz, copied by `ocrFiles` in vite.config.ts); `wordsToAdd` (src/model/ocr.ts)

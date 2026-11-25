@@ -5,6 +5,17 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.6.5 — Change what's already on a page
+
+- **Change what's on a page** (the pencil button, first in the "add" group): then click on the page.
+  - **On a picture:** drag it to move it, or drag its round corner to make it bigger or smaller (it keeps its
+    shape). The little buttons swap it for another picture (PNG or JPG) in the same place, or delete it.
+  - **On some words:** they open for typing, already filled in, in the nearest matching letters and size. Change
+    them and press Done: the old words are covered with white and the new ones written in their place. Best for short
+    fixes (a date, a name, a typo), as a PDF doesn't move the rest of the line along. The old words stay hidden
+    underneath (so they can still turn up when searching).
+- Each change is one Undo step.
+
 ## v0.6.4 — Read the words in pictures
 
 - **Read words in pictures** (the new button after the arrow): JuraPDF finds the words in the pictures on the page

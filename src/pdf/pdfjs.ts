@@ -131,6 +131,39 @@ export async function pageForReading(doc: PDFDocumentProxy, index: number, scale
   return { canvas, scale: fitted, words };
 }
 
+/** A run of words on a page as it shows (points from its top-left), for changing them. */
+export interface WordRun {
+  text: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** Where the letters sit, and their size. */
+  baseline: number;
+  size: number;
+  /** "serif", "sans-serif" or "monospace", as near as can be told. */
+  family: string;
+}
+
+/** The runs of words on a page that run straight across it as shown. */
+export async function wordRuns(doc: PDFDocumentProxy, index: number): Promise<WordRun[]> {
+  const page = await doc.getPage(index + 1);
+  const unit = page.getViewport({ scale: 1 });
+  const content = await page.getTextContent();
+  const out: WordRun[] = [];
+  for (const item of content.items) {
+    if (!("str" in item) || !item.str.trim()) continue;
+    const [a, b, , , e, f] = pdfjs.Util.transform(unit.transform, item.transform);
+    if (Math.abs(b) > Math.abs(a) * 0.05 || a <= 0) continue;
+    const size = Math.hypot(a, b);
+    const style = content.styles[item.fontName];
+    const ascent = style?.ascent && style.ascent > 0.5 ? style.ascent : 0.8;
+    const descent = style?.descent && style.descent < 0 ? -style.descent : 0.2;
+    out.push({ text: item.str, x: e, y: f - ascent * size, width: item.width, height: (ascent + descent) * size, baseline: f, size, family: style?.fontFamily ?? "sans-serif" });
+  }
+  return out;
+}
+
 /** True when an error is just a drawing that was stopped on purpose (the page scrolled away or the zoom changed). */
 export function isCancelled(e: unknown): boolean {
   return e instanceof Error && e.name === "RenderingCancelledException";
