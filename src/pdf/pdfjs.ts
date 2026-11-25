@@ -164,6 +164,26 @@ export async function wordRuns(doc: PDFDocumentProxy, index: number): Promise<Wo
   return out;
 }
 
+/** A page's words in reading order, each marked where its line ends. */
+export async function pageTextBits(doc: PDFDocumentProxy, index: number): Promise<{ str: string; hasEOL: boolean }[]> {
+  const page = await doc.getPage(index + 1);
+  const content = await page.getTextContent();
+  return content.items.filter((i) => "str" in i).map((i) => ({ str: (i as { str: string }).str, hasEOL: !!(i as { hasEOL?: boolean }).hasEOL }));
+}
+
+/** A page as a picture file (PNG or JPG) at `dpi` dots to the inch. */
+export async function pagePicture(doc: PDFDocumentProxy, index: number, dpi: number, type: "png" | "jpg"): Promise<Uint8Array> {
+  const page = await doc.getPage(index + 1);
+  const canvas = document.createElement("canvas");
+  const unit = page.getViewport({ scale: 1 });
+  const scale = Math.min(dpi / 72, Math.sqrt(MAX_PIXELS / (unit.width * unit.height)));
+  // Drawn on white (pages are paper; a PNG would otherwise keep see-through gaps).
+  await drawPage(page, canvas, scale, 1).promise;
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type === "png" ? "image/png" : "image/jpeg", 0.92));
+  if (!blob) throw new Error("This browser couldn't make the picture.");
+  return new Uint8Array(await blob.arrayBuffer());
+}
+
 /** True when an error is just a drawing that was stopped on purpose (the page scrolled away or the zoom changed). */
 export function isCancelled(e: unknown): boolean {
   return e instanceof Error && e.name === "RenderingCancelledException";

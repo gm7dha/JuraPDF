@@ -4,6 +4,7 @@
  * gives back the new file. Pages are counted from 0.
  */
 import { PDFDocument, degrees } from "pdf-lib";
+import type { PictureFile } from "./additions";
 
 import { normalRotation } from "../model/watermark";
 import { LockedPdf, loadForEditing, saveEdited } from "./watermark";
@@ -76,4 +77,35 @@ export async function extractPages(bytes: Uint8Array, pages: number[]): Promise<
   const copied = await doc.copyPages(source, pages);
   copied.forEach((p) => doc.addPage(p));
   return doc.save() as Promise<Uint8Array<ArrayBuffer>>;
+}
+
+/**
+ * Bring pictures in as new pages at place `at`: each on a page the size of
+ * the pages around it (turned to suit the picture's shape), filling it as far
+ * as it can while keeping its own shape, in the middle.
+ */
+export async function insertPictures(bytes: Uint8Array, pictures: PictureFile[], at: number): Promise<Uint8Array<ArrayBuffer>> {
+  const doc = await loadForEditing(bytes);
+  const count = doc.getPageCount();
+  const near = doc.getPage(Math.min(Math.max(0, at - 1), count - 1));
+  const size = near.getSize();
+  const turned = normalRotation(near.getRotation().angle) % 180 !== 0;
+  const [w, h] = turned ? [size.height, size.width] : [size.width, size.height];
+  let place = Math.min(Math.max(0, at), count);
+  for (const picture of pictures) {
+    let image;
+    try {
+      image = picture.type === "png" ? await doc.embedPng(picture.bytes) : await doc.embedJpg(picture.bytes);
+    } catch {
+      throw new PageProblem(`${picture.name} couldn't be read as a picture. Try a PNG or JPG.`);
+    }
+    const wide = image.width > image.height;
+    const [pw, ph] = wide === w > h ? [w, h] : [h, w];
+    const page = doc.insertPage(place++, [pw, ph]);
+    const scale = Math.min(pw / image.width, ph / image.height);
+    const iw = image.width * scale;
+    const ih = image.height * scale;
+    page.drawImage(image, { x: (pw - iw) / 2, y: (ph - ih) / 2, width: iw, height: ih });
+  }
+  return save(doc);
 }

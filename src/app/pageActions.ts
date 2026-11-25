@@ -6,11 +6,12 @@
 import { isPdfName, looksLikePdf, nameFromFileName, PDF_EXTENSION } from "../model/pdfFile";
 import { moveBy, moveTo, newPlaces, pagesLabel, sameOrder, targetPages } from "../model/pages";
 import { useStore } from "../model/store";
-import { addBlankPage, deletePages, extractPages, insertPdf, PageProblem, reorderPages, turnPages } from "../pdf/pages";
+import { pictureType, type PictureFile } from "../pdf/additions";
+import { addBlankPage, deletePages, extractPages, insertPdf, insertPictures, PageProblem, reorderPages, turnPages } from "../pdf/pages";
 import { LockedPdf } from "../pdf/watermark";
 import { safeFileName } from "./download";
 import { applyChange } from "./editing";
-import { pickPdfFile, writePdf } from "./fileActions";
+import { pickFiles, writePdf } from "./fileActions";
 
 let busy = false;
 
@@ -103,16 +104,47 @@ export function addBlank(): Promise<void> {
 /** Ask for another PDF and bring all its pages in after the chosen pages. */
 export function insertFromFile(): Promise<void> {
   return run("bring the pages in", async () => {
-    const file = await pickPdfFile();
-    if (!file) return;
-    await insertFile(file);
+    const files = await pickFiles(
+      [
+        { description: "PDF document", mime: "application/pdf", ext: PDF_EXTENSION },
+        { description: "PNG picture", mime: "image/png", ext: ".png" },
+        { description: "JPG picture", mime: "image/jpeg", ext: ".jpg" },
+        { description: "JPG picture", mime: "image/jpeg", ext: ".jpeg" },
+      ],
+      "PDFs and pictures",
+    );
+    if (!files.length) return;
+    await bringIn(files);
   });
+}
+
+/** Bring in PDFs' pages and pictures (each picture as a page of its own), in the order given, after the chosen pages. */
+export async function bringIn(files: File[]): Promise<void> {
+  const pictures: PictureFile[] = [];
+  const pdfs: File[] = [];
+  for (const f of files) {
+    const bytes = new Uint8Array(await f.arrayBuffer());
+    const type = pictureType(bytes);
+    if (type) pictures.push({ bytes, type, name: f.name });
+    else pdfs.push(f);
+  }
+  for (const f of pdfs) await insertFile(f);
+  if (!pictures.length) return;
+  const pages = chosenPages();
+  const at = pages[pages.length - 1] + 1;
+  const bytes = await insertPictures(useStore.getState().pdf!.bytes, pictures, at);
+  const label = pictures.length === 1 ? pictures[0].name : `${pictures.length} pictures`;
+  await applyChange(bytes, `bring in ${label} as ${pictures.length === 1 ? "a page" : "pages"}`);
+  const s = useStore.getState();
+  s.setSelected(Array.from({ length: pictures.length }, (_, k) => at + k));
+  s.goToPage(at);
+  s.showToast(`Brought in ${label} as ${pictures.length === 1 ? "a new page" : `${pictures.length} new pages`}. Save to keep ${pictures.length === 1 ? "it" : "them"}.`, "success");
 }
 
 async function insertFile(file: File): Promise<void> {
   const other = new Uint8Array(await file.arrayBuffer());
   if (!looksLikePdf(other)) {
-    throw new PageProblem(isPdfName(file.name) ? `${file.name} doesn't look like a PDF inside. It may be damaged.` : `${file.name} isn't a PDF. Pages can only be brought in from a PDF.`);
+    throw new PageProblem(isPdfName(file.name) ? `${file.name} doesn't look like a PDF inside. It may be damaged.` : `${file.name} isn't a PDF or a PNG or JPG picture, so it can't be brought in.`);
   }
   const pages = chosenPages();
   const at = pages[pages.length - 1] + 1;

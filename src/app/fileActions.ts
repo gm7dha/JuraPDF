@@ -81,19 +81,27 @@ export async function pickPdfFile(): Promise<File | null> {
   });
 }
 
+/** A kind of file to save or pick: e.g. { description: "PNG picture", mime: "image/png", ext: ".png" }. */
+export interface FileKind {
+  description: string;
+  mime: string;
+  ext: string;
+}
+
+const PDF_KIND: FileKind = { description: "PDF document", mime: PDF_MIME, ext: PDF_EXTENSION };
+
 /**
- * Write a PDF to the computer: the Save window where there is one, else a
+ * Write a file to the computer: the Save window where there is one, else a
  * download. Gives the name it was saved as and whether it was downloaded, or
  * null if the Save window was closed.
  */
-export async function writePdf(bytes: Uint8Array<ArrayBuffer>, suggested: string): Promise<{ name: string; downloaded: boolean } | null> {
-  const blob = new Blob([bytes], { type: PDF_MIME });
+export async function writeFile(data: Blob, suggested: string, kind: FileKind): Promise<{ name: string; downloaded: boolean } | null> {
   const w = window as PickerWindow;
   if (w.showSaveFilePicker) {
     try {
-      const handle = await w.showSaveFilePicker({ suggestedName: suggested, types: PDF_TYPES });
+      const handle = await w.showSaveFilePicker({ suggestedName: suggested, types: [{ description: kind.description, accept: { [kind.mime]: [kind.ext] } }] });
       const out = await handle.createWritable();
-      await out.write(blob);
+      await out.write(data);
       await out.close();
       return { name: handle.name, downloaded: false };
     } catch (e) {
@@ -101,8 +109,47 @@ export async function writePdf(bytes: Uint8Array<ArrayBuffer>, suggested: string
       throw e;
     }
   }
-  downloadFile(blob, suggested);
+  downloadFile(data, suggested, kind.mime);
   return { name: suggested, downloaded: true };
+}
+
+/** Write a PDF to the computer (see writeFile). */
+export function writePdf(bytes: Uint8Array<ArrayBuffer>, suggested: string): Promise<{ name: string; downloaded: boolean } | null> {
+  return writeFile(new Blob([bytes], { type: PDF_MIME }), suggested, PDF_KIND);
+}
+
+/** Ask for one or more files of these kinds. An empty list if nothing was chosen. */
+export async function pickFiles(kinds: FileKind[], description: string): Promise<File[]> {
+  const w = window as PickerWindow;
+  if (w.showOpenFilePicker) {
+    try {
+      const accept: Record<string, string[]> = {};
+      for (const k of kinds) accept[k.mime] = [...(accept[k.mime] ?? []), k.ext];
+      const handles = await w.showOpenFilePicker({ types: [{ description, accept }], multiple: true });
+      return Promise.all(handles.map((h) => h.getFile()));
+    } catch (e) {
+      if (isCancel(e)) return [];
+      throw e;
+    }
+  }
+  return new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.multiple = true;
+    input.accept = kinds.flatMap((k) => [k.ext, k.mime]).join(",");
+    input.className = "file-input";
+    input.onchange = () => {
+      const files = [...(input.files ?? [])];
+      input.remove();
+      resolve(files);
+    };
+    input.oncancel = () => {
+      input.remove();
+      resolve([]);
+    };
+    document.body.appendChild(input);
+    input.click();
+  });
 }
 
 let opened = 0;

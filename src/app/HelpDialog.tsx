@@ -46,6 +46,10 @@ export function HelpDialog() {
         and thickness, then <strong>Done</strong>. Or pick words with the mouse, and press <strong>Highlight</strong> on the little bar by them.
       </p>
       <p>
+        <strong>Bring in</strong> takes other PDFs, or PNG and JPG pictures (each becomes a page). <strong>Save pages as pictures</strong> saves the pages as PNG pictures (several in
+        a zip file), and <strong>Save the words as text</strong> saves every word in the PDF as a text file.
+      </p>
+      <p>
         <strong>Change what's on a page</strong> (the pencil): click a picture to move it, resize it, swap it or delete it, or click some words to retype them (the old ones are
         covered with white). Best for short fixes, as a PDF doesn't move the rest of the line along.
       </p>

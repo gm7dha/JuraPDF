@@ -5,6 +5,16 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.7 — Bring in and save out
+
+- **Pictures as new pages.** The "bring in" button now takes PNG and JPG pictures as well as PDFs (several at once
+  if you like). Each picture becomes a page of its own, the size of the pages around it, turned to suit the
+  picture's shape, with the picture filling it.
+- **Save pages as pictures.** A new button saves the page you're reading (or the pages you've picked) as PNG
+  pictures, sharp enough to print. Several pages come together in one zip file.
+- **Save the words as text.** A new button saves every word in the PDF as a plain text file, page by page. For a
+  scan, use Read words in pictures first.
+
 ## v0.6.5 — Change what's already on a page
 
 - **Change what's on a page** (the pencil button, first in the "add" group): then click on the page.
