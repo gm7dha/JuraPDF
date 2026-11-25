@@ -1,7 +1,7 @@
 {
   "name": "jurapdf",
   "private": true,
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Free, open-source, browser-based PDF viewer and editor. Sister app to JuraCAD, JuraCUT and JuraDAW.",
   "license": "MIT",
   "type": "module",
@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "smoke": "node scripts/smoke-test.mjs",
+    "bench": "node scripts/bench.mjs",
     "build:claude": "node scripts/build-claude-extension.mjs",
     "check:claude": "node scripts/check-claude-extension.mjs dist/jurapdf-claude.mcpb",
     "icons": "node scripts/make-icons.mjs"

@@ -161,3 +161,33 @@ export function wheelFlip(total: number, deltaY: number, canScroll: boolean): { 
   if (sum <= -FLIP_DISTANCE) return { total: 0, flip: -1 };
   return { total: sum, flip: 0 };
 }
+
+/**
+ * Which pages to have on hand: those within `margin` pixels above or below
+ * the window (from, to: page numbers from 0, `to` included). Boxes are in
+ * order down the page, so this finds them by halving rather than looking at
+ * every page (quick for PDFs with thousands of pages).
+ */
+export function pagesInView(boxes: { top: number; height: number }[], scrollTop: number, viewHeight: number, margin: number): [number, number] {
+  if (!boxes.length) return [0, -1];
+  const top = scrollTop - margin;
+  const bottom = scrollTop + viewHeight + margin;
+  // The first page whose bottom is below `top`.
+  let lo = 0;
+  let hi = boxes.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (boxes[mid].top + boxes[mid].height < top) lo = mid + 1;
+    else hi = mid;
+  }
+  const from = lo;
+  // The last page whose top is above `bottom`.
+  lo = from;
+  hi = boxes.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (boxes[mid].top > bottom) hi = mid - 1;
+    else lo = mid;
+  }
+  return [from, Math.max(from, lo)];
+}

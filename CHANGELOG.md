@@ -5,6 +5,17 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.6.1 — Snappier
+
+- **Long PDFs open, scroll and change much faster.** Timed with a 2,000-page PDF:
+  - opening: 0.6 seconds, down from 1.6;
+  - a change, such as turning a page: 0.3 seconds, down from 2.1;
+  - Undo and Redo: under a twentieth of a second, down from a quarter;
+  - zooming and scrolling no longer stutter.
+- How: only the pages and page pictures near what you're looking at are made at all (not all 2,000); a change no
+  longer reads the whole file again first, as the version just made is kept ready; files are written in one go;
+  page sizes come from the change just made; and after a change or Undo, the pages are drawn straight away.
+
 ## v0.6 — Add words and pictures to pages
 
 - **Add words** (the T button in the bar under the top bar): click on a page where the words should start and type.

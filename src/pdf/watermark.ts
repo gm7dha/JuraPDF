@@ -2,13 +2,14 @@
  * Writing a watermark into a PDF, with pdf-lib. Runs in the browser and in
  * Node (for the tests). The layout maths is in src/model/watermark.ts.
  */
-import { EncryptedPDFError, PDFArray, PDFDocument, PDFFont, PDFImage, PDFName, PDFPage, StandardFonts, degrees, rgb } from "pdf-lib";
+import { EncryptedPDFError, ParseSpeeds, PDFArray, PDFDocument, PDFFont, PDFImage, PDFName, PDFPage, StandardFonts, degrees, rgb } from "pdf-lib";
 
 import {
   angleFor,
   choosePages,
   fitScale,
   hexToRgb,
+  normalRotation,
   shownSize,
   stampsFor,
   startCorner,
@@ -44,10 +45,97 @@ export const FONTS: Record<FontChoice, StandardFonts> = {
   CourierBold: StandardFonts.CourierBold,
 };
 
-/** Open a PDF for changing. */
-export async function loadForEditing(bytes: Uint8Array): Promise<PDFDocument> {
+/**
+ * The PDF as pdf-lib last saved it, kept for the next change: reading a big
+ * PDF again takes time, and the next change is nearly always made to the
+ * version just saved. Kept by the saved file itself, so any other version
+ * (after Undo, say) is read afresh.
+ */
+const lastSaved = new WeakMap<Uint8Array, PDFDocument>();
+
+/** pdf-lib remembers its list of pages and forgets to forget it when a page is removed: start it afresh. */
+function freshPages(doc: PDFDocument): void {
+  (doc as unknown as { pageCache: { invalidate(): void } }).pageCache.invalidate();
+}
+
+/**
+ * Save a changed PDF, keeping it ready for the next change to the file saved.
+ * Written in one go rather than a little at a time (three times quicker, and
+ * the change is being waited for anyway).
+ */
+export async function saveEdited(doc: PDFDocument): Promise<Uint8Array<ArrayBuffer>> {
+  const bytes = (await doc.save({ objectsPerTick: Infinity })) as Uint8Array<ArrayBuffer>;
+  freshPages(doc);
+  lastSaved.set(bytes, doc);
+  return bytes;
+}
+
+/**
+ * Read a PDF that has just been opened, in the background (a little at a time,
+ * so the window stays smooth), ready for its first change.
+ */
+export async function primeForEditing(bytes: Uint8Array): Promise<void> {
+  if (lastSaved.has(bytes)) return;
   try {
-    return await PDFDocument.load(bytes, { updateMetadata: false });
+    const doc = await PDFDocument.load(bytes, { updateMetadata: false });
+    lastSaved.set(bytes, doc);
+  } catch {
+    // Locked or unreadable: the first change will say so.
+  }
+}
+
+/**
+ * Each page's size as it shows, read with pdf-lib straight away (kept ready for
+ * the first change too). For PDFs with very many pages this is much quicker
+ * than asking pdf.js for each page. Null when pdf-lib can't read it.
+ */
+export async function sizesNow(bytes: Uint8Array): Promise<[number, number][] | null> {
+  try {
+    const doc = await PDFDocument.load(bytes, { updateMetadata: false, parseSpeed: ParseSpeeds.Fastest });
+    lastSaved.set(bytes, doc);
+    return keptSizes(bytes);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Each page's size as it shows (points, turned pages turned), from the PDF kept
+ * from the last change, the way pdf.js works it out (the crop box within the
+ * media box). Null when that file isn't kept, or a page uses a scale of its own.
+ */
+export function keptSizes(bytes: Uint8Array): [number, number][] | null {
+  const doc = lastSaved.get(bytes);
+  if (!doc) return null;
+  try {
+    return doc.getPages().map((page) => {
+      if (page.node.get(PDFName.of("UserUnit"))) throw new Error("own scale");
+      const media = page.getMediaBox();
+      const crop = page.getCropBox();
+      if (media.width <= 0 || media.height <= 0 || crop.width <= 0 || crop.height <= 0) throw new Error("odd box");
+      const x1 = Math.max(media.x, crop.x);
+      const y1 = Math.max(media.y, crop.y);
+      const x2 = Math.min(media.x + media.width, crop.x + crop.width);
+      const y2 = Math.min(media.y + media.height, crop.y + crop.height);
+      const [w, h] = x2 > x1 && y2 > y1 ? [x2 - x1, y2 - y1] : [media.width, media.height];
+      return normalRotation(page.getRotation().angle) % 180 ? [h, w] : [w, h];
+    });
+  } catch {
+    return null;
+  }
+}
+
+/** Open a PDF for changing (the one kept from the last change when it's that file). */
+export async function loadForEditing(bytes: Uint8Array): Promise<PDFDocument> {
+  const kept = lastSaved.get(bytes);
+  if (kept) {
+    // Taken out: whatever is done with it now, it no longer matches these bytes.
+    lastSaved.delete(bytes);
+    return kept;
+  }
+  try {
+    // In one go rather than a little at a time: twice as quick, and the change is being waited for.
+    return await PDFDocument.load(bytes, { updateMetadata: false, parseSpeed: ParseSpeeds.Fastest });
   } catch (e) {
     if (e instanceof EncryptedPDFError || (e instanceof Error && /encrypted/i.test(e.message))) throw new LockedPdf();
     throw e;
@@ -162,7 +250,7 @@ export async function addWatermark(bytes: Uint8Array, s: WatermarkSettings, pict
     const page = pages[n - 1];
     if (page) stampPage(page, s, ink);
   }
-  return { bytes: await doc.save(), pages: chosen.pages };
+  return { bytes: await saveEdited(doc), pages: chosen.pages };
 }
 
 /**

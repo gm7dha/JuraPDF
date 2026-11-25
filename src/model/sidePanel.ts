@@ -34,3 +34,19 @@ export function readSideWidths(saved: string | null): Record<SidePane, number> {
   }
   return out;
 }
+
+/** Room round each page picture in the list: its frame, padding and number underneath, in CSS pixels. */
+export const THUMB_EXTRA = 34;
+const THUMB_GAP = 4;
+const THUMB_PAD = 12;
+
+/** Where each page picture sits down the list (top and height, in CSS pixels), and how tall the list is. */
+export function thumbLayout(sizes: [number, number][], thumbWidth: number): { boxes: { top: number; height: number }[]; height: number } {
+  let y = THUMB_PAD;
+  const boxes = sizes.map(([w, h]) => {
+    const box = { top: y, height: Math.round((h * thumbWidth) / Math.max(1, w)) + THUMB_EXTRA };
+    y += box.height + THUMB_GAP;
+    return box;
+  });
+  return { boxes, height: y - (sizes.length ? THUMB_GAP : 0) + THUMB_PAD };
+}

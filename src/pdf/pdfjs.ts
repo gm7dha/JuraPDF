@@ -50,13 +50,12 @@ export async function loadPdf(bytes: Uint8Array, password?: string): Promise<PDF
 
 /** Every page's size in points, as it shows (turned pages already turned). */
 export async function pageSizes(doc: PDFDocumentProxy): Promise<Size[]> {
-  const sizes: Size[] = [];
-  for (let i = 1; i <= doc.numPages; i++) {
-    const page = await doc.getPage(i);
+  // Asked for all at once: the background worker answers them in a stream rather than one round trip each.
+  const pages = await Promise.all(Array.from({ length: doc.numPages }, (_, i) => doc.getPage(i + 1)));
+  return pages.map((page) => {
     const vp = page.getViewport({ scale: 1 });
-    sizes.push([vp.width, vp.height]);
-  }
-  return sizes;
+    return [vp.width, vp.height];
+  });
 }
 
 /** Largest canvas we draw, in pixels (big canvases crash some browsers, Safari especially). */

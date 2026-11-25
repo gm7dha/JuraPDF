@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_SIDE_WIDTH, MIN_SIDE_WIDTH, clampSideWidth, readSideWidths, thumbWidthFor } from "../src/model/sidePanel";
+import { DEFAULT_SIDE_WIDTH, MIN_SIDE_WIDTH, clampSideWidth, readSideWidths, thumbLayout, thumbWidthFor } from "../src/model/sidePanel";
 
 describe("side panel width", () => {
   it("stays between the smallest and most of the window", () => {
@@ -23,5 +23,23 @@ describe("side panel width", () => {
     expect(readSideWidths("not json")).toEqual(DEFAULT_SIDE_WIDTH);
     expect(readSideWidths('{"pages":300,"bookmarks":"wide"}')).toEqual({ pages: 300, bookmarks: 250 });
     expect(readSideWidths('{"pages":5,"bookmarks":5000}')).toEqual({ pages: MIN_SIDE_WIDTH, bookmarks: 720 });
+  });
+});
+
+describe("page list layout", () => {
+  it("stacks the pictures with room for their numbers", () => {
+    const { boxes, height } = thumbLayout(
+      [
+        [595, 842],
+        [842, 595],
+      ],
+      120,
+    );
+    expect(boxes).toEqual([
+      { top: 12, height: 170 + 34 },
+      { top: 12 + 204 + 4, height: 85 + 34 },
+    ]);
+    expect(height).toBe(12 + 204 + 4 + 119 + 12);
+    expect(thumbLayout([], 120).height).toBe(24);
   });
 });

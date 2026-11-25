@@ -6,12 +6,12 @@
 import { PDFDocument, degrees } from "pdf-lib";
 
 import { normalRotation } from "../model/watermark";
-import { LockedPdf, loadForEditing } from "./watermark";
+import { LockedPdf, loadForEditing, saveEdited } from "./watermark";
 
 /** Something about the request can't be done; the message says why. */
 export class PageProblem extends Error {}
 
-const save = (doc: PDFDocument) => doc.save() as Promise<Uint8Array<ArrayBuffer>>;
+const save = saveEdited;
 
 /** Turn pages a quarter turn clockwise (90) or anticlockwise (-90), or half a turn (180). */
 export async function turnPages(bytes: Uint8Array, pages: number[], by: 90 | -90 | 180): Promise<Uint8Array<ArrayBuffer>> {
@@ -75,5 +75,5 @@ export async function extractPages(bytes: Uint8Array, pages: number[]): Promise<
   const doc = await PDFDocument.create();
   const copied = await doc.copyPages(source, pages);
   copied.forEach((p) => doc.addPage(p));
-  return save(doc);
+  return doc.save() as Promise<Uint8Array<ArrayBuffer>>;
 }

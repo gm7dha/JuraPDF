@@ -964,14 +964,16 @@ body.resizing-side {
 }
 
 .thumbnails {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 12px 0;
+  position: relative;
   overflow-y: auto;
   flex: 1;
   min-height: 0;
+}
+
+/* The pictures are placed down this (only the ones near the list's window are made). */
+.thumbs-track {
+  position: relative;
+  width: 100%;
 }
 
 /* Bookmarks: tools along the top, then the list. */
@@ -1157,9 +1159,9 @@ span.bookmark-fold {
 }
 
 .thumb {
-  position: relative;
+  position: absolute;
+  box-sizing: border-box;
   cursor: pointer;
-  flex: none;
 }
 
 .thumb:focus-visible {
@@ -1209,7 +1211,12 @@ span.bookmark-fold {
 }
 
 .thumbs-picked {
-  margin: 8px 8px 0;
+  position: sticky;
+  bottom: 0;
+  margin: 0;
+  padding: 8px;
+  background: var(--panel);
+  border-top: 1px solid var(--line-2);
   font-size: 12px;
   text-align: center;
 }
