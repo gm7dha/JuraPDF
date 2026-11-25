@@ -227,3 +227,40 @@ export function shapeInPage(frame: PageFrame, item: ShapeItem): { box: { x: numb
   const head = arrowHead(item);
   return { box, start: a, end: at((head[1][0] + head[2][0]) / 2, (head[1][1] + head[2][1]) / 2), head: head.map(([x, y]) => at(x, y)) };
 }
+
+/** A box in points on a page, from its top-left as it shows. */
+export interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Highlights over picked words: the boxes of the picked words on one page
+ * (in points), joined up line by line so each line gets one highlight, a
+ * touch taller than the letters.
+ */
+export function highlightsFor(page: number, rects: Rect[], colour: string): ShapeItem[] {
+  const usable = rects.filter((r) => r.width > 0.5 && r.height > 0.5);
+  if (!usable.length) return [];
+  // Leave out anything far taller than the words around it (a whole block picked by mistake).
+  const heights = usable.map((r) => r.height).sort((a, b) => a - b);
+  const typical = heights[Math.floor(heights.length / 2)];
+  const sorted = usable.filter((r) => r.height <= typical * 3).sort((a, b) => a.y + a.height / 2 - (b.y + b.height / 2) || a.x - b.x);
+  const lines: Rect[] = [];
+  for (const r of sorted) {
+    const last = lines[lines.length - 1];
+    const overlap = last ? Math.min(last.y + last.height, r.y + r.height) - Math.max(last.y, r.y) : 0;
+    const sameLine = last && overlap > Math.min(last.height, r.height) * 0.5 && r.x <= last.x + last.width + Math.max(last.height, r.height);
+    if (last && sameLine) {
+      const x = Math.min(last.x, r.x);
+      const y = Math.min(last.y, r.y);
+      lines[lines.length - 1] = { x, y, width: Math.max(last.x + last.width, r.x + r.width) - x, height: Math.max(last.y + last.height, r.y + r.height) - y };
+    } else lines.push({ ...r });
+  }
+  return lines.map((l) => {
+    const pad = l.height * 0.1;
+    return { kind: "shape", shape: "highlight", page, x1: l.x - pad / 2, y1: l.y - pad, x2: l.x + l.width + pad / 2, y2: l.y + l.height + pad, colour, thickness: 0 };
+  });
+}

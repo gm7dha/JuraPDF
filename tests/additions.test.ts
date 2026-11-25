@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { PDFDict, PDFDocument, PDFName, degrees } from "pdf-lib";
 import { OPS, getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 
-import { additionLabel, arrowHead, cleanSize, shapeBox, shapeInPage, sizedShape, type ShapeItem, keepOnPage, lineStarts, linesOf, startingPictureSize, wordsHeight, type WordsItem } from "../src/model/additions";
+import { additionLabel, highlightsFor, arrowHead, cleanSize, shapeBox, shapeInPage, sizedShape, type ShapeItem, keepOnPage, lineStarts, linesOf, startingPictureSize, wordsHeight, type WordsItem } from "../src/model/additions";
 import { AddProblem, addPicture, addShape, addWords, pictureType, textWidth, unwritable } from "../src/pdf/additions";
 
 const STANDARD_FONTS = new URL("../node_modules/pdfjs-dist/standard_fonts/", import.meta.url).pathname;
@@ -225,5 +225,43 @@ describe("one change after another on the same page", () => {
     bytes = await addWords(bytes, words({ text: "Second", y: 300 }));
     bytes = await addWords(bytes, words({ text: "Third", y: 400 }));
     expect((await textOn(bytes, 0)).map((i) => i.str)).toEqual(["First", "Second", "Third"]);
+  });
+});
+
+describe("highlighting picked words", () => {
+  it("joins the words on each line into one highlight, a touch taller than the letters", () => {
+    const items = highlightsFor(
+      2,
+      [
+        { x: 100, y: 200, width: 40, height: 10 },
+        { x: 142, y: 200.5, width: 30, height: 10 },
+        { x: 100, y: 214, width: 50, height: 10 },
+      ],
+      "#ffd400",
+    );
+    expect(items).toHaveLength(2);
+    expect(items[0]).toMatchObject({ kind: "shape", shape: "highlight", page: 2, colour: "#ffd400" });
+    // The first line is 10.5 tall (its two words aren't quite level), so it reaches a tenth of that further.
+    expect(items[0].x1).toBeCloseTo(99.475, 5);
+    expect(items[0].x2).toBeCloseTo(172.525, 5);
+    expect(items[0].y1).toBeCloseTo(198.95, 5);
+    expect(items[1].y1).toBeCloseTo(213, 5);
+  });
+
+  it("keeps words far apart on a line separate, and leaves out a block picked by mistake", () => {
+    const items = highlightsFor(
+      0,
+      [
+        { x: 50, y: 100, width: 20, height: 10 },
+        { x: 400, y: 100, width: 20, height: 10 },
+        { x: 0, y: 0, width: 595, height: 842 },
+      ],
+      "#ffd400",
+    );
+    expect(items).toHaveLength(2);
+  });
+
+  it("gives nothing for nothing", () => {
+    expect(highlightsFor(0, [], "#ffd400")).toEqual([]);
   });
 });

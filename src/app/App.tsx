@@ -12,6 +12,7 @@ import { PasswordDialog } from "./PasswordDialog";
 import { PrintDialog } from "./PrintDialog";
 import { WatermarkDialog } from "./WatermarkDialog";
 import { inPopup, inTextBox } from "./popupGuard";
+import { PickedWordsBar } from "./PickedWordsBar";
 import { SidePanel } from "./SidePanel";
 import { TopBar } from "./TopBar";
 import { ViewBar } from "./ViewBar";
@@ -34,6 +35,7 @@ export function App() {
         <main className={`workspace${sidebar ? ` with-${pane}` : " no-sidebar"}`} style={{ "--side-width": `${sideWidth}px` } as CSSProperties}>
           {sidebar && <SidePanel />}
           <PageView />
+          <PickedWordsBar />
         </main>
       ) : (
         <Welcome />

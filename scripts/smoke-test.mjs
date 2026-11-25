@@ -633,6 +633,45 @@ await step("highlighting and drawing an arrow, then Undo", async () => {
   expect(!(await yellow()) && (await label()) !== "add a highlight to page 1", "Undo takes the highlight away");
 });
 
+await step("picking words with the mouse and highlighting them", async () => {
+  await page.keyboard.press("Home");
+  await page.waitForFunction(() => document.querySelector('.page[data-page="1"] .textLayer')?.textContent?.includes("Smoke page 1"), null, { timeout: 15_000 });
+  // Pick "Smoke page 1" by dragging across it.
+  const span = page.locator('.page[data-page="1"] .textLayer span', { hasText: "Smoke page 1" }).first();
+  const r = await span.boundingBox();
+  await page.mouse.move(r.x + 1, r.y + r.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(r.x + r.width - 1, r.y + r.height / 2, { steps: 5 });
+  await page.mouse.up();
+  await page.getByRole("toolbar", { name: "Picked words" }).waitFor();
+  if (process.env.SMOKE_SCREENSHOT) await page.screenshot({ path: "smoke-picked.png" });
+  await page.getByRole("button", { name: "Highlight the picked words" }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "highlight words on page 1");
+  // The words are coloured in yellow where they were picked.
+  const spot = await page.evaluate((b) => {
+    const p = document.querySelector('.page[data-page="1"]').getBoundingClientRect();
+    return { x: (b.x + b.width * 0.5 - p.left) / p.width, y: (b.y + b.height * 0.5 - p.top) / p.height };
+  }, r);
+  await page.waitForFunction(
+    (s) => {
+      const c = document.querySelector('.page[data-page="1"] canvas');
+      if (!c) return false;
+      const ctx = c.getContext("2d");
+      // Look along the middle of the words for a yellow bit (between letters).
+      for (let dx = -0.05; dx <= 0.05; dx += 0.004) {
+        const [r, g, b] = ctx.getImageData(Math.round(c.width * (s.x + dx)), Math.round(c.height * s.y), 1, 1).data;
+        if (r > 200 && g > 180 && b < 150) return true;
+      }
+      return false;
+    },
+    spot,
+    { timeout: 15_000 },
+  );
+  expect((await page.locator(".picked-bar").count()) === 0, "the bar goes once the words are highlighted");
+  await page.keyboard.press("Control+z");
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label !== "highlight words on page 1");
+});
+
 await step("Connect to Claude with no extension running says what to do", async () => {
   await page.getByRole("button", { name: "Connect to Claude" }).click();
   await page.locator('.modal:has-text("Not connected")').waitFor({ timeout: 60_000 });
