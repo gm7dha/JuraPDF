@@ -76,4 +76,8 @@ tests          Vitest, pure code only;  scripts/smoke-test.mjs drives the built 
   words out as text.
 - **v0.7.1 (done)** — scanned pages unpacked by the browser (about ten times quicker), and one page at a time
   reads three pages ahead in the direction you're flicking.
+- **v0.7.2 (done)** — **find words** (asked for by the owner): a search bar (Ctrl+F) that looks through every page,
+  colours in each place found, counts them and goes to the next / previous one on any page; capitals and accents
+  don't matter unless asked; looks again after every change; points out pages with no words (scans) and offers to
+  read them.
 - **Later** — recent files, keeping work in the browser between visits, comments and highlights, compressing large PDFs.

@@ -83,13 +83,17 @@ export function drawPage(page: PDFPageProxy, canvas: HTMLCanvasElement, cssScale
   });
 }
 
-/** Lay the page's words over the drawing (invisible) so they can be selected, copied and found with Ctrl+F. */
-export function drawTextLayer(page: PDFPageProxy, container: HTMLElement, cssScale: number): { cancel(): void; promise: Promise<void> } {
+/**
+ * Lay the page's words over the drawing (invisible) so they can be selected,
+ * copied and found. `spans()` gives one span per bit of words, in the same order
+ * as `pageTextBits` (for highlighting what the search bar finds).
+ */
+export function drawTextLayer(page: PDFPageProxy, container: HTMLElement, cssScale: number): { cancel(): void; promise: Promise<void>; spans(): HTMLElement[] } {
   const viewport = page.getViewport({ scale: cssScale });
   container.replaceChildren();
   const layer = new pdfjs.TextLayer({ textContentSource: page.streamTextContent(), container, viewport });
   // Handed back at once, so a page whose PDF changes mid-way can stop it before its words land.
-  return { cancel: () => layer.cancel(), promise: layer.render() };
+  return { cancel: () => layer.cancel(), promise: layer.render(), spans: () => layer.textDivs };
 }
 
 /**

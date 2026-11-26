@@ -5,6 +5,24 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.7.2 — Find words
+
+- **A search bar.** The magnifying glass beside the page number (or Ctrl+F, ⌘F on a Mac) opens a little bar at
+  the top right of the pages. Type some words and every place they appear in the whole PDF is coloured in yellow,
+  with the one you're on in orange, and the bar says how many there are ("3 of 12").
+- **Next and previous.** Enter (or the down arrow on the bar) goes to the next place, Shift+Enter (or the up
+  arrow) to the one before, going round from the last to the first. It jumps to the right page, even far away,
+  and in one-page-at-a-time view too. F3 and Ctrl+G work as well. Esc closes the bar and takes the colouring off.
+- **Forgiving.** Capitals, accents, curly quotes and extra spaces don't matter, and words split over two lines are
+  still found. Turn on **Match capitals** (the Aa button) to find only words written exactly the same.
+- **Always up to date.** After any change (adding words, bringing in pages, Undo, reading words in pictures) the
+  open search looks again by itself.
+- **Scans and photos.** Pages with no words to find (scans, photos, blank pages) are pointed out, with a button to
+  read the words in their pictures; once read, they're found too.
+- **Quick on long PDFs.** It looks from the page you're on first, so nearby places show straight away, and keeps
+  each page's words once read, so changing the search is almost instant (a 2,000-page PDF: about a fifth of a
+  second).
+
 ## v0.7.1 — Quicker flicking through scanned pages
 
 - **Scanned pages show much sooner.** Pages that are photos or scans used to take up to half a second each the first

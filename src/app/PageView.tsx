@@ -15,6 +15,7 @@ import { drawPage, drawTextLayer, isCancelled, type PDFDocumentProxy } from "../
 import { drawAhead, keepCanvas, keptCanvas } from "./pageCanvases";
 import { endShapeDrag, placeAt, startShapeAt, updateDraft } from "./addActions";
 import { DraftBox } from "./DraftBox";
+import { SearchHits } from "./SearchHits";
 
 export function PageView() {
   const pdf = useStore((s) => s.pdf);
@@ -231,6 +232,8 @@ const PageSlot = memo(function PageSlot({ doc, index, box, zoom, root }: SlotPro
   // A page drawn a moment ago (or ahead of time) counts as near straight away, so it shows at once.
   const [near, setNear] = useState(() => !!keptCanvas(doc, index, cssScale));
   const [drawn, setDrawn] = useState(false);
+  /** The words layer's spans once it's built (for highlighting what the search bar found). */
+  const [spans, setSpans] = useState<HTMLElement[] | null>(null);
   /** The version of the PDF the page was last drawn from. */
   const drawnFrom = useRef<PDFDocumentProxy | null>(null);
 
@@ -298,6 +301,7 @@ const PageSlot = memo(function PageSlot({ doc, index, box, zoom, root }: SlotPro
         if (stopped) return;
         layer = drawTextLayer(page, el, CSS_PER_PT);
         await layer.promise;
+        if (!stopped) setSpans(layer.spans());
       } catch {
         // The page still shows; its words just can't be selected.
       }
@@ -306,6 +310,7 @@ const PageSlot = memo(function PageSlot({ doc, index, box, zoom, root }: SlotPro
       stopped = true;
       layer?.cancel();
       el.replaceChildren();
+      setSpans(null);
     };
   }, [near, doc, index]);
 
@@ -350,6 +355,7 @@ const PageSlot = memo(function PageSlot({ doc, index, box, zoom, root }: SlotPro
       style={{ top: box.top, width: box.width, height: box.height, left: `calc(50% - ${box.width / 2}px)`, ["--scale-factor" as string]: cssScale }}
     >
       <div className="page-canvas" ref={holder} />
+      <SearchHits index={index} spans={spans} />
       <div className="textLayer" ref={text} />
       <DraftBox index={index} scale={cssScale} />
       {!drawn && <span className="page-loading">Page {index + 1}</span>}

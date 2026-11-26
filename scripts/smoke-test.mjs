@@ -121,6 +121,12 @@ const expect = (ok, message) => {
   if (!ok) throw new Error(message);
 };
 
+/** Wait for the search bar's count to say `text`. */
+const countIs = (text) =>
+  page.waitForFunction((t) => document.querySelector(".search-count")?.textContent === t, text, { timeout: 15_000 }).catch(async () => {
+    throw new Error(`the search count should say "${text}", not "${await page.locator(".search-count").textContent()}"`);
+  });
+
 const pdf = testPdf();
 
 await step("the app opens", async () => {
@@ -164,6 +170,49 @@ await step("pages and thumbnails are drawn", async () => {
 
 await step("the words can be selected", async () => {
   await page.locator('.page[data-page="1"] .textLayer span', { hasText: "Smoke page 1" }).waitFor({ timeout: 10_000 });
+});
+
+await step("finding words: highlights, a count, next and previous, then close", async () => {
+  await page.locator(".page-scroller").click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press("Control+f");
+  const box = page.getByLabel("Words to find");
+  await box.waitFor({ timeout: 5000 });
+  expect(await box.evaluate((el) => el === document.activeElement), "Ctrl+F should put the typing spot in the search box");
+  await box.fill("smoke PAGE");
+  await countIs("1 of 3");
+  // The place found is coloured in right over its words.
+  const hit = page.locator('.page[data-page="1"] .search-hit.current');
+  await hit.waitFor({ timeout: 10_000 });
+  const hitBox = await hit.boundingBox();
+  const words = await page.locator('.page[data-page="1"] .textLayer span', { hasText: "Smoke page 1" }).boundingBox();
+  expect(hitBox && words && Math.abs(hitBox.x - words.x) < 3 && Math.abs(hitBox.y - words.y) < 6 && hitBox.width < words.width, "the highlight should sit on the words found");
+  await box.press("Enter");
+  await countIs("2 of 3");
+  await page.waitForFunction(() => window.jurapdfStore.getState().currentPage === 1);
+  await page.locator('.page[data-page="2"] .search-hit.current').waitFor({ timeout: 10_000 });
+  await box.press("Enter");
+  await countIs("3 of 3");
+  await page.locator('.page[data-page="3"] .search-hit.current').waitFor({ timeout: 10_000 });
+  await box.press("Enter");
+  await countIs("1 of 3");
+  await box.press("Shift+Enter");
+  await countIs("3 of 3");
+  await page.getByRole("button", { name: "Previous place found" }).click();
+  await countIs("2 of 3");
+  await box.fill("page 3");
+  await countIs("1 of 1");
+  await box.fill("Page 3");
+  await page.getByRole("button", { name: "Match capitals" }).click();
+  await countIs("Not found");
+  await page.getByRole("button", { name: "Match capitals" }).click();
+  await countIs("1 of 1");
+  await box.fill("no such words");
+  await countIs("Not found");
+  await box.press("Escape");
+  await page.locator(".search-bar").waitFor({ state: "detached", timeout: 5000 });
+  expect((await page.locator(".search-hit").count()) === 0, "closing the search should take the colouring off");
+  await page.keyboard.press("Home");
+  await page.waitForFunction(() => window.jurapdfStore.getState().currentPage === 0);
 });
 
 await step("going to a page", async () => {
@@ -695,12 +744,22 @@ await step("reading the words in a picture so they can be picked", async () => {
   await page.getByRole("button", { name: "Done" }).click();
   await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "add a picture to page 3");
   await page.evaluate(() => window.jurapdfStore.getState().goToPage(2));
+  // The words in a picture can't be found until they're read; the search bar, left open, finds them once they are.
+  await page.keyboard.press("Control+f");
+  await page.getByLabel("Words to find").fill("invoice 4815");
+  await countIs("Not found");
   await page.getByRole("button", { name: "Read words in pictures" }).click();
   await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "read the words in the pictures on page 3", null, { timeout: 90_000 });
   await page.waitForFunction(() => /INVOICE\s*4815/.test(document.querySelector('.page[data-page="3"] .textLayer')?.textContent ?? ""), null, { timeout: 15_000 });
   const told = await page.evaluate(() => window.jurapdfStore.getState().toasts.map((t) => t.text).join(" | "));
   expect(/Found 2 words in the pictures on page 3/.test(told), `it should say what it found: ${told}`);
-  for (let i = 0; i < 2; i++) await page.keyboard.press("Control+z");
+  await countIs("1 of 1");
+  await page.locator('.page[data-page="3"] .search-hit.current').waitFor({ timeout: 10_000 });
+  await page.keyboard.press("Control+z");
+  await countIs("Not found");
+  await page.keyboard.press("Escape");
+  await page.locator(".search-bar").waitFor({ state: "detached", timeout: 5000 });
+  await page.keyboard.press("Control+z");
   await page.waitForFunction(() => !document.querySelector('.page[data-page="3"] .textLayer')?.textContent?.includes("INVOICE"), null, { timeout: 15_000 });
 });
 

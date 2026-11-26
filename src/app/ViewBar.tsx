@@ -12,6 +12,7 @@ import { savePagesAsPictures, saveWordsAsText } from "./exportActions";
 import { readWordsInPictures } from "./ocrActions";
 import { addBlank, deleteChosen, insertFromFile, moveChosen, saveChosenAsNew, turnChosen } from "./pageActions";
 import { detectPlatform, shortcut } from "./platform";
+import { closeSearch, openSearch } from "./searchActions";
 
 const SHAPES: { shape: ShapeKind; icon: (p: { size?: number }) => JSX.Element; tip: string }[] = [
   { shape: "highlight", icon: Icons.Highlight, tip: "Highlight: drag across words to colour them in, see-through so they still show" },
@@ -35,6 +36,7 @@ export function ViewBar() {
   const changing = useStore((s) => s.placing?.kind === "change" || s.draft?.kind === "existing" || (s.draft?.kind === "words" && !!s.draft.cover));
   const selected = useStore((s) => s.selected);
   const onePage = useStore((s) => s.onePage);
+  const searching = useStore((s) => !!s.search);
   const s = useStore.getState;
   const count = pdf?.sizes.length ?? 0;
   const platform = detectPlatform();
@@ -90,6 +92,16 @@ export function ViewBar() {
         />
         <span className="muted">of {count}</span>
       </label>
+      <button
+        type="button"
+        className={`icon-button${searching ? " active" : ""}`}
+        onClick={() => (searching ? closeSearch() : openSearch())}
+        aria-pressed={searching}
+        aria-label="Find words"
+        title={`Find words anywhere in the PDF (${shortcut(platform, "F")})`}
+      >
+        <Icons.Search />
+      </button>
       <span className="viewbar-divider" />
       <button type="button" className="icon-button" onClick={() => s().setZoom(zoomOut(shown))} aria-label="Zoom out" title={`Zoom out (${shortcut(platform, "−")})`}>
         <Icons.Minus />

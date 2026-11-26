@@ -327,6 +327,21 @@ export const Icons = {
       <path d="M18 9v10M14.5 15.5 18 19l3.5-3.5" />
     </Svg>
   ),
+  /** Find words: a magnifying glass. */
+  Search: (p: IconProps) => (
+    <Svg {...p}>
+      <circle cx="10.5" cy="10.5" r="6" />
+      <path d="m15 15 5 5" />
+    </Svg>
+  ),
+  /** Match capitals: a capital and a small letter. */
+  MatchCase: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M3 18 7.5 6 12 18M4.7 13.5h5.6" />
+      <circle cx="17.5" cy="15" r="3" />
+      <path d="M20.5 12v6" />
+    </Svg>
+  ),
   /** Save the words as text: lines of words with an arrow out. */
   SaveText: (p: IconProps) => (
     <Svg {...p}>
