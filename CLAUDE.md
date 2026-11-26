@@ -79,6 +79,13 @@
   300 dpi with pale colours turned white (`inkOnly`) and lists the page's own level words; `readPicture` (src/pdf/ocr.ts) runs
   Tesseract from `ocr/` (worker, core, eng.traineddata.gz, copied by `ocrFiles` in vite.config.ts); `wordsToAdd` (src/model/ocr.ts)
   keeps sure words not already on the page; `addHiddenWords` writes them invisibly (render mode 3, squeezed to the word's width).
+- Find words (`SearchBar.tsx`, `searchActions.ts`, `SearchHits.tsx`; `search` in the store, null when closed): `src/model/search.ts`
+  (pure) folds each page's pdf.js text bits (capitals and accents unless Match capitals, curly quotes, dashes, spaces, line
+  ends) keeping which bit and letters each folded letter came from, so a hit is a list of pieces (bit, from, to). The words
+  layer has one span per bit in the same order (`spans()` from `drawTextLayer`), so `SearchHits` colours them in from
+  Range rects, kept as shares of the page so they follow the zoom. `lookThrough` reads pages from the one being read on, then
+  from the start, 24 at a time, keeping each version's words (WeakMap by pdf.js document); it runs again by itself whenever
+  `pdf.doc` changes. `showHit` scrolls to a hit already drawn, or else goes to its page and sets `scrollTo` for SearchHits.
 - JuraPDF for Claude (`src/mcp/`, `src/live/`, `claude-extension/manifest.json`): JuraDAW's extension and live link
   (which are JuraCAD's) with the names changed, so a fix in one belongs in the others. Ports **47655–47664** (JuraCAD
   47615–47624, JuraDAW 47635–47644), path `/jurapdf-live`, sub-protocol `jurapdf-live.1`, `JURAPDF_LIVE_DEV=1` lets in

@@ -3,6 +3,7 @@ import { create } from "zustand";
 import type { PDFDocumentProxy } from "../pdf/pdfjs";
 import { pickPages, type ClickKind } from "./pages";
 import type { Draft, Placing } from "./additions";
+import type { SearchState } from "./search";
 import { readSideWidths } from "./sidePanel";
 import { clampZoom, type Size, type ZoomMode } from "./zoom";
 
@@ -87,6 +88,8 @@ interface State {
   /** Pages picked in the page list (0 = first), and the page a Shift-click run starts from. */
   selected: number[];
   anchor: number | null;
+  /** The search bar: what's being looked for and what's been found, or null when it's closed. */
+  search: SearchState | null;
 
   setPdf(pdf: OpenPdf | null): void;
   /** A change to the PDF (labelled for Undo); `pdf` is the new version. */
@@ -117,6 +120,8 @@ interface State {
   pickPage(i: number, kind: ClickKind): void;
   /** Pick exactly these pages (e.g. after they've moved). */
   setSelected(pages: number[]): void;
+  /** Open, change or (null) close the search bar. */
+  setSearch(search: SearchState | null): void;
 }
 
 let toastId = 0;
@@ -172,12 +177,13 @@ export const useStore = create<State>((set, get) => ({
   draft: null,
   selected: [],
   anchor: null,
+  search: null,
 
   setPdf(pdf) {
     const { pdf: old, past, future } = get();
     const keep = new Set(pdf ? [pdf.doc] : []);
     for (const p of [old, ...past.map((s) => s.pdf), ...future.map((s) => s.pdf)]) if (p && !keep.has(p.doc)) void p.doc.destroy();
-    set({ pdf, currentPage: 0, goTo: null, zoom: get().onePage ? "page" : "width", savedAs: null, savedBytes: pdf?.bytes ?? null, past: [], future: [], selected: [], anchor: null, placing: null, draft: null });
+    set({ pdf, currentPage: 0, goTo: null, zoom: get().onePage ? "page" : "width", savedAs: null, savedBytes: pdf?.bytes ?? null, past: [], future: [], selected: [], anchor: null, placing: null, draft: null, search: pdf ? get().search : null });
   },
   changePdf(pdf, label) {
     const { pdf: old, past, future } = get();
@@ -265,5 +271,6 @@ export const useStore = create<State>((set, get) => ({
     else set({ selected: pickPages(selected, i, "run", anchor ?? currentPage), anchor: anchor ?? currentPage });
     get().goToPage(i);
   },
+  setSearch: (search) => set({ search }),
   setSelected: (pages) => set({ selected: [...new Set(pages)].sort((a, b) => a - b), anchor: pages.length ? Math.min(...pages) : get().anchor }),
 }));

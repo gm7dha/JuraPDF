@@ -92,6 +92,25 @@ await time("undo → shown", async () => {
   await page.waitForFunction(() => window.jurapdfStore.getState().past.length === 0, null, { timeout: 60_000 });
   await page.waitForFunction(() => document.querySelector('.page[data-page="400"].drawn'), null, { timeout: 60_000 });
 });
+const searched = () => page.waitForFunction(() => /^\d+ of \d+$|^Not found$/.test(document.querySelector(".search-count")?.textContent ?? ""), null, { timeout: 120_000 });
+await page.keyboard.press("Control+f");
+const began = Date.now();
+await page.getByLabel("Words to find").fill(`of page ${PAGES - 5}:`);
+await page.waitForFunction(() => document.querySelector(".search-hit.current"), null, { timeout: 120_000 });
+console.log(`search every page (first time) → first place shown: ${Date.now() - began} ms`);
+await time("  → all pages looked through", searched);
+console.log(`  found: ${await page.locator(".search-count").textContent()}`);
+await time("search again (words kept) → all found", async () => {
+  await page.getByLabel("Words to find").fill("lazy dog");
+  await page.waitForTimeout(130);
+  await searched();
+});
+console.log(`  found: ${await page.locator(".search-count").textContent()}`);
+await time("next place found ×20", async () => {
+  for (let i = 0; i < 20; i++) await page.getByLabel("Words to find").press("Enter");
+  await page.waitForFunction(() => document.querySelector(".search-hit.current"), null, { timeout: 60_000 });
+});
+await page.getByLabel("Words to find").press("Escape");
 await time("scroll through 50 pages", async () => {
   for (let i = 0; i < 50; i++) {
     await page.mouse.move(700, 500);

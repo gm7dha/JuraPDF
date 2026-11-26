@@ -33,6 +33,11 @@ export function HelpDialog() {
         save some pages as a new PDF. They work on the pages picked in the page list, or else the page you're on. <strong>Undo</strong> takes back any change.
       </p>
       <p>
+        <strong>Find words</strong> (the magnifying glass, or Ctrl+F): type some words and every place they're in the PDF is coloured in, with how many there are. Enter goes to the
+        next place (Shift+Enter the one before), even on pages far away. Capitals and accents don't matter unless you turn on <strong>Match capitals</strong> (the Aa button). Pages
+        that are scans or photos have no words to find until you use <strong>Read words in pictures</strong>; the search bar offers to do that for you.
+      </p>
+      <p>
         <strong>Bookmarks</strong> (the tab beside <strong>Pages</strong> on the left) lists the PDF's chapters and sections: click one to go there. <strong>+</strong> bookmarks the page
         you're on; you can rename (double-click), delete, move bookmarks up and down, put one inside another, and fold them away. They're saved in the PDF, so other PDF readers show them too. Drag the panel's right edge to make it wider or narrower.
       </p>
@@ -55,7 +60,7 @@ export function HelpDialog() {
       </p>
       <p>
         <strong>Read words in pictures</strong> (the button after the arrow): finds the words in a scanned page or a photo, so they can be picked, copied, highlighted and found
-        with Ctrl+F. It runs on your computer; the first time it fetches its reader (about 7 MB), then it works offline.
+        with Find words. It runs on your computer; the first time it fetches its reader (about 7 MB), then it works offline.
       </p>
       <p className="muted">Coming next: changing what's already on a page, and saving pages as pictures.</p>
       <div className="platform-row">

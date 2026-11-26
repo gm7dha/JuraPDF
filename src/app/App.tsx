@@ -13,6 +13,8 @@ import { PrintDialog } from "./PrintDialog";
 import { WatermarkDialog } from "./WatermarkDialog";
 import { inPopup, inTextBox } from "./popupGuard";
 import { PickedWordsBar } from "./PickedWordsBar";
+import { SearchBar } from "./SearchBar";
+import { closeSearch, openSearch, step } from "./searchActions";
 import { SidePanel } from "./SidePanel";
 import { TopBar } from "./TopBar";
 import { ViewBar } from "./ViewBar";
@@ -35,6 +37,7 @@ export function App() {
         <main className={`workspace${sidebar ? ` with-${pane}` : " no-sidebar"}`} style={{ "--side-width": `${sideWidth}px` } as CSSProperties}>
           {sidebar && <SidePanel />}
           <PageView />
+          <SearchBar />
           <PickedWordsBar />
         </main>
       ) : (
@@ -146,6 +149,19 @@ function useShortcuts() {
         else if (s.pdf) s.openDialog("print");
         return;
       }
+      // Find words: the search bar, which looks through every page (the browser's own only finds pages near the window).
+      if (mod && !e.altKey && key === "f" && s.pdf) {
+        if (document.querySelector('[aria-modal="true"]')) return;
+        e.preventDefault();
+        openSearch();
+        return;
+      }
+      if (s.search && (e.key === "F3" || (mod && !e.altKey && key === "g"))) {
+        if (document.querySelector('[aria-modal="true"]')) return;
+        e.preventDefault();
+        step(e.shiftKey ? -1 : 1);
+        return;
+      }
       if (inPopup(e.target, document) || inTextBox(e.target)) return;
       if (mod && !e.altKey) {
         if (key === "z" || key === "y") {
@@ -178,6 +194,7 @@ function useShortcuts() {
       if ((e.key === "Delete" || e.key === "Backspace") && s.selected.length) void deleteChosen();
       else if (e.key === "Escape" && (s.placing || s.draft)) cancelAdding();
       else if (e.key === "Escape" && s.selected.length) s.setSelected([]);
+      else if (e.key === "Escape" && s.search) closeSearch();
       else if (s.onePage && ["ArrowDown", "ArrowUp", "PageDown", "PageUp"].includes(e.key)) {
         // One page at a time: these flip pages, once a zoomed-in page has scrolled as far as it goes.
         const back = e.key === "ArrowUp" || e.key === "PageUp";
