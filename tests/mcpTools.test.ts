@@ -164,6 +164,17 @@ describe("reading and changing a PDF", () => {
     expect((await words(s))[0]).not.toContain("Page 1 of");
     expect(await ok(s, "add_headers", { take_off: true })).toBe("Took off the headers and footers.");
     expect(await bad(s, "add_headers", {})).toMatch(/at least one spot/);
+    // Sticky notes.
+    expect(await ok(s, "read_notes")).toBe("This PDF has no notes. add_note adds one.");
+    const added = await ok(s, "add_note", { page: 2, words: "Check this\nplease", x: 100, y: 50, colour: "blue" });
+    const id = /its id is (\d+R)/.exec(added)?.[1];
+    expect(id).toBeTruthy();
+    expect(await ok(s, "read_notes")).toMatch(new RegExp(`^1 note:\\n- ${id}: page 2, 100 from the left and 50 from the top, by Claude, \\d{4}-\\d\\d-\\d\\d \\d\\d:\\d\\d UTC: "Check this\\\\nplease"$`));
+    expect(await bad(s, "add_note", { page: 1, words: " " })).toMatch(/some text/);
+    expect(await bad(s, "add_note", { page: 1, words: "x", colour: "purple" })).toMatch(/colour must be one of "yellow"/);
+    expect(await bad(s, "delete_note", { id: "1R" })).toMatch(/no note "1R"/);
+    expect(await ok(s, "delete_note", { id })).toBe("Deleted the note on page 2.");
+    expect(await ok(s, "read_notes")).toMatch(/no notes/);
     expect(await bad(s, "add_words", { page: 1, words: "Tick ✓" })).toMatch(/✓/);
     expect(await bad(s, "add_words", { page: 99, words: "x" })).toMatch(/page must be/);
     expect(await bad(s, "add_picture", { page: 1, picture: "missing.png" })).toMatch(/no file called/);

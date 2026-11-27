@@ -288,3 +288,20 @@ export function startCorner(x: number, y: number, w: number, h: number, deg: num
   const s = Math.sin(a);
   return [x - (c * w) / 2 + (s * h) / 2, y - (s * w) / 2 - (c * h) / 2];
 }
+
+/** A point in the page's own space → as shown (y up from the shown bottom): the other way from `toPageSpace`. */
+export function fromPageSpace(f: PageFrame, x: number, y: number): { x: number; y: number } {
+  const r = normalRotation(f.rotation);
+  const dx = x - f.x;
+  const dy = y - f.y;
+  switch (r) {
+    case 0:
+      return { x: dx, y: dy };
+    case 90:
+      return { x: dy, y: f.width - dx };
+    case 180:
+      return { x: f.width - dx, y: f.height - dy };
+    case 270:
+      return { x: f.height - dy, y: dx };
+  }
+}

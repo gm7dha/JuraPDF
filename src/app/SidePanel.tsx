@@ -1,5 +1,5 @@
 /**
- * The panel down the left: the pages (small pictures) or the bookmarks, picked
+ * The panel down the left: the pages (small pictures), the bookmarks or the notes, picked
  * with the tabs at its top. Drag its right edge to make it wider or narrower.
  */
 import { useState, type KeyboardEvent, type PointerEvent } from "react";
@@ -7,11 +7,13 @@ import { useState, type KeyboardEvent, type PointerEvent } from "react";
 import { DEFAULT_SIDE_WIDTH, clampSideWidth } from "../model/sidePanel";
 import { useStore, type SidePane } from "../model/store";
 import { Bookmarks } from "./Bookmarks";
+import { NotesList } from "./NotesList";
 import { Thumbnails } from "./Thumbnails";
 
 const TABS: { pane: SidePane; label: string }[] = [
   { pane: "pages", label: "Pages" },
   { pane: "bookmarks", label: "Bookmarks" },
+  { pane: "notes", label: "Notes" },
 ];
 
 export function SidePanel() {
@@ -36,7 +38,7 @@ export function SidePanel() {
         ))}
       </div>
       <div className="side-pane" id="side-pane" role="tabpanel" aria-labelledby={`side-tab-${pane}`}>
-        {pane === "pages" ? <Thumbnails /> : <Bookmarks />}
+        {pane === "pages" ? <Thumbnails /> : pane === "bookmarks" ? <Bookmarks /> : <NotesList />}
       </div>
       <ResizeEdge pane={pane} width={width} />
     </aside>

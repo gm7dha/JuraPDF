@@ -381,6 +381,14 @@ export const Icons = {
       <path d="M3 20h18" />
     </Svg>
   ),
+  /** A sticky note: a square note with a folded corner and lines of writing. */
+  Note: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M4 4h16v11l-5 5H4z" />
+      <path d="M15 20v-5h5" />
+      <path d="M8 9h8M8 12.5h5" />
+    </Svg>
+  ),
   /** Pick things on a page: an arrow pointer. */
   Pointer: (p: IconProps) => (
     <Svg {...p}>

@@ -95,5 +95,8 @@ tests          Vitest, pure code only;  scripts/smoke-test.mjs drives the built 
   are redrawn as pictures with black boxes (nothing underneath survives), their other words written back invisibly.
 - **v0.13 (done)** — **sign**: draw, type (system handwriting fonts) or bring in a signature picture (paper made
   see-through), kept in localStorage, placed as a picture.
-- **Next (Tungsten-style)** — sticky-note comments, compressing, more form box kinds.
-- **Later** — recent files, keeping work in the browser between visits, comments and highlights, compressing large PDFs.
+- **v0.14 (done)** — **sticky notes**: PDF Text notes (any reader's, with replies) shown as icons; add with a click,
+  read, change (words, colour, name), drag to move, delete; a Notes tab in the side panel; Claude's read_notes,
+  add_note, delete_note.
+- **Next (Tungsten-style)** — compressing, more form box kinds.
+- **Later** — recent files, keeping work in the browser between visits, replying to notes, compressing large PDFs.
