@@ -346,6 +346,20 @@ export const Icons = {
       <path d="m4.5 17 1.2 1.2 2-2.4M12 17h8" />
     </Svg>
   ),
+  /** Empty a form: an eraser. */
+  Eraser: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="m14.5 4.5 5 5-9 9H6l-2.5-2.5z" />
+      <path d="m9 10 5 5M10.5 18.5H20" />
+    </Svg>
+  ),
+  /** Make a form's answers part of the page: a closed padlock. */
+  Lock: (p: IconProps) => (
+    <Svg {...p}>
+      <rect x="5" y="11" width="14" height="9" rx="1.5" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3M12 14.5v2" />
+    </Svg>
+  ),
   /** Pick things on a page: an arrow pointer. */
   Pointer: (p: IconProps) => (
     <Svg {...p}>

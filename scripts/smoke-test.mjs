@@ -915,7 +915,7 @@ await step("filling a box, picking it again later to move and delete it, and dra
   expect((await label()) !== "draw on page 1", "Undo takes it all back");
 });
 
-await step("adding a form box others can fill in", async () => {
+await step("adding a form box, filling it in, and making the answer part of the page", async () => {
   const steps = await page.evaluate(() => window.jurapdfStore.getState().past.length);
   await page.keyboard.press("Home");
   const p1 = await page.locator('.page[data-page="1"]').boundingBox();
@@ -933,7 +933,23 @@ await step("adding a form box others can fill in", async () => {
   const bytes = Buffer.from(await page.evaluate(() => Array.from(window.jurapdfStore.getState().pdf.bytes)));
   const names = (await PDFDocument.load(bytes)).getForm().getFields().map((f) => f.getName());
   expect(names.includes("Work order"), `the PDF should have a "Work order" box to fill: ${names}`);
-  await page.keyboard.press("Control+z");
+  // Fill it in, right here: click it, type, Tab away.
+  const box = page.locator('.form-box[aria-label="Work order"]');
+  await box.waitFor();
+  await box.click();
+  await page.keyboard.type("W245354");
+  await page.keyboard.press("Tab");
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "fill in “Work order”");
+  const filled = Buffer.from(await page.evaluate(() => Array.from(window.jurapdfStore.getState().pdf.bytes)));
+  const typed = (await PDFDocument.load(filled)).getForm().getTextField("Work order").getText();
+  expect(typed === "W245354", `the words typed should be in the PDF's form: ${typed}`);
+  if (process.env.SMOKE_SCREENSHOT) await page.screenshot({ path: "smoke-form.png" });
+  // The form's own buttons: make the answers part of the page (no form left), then Undo.
+  await page.getByRole("button", { name: "Make the answers part of the pages" }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "make the answers part of the pages");
+  const flat = Buffer.from(await page.evaluate(() => Array.from(window.jurapdfStore.getState().pdf.bytes)));
+  expect((await PDFDocument.load(flat)).getForm().getFields().length === 0, "no form boxes should be left");
+  for (let i = 0; i < 3; i++) await page.keyboard.press("Control+z");
   await page.waitForFunction((n) => window.jurapdfStore.getState().past.length === n, steps);
 });
 

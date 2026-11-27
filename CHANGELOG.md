@@ -5,6 +5,22 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.10 — Fill in forms
+
+- **Fill in any PDF form right in JuraPDF.** Form boxes are tinted light blue, as in other PDF readers. Click a box to
+  type in it, tick a tick box, pick a round button, or choose from a list. Tab goes on to the next box, and leaving a
+  box writes the answer into the PDF, so Save keeps it and Acrobat, Preview or Tungsten show it too.
+- **Each answer is one step in Undo,** named after its box ("Undo fill in “Name”"), so a wrong answer is easy to take back.
+- **Empty the form** (the new eraser button) takes out every answer at once.
+- **Make the answers part of the pages** (the new padlock button): what's filled in stays exactly where it is, but the
+  form boxes go, so nobody can change the answers afterwards. Handy before sending a finished form on. Undo brings the
+  boxes back.
+- These two buttons only show when the PDF has a form.
+- **Claude can fill in forms too:** read_form lists a PDF's form boxes and what's in them, and fill_form fills them in,
+  for example "fill in the work order number and tick Approved".
+- Form boxes you added yourself now fill in with a click like any other; to move or change one, use the pencil.
+- Boxes that take several lines no longer show the words far too big.
+
 ## v0.9 — Fillable forms
 
 - **Add form boxes that anyone can fill in.** The new form button (or the F key) adds a text box, a tick box or a

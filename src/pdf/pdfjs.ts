@@ -8,6 +8,7 @@ import type { PDFDocumentProxy, PDFPageProxy, RenderTask } from "pdfjs-dist";
 import workerUrl from "virtual:pdfjs-worker-url";
 
 import type { Size } from "../model/zoom";
+import { formBoxesFrom, type FormBox } from "../model/forms";
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
@@ -247,4 +248,11 @@ export async function pagePicture(doc: PDFDocumentProxy, index: number, dpi: num
 /** True when an error is just a drawing that was stopped on purpose (the page scrolled away or the zoom changed). */
 export function isCancelled(e: unknown): boolean {
   return e instanceof Error && e.name === "RenderingCancelledException";
+}
+
+/** The form boxes on a page that can be filled in (points from its top-left, as shown). */
+export async function formBoxes(page: PDFPageProxy): Promise<FormBox[]> {
+  const viewport = page.getViewport({ scale: 1 });
+  const annotations = await page.getAnnotations({ intent: "display" });
+  return formBoxesFrom(annotations, (rect) => viewport.convertToViewportRectangle(rect));
 }

@@ -147,6 +147,16 @@ describe("reading and changing a PDF", () => {
     expect(await ok(s, "add_form_box", { page: 1, kind: "text", x: 100, y: 100, name: "Work order" })).toBe("Added a text box to page 1.");
     expect(await ok(s, "add_form_box", { page: 1, kind: "choice", x: 100, y: 140, choices: ["Yes", "No"] })).toBe("Added a choice list to page 1.");
     expect(await bad(s, "add_form_box", { page: 1, kind: "choice", x: 100, y: 180 })).toMatch(/choice/i);
+    // Filling in the form.
+    expect(await ok(s, "add_form_box", { page: 1, kind: "tick", x: 100, y: 180, name: "Agree" })).toBe("Added a tick box to page 1.");
+    expect(await ok(s, "read_form")).toMatch(/"Work order": text box on page 1, empty/);
+    expect(await ok(s, "fill_form", { answers: { "work order": "W245354", Agree: "yes", "Choice 1": "No" } })).toBe("Filled in 3 form boxes.");
+    const form = await ok(s, "read_form");
+    expect(form).toMatch(/"Work order": text box on page 1, "W245354"/);
+    expect(form).toMatch(/"Agree": tick box on page 1, ticked/);
+    expect(form).toMatch(/drop-down list on page 1, "No"; choices "Yes", "No"/);
+    expect(await bad(s, "fill_form", { answers: { Agree: "perhaps" } })).toMatch(/tick box/);
+    expect(await bad(s, "fill_form", { answers: { Nope: "x" } })).toMatch(/no form box called "Nope"/);
     expect(await bad(s, "add_words", { page: 1, words: "Tick ✓" })).toMatch(/✓/);
     expect(await bad(s, "add_words", { page: 99, words: "x" })).toMatch(/page must be/);
     expect(await bad(s, "add_picture", { page: 1, picture: "missing.png" })).toMatch(/no file called/);

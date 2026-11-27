@@ -2,7 +2,7 @@
  * Writing a watermark into a PDF, with pdf-lib. Runs in the browser and in
  * Node (for the tests). The layout maths is in src/model/watermark.ts.
  */
-import { EncryptedPDFError, ParseSpeeds, PDFArray, PDFDocument, PDFFont, PDFImage, PDFName, PDFPage, StandardFonts, degrees, rgb } from "pdf-lib";
+import { EncryptedPDFError, ParseSpeeds, PDFArray, PDFDocument, PDFFont, PDFImage, PDFName, PDFPage, StandardFonts, degrees, rgb, type SaveOptions } from "pdf-lib";
 
 import {
   angleFor,
@@ -69,8 +69,8 @@ function freshPages(doc: PDFDocument): void {
  * Written in one go rather than a little at a time (three times quicker, and
  * the change is being waited for anyway).
  */
-export async function saveEdited(doc: PDFDocument): Promise<Uint8Array<ArrayBuffer>> {
-  const bytes = (await doc.save({ objectsPerTick: Infinity })) as Uint8Array<ArrayBuffer>;
+export async function saveEdited(doc: PDFDocument, options: SaveOptions = {}): Promise<Uint8Array<ArrayBuffer>> {
+  const bytes = (await doc.save({ ...options, objectsPerTick: Infinity })) as Uint8Array<ArrayBuffer>;
   freshPages(doc);
   lastSaved.set(bytes, doc);
   return bytes;
