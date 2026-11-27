@@ -16,6 +16,8 @@ import { HeadersDialog } from "./HeadersDialog";
 import { WhatsNewDialog } from "./WhatsNewDialog";
 import { inPopup, inTextBox } from "./popupGuard";
 import { PickedWordsBar } from "./PickedWordsBar";
+import { RedactBar } from "./RedactBar";
+import { startMarking } from "./redactActions";
 import { SearchBar } from "./SearchBar";
 import { closeSearch, openSearch, step } from "./searchActions";
 import { SidePanel } from "./SidePanel";
@@ -42,6 +44,7 @@ export function App() {
           <PageView />
           <SearchBar />
           <PickedWordsBar />
+          <RedactBar />
         </main>
       ) : (
         <Welcome />
@@ -203,6 +206,11 @@ function useShortcuts() {
         if (shapes[key]) {
           e.preventDefault();
           void startShape(shapes[key]);
+          return;
+        }
+        if (key === "b") {
+          e.preventDefault();
+          startMarking();
           return;
         }
         if (key === "t" || key === "p" || key === "e" || key === "f") {

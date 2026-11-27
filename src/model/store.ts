@@ -4,6 +4,7 @@ import type { PDFDocumentProxy } from "../pdf/pdfjs";
 import { pickPages, type ClickKind } from "./pages";
 import type { Draft, Placing } from "./additions";
 import type { SearchState } from "./search";
+import type { Mark } from "./redact";
 import { readSideWidths } from "./sidePanel";
 import { clampZoom, type Size, type ZoomMode } from "./zoom";
 
@@ -90,6 +91,9 @@ interface State {
   anchor: number | null;
   /** The search bar: what's being looked for and what's been found, or null when it's closed. */
   search: SearchState | null;
+  /** Places marked to black out (not yet done), and the one being dragged out. Cleared by every change. */
+  marks: Mark[];
+  markDraft: Mark | null;
 
   setPdf(pdf: OpenPdf | null): void;
   /** A change to the PDF (labelled for Undo); `pdf` is the new version. */
@@ -122,6 +126,8 @@ interface State {
   setSelected(pages: number[]): void;
   /** Open, change or (null) close the search bar. */
   setSearch(search: SearchState | null): void;
+  setMarks(marks: Mark[]): void;
+  setMarkDraft(mark: Mark | null): void;
 }
 
 let toastId = 0;
@@ -178,12 +184,14 @@ export const useStore = create<State>((set, get) => ({
   selected: [],
   anchor: null,
   search: null,
+  marks: [],
+  markDraft: null,
 
   setPdf(pdf) {
     const { pdf: old, past, future } = get();
     const keep = new Set(pdf ? [pdf.doc] : []);
     for (const p of [old, ...past.map((s) => s.pdf), ...future.map((s) => s.pdf)]) if (p && !keep.has(p.doc)) void p.doc.destroy();
-    set({ pdf, currentPage: 0, goTo: null, zoom: get().onePage ? "page" : "width", savedAs: null, savedBytes: pdf?.bytes ?? null, past: [], future: [], selected: [], anchor: null, placing: null, draft: null, search: pdf ? get().search : null });
+    set({ pdf, currentPage: 0, goTo: null, zoom: get().onePage ? "page" : "width", savedAs: null, savedBytes: pdf?.bytes ?? null, past: [], future: [], selected: [], anchor: null, marks: [], markDraft: null, placing: null, draft: null, search: pdf ? get().search : null });
   },
   changePdf(pdf, label) {
     const { pdf: old, past, future } = get();
@@ -192,20 +200,20 @@ export const useStore = create<State>((set, get) => ({
     // Keep the last 20 versions to go back to.
     const kept = [...past, { pdf: old, label }];
     for (const s of kept.slice(0, -20)) void s.pdf.doc.destroy();
-    set({ pdf, past: kept.slice(-20), future: [], selected: [], anchor: null, currentPage: Math.min(get().currentPage, pdf.sizes.length - 1) });
+    set({ pdf, past: kept.slice(-20), future: [], selected: [], anchor: null, marks: [], currentPage: Math.min(get().currentPage, pdf.sizes.length - 1) });
   },
   undo() {
     const { pdf, past, future } = get();
     const back = past[past.length - 1];
     if (!pdf || !back) return;
-    set({ pdf: back.pdf, past: past.slice(0, -1), future: [...future, { pdf, label: back.label }], selected: [], anchor: null, currentPage: Math.min(get().currentPage, back.pdf.sizes.length - 1) });
+    set({ pdf: back.pdf, past: past.slice(0, -1), future: [...future, { pdf, label: back.label }], selected: [], anchor: null, marks: [], currentPage: Math.min(get().currentPage, back.pdf.sizes.length - 1) });
     get().showToast(`Undone: ${back.label}`);
   },
   redo() {
     const { pdf, past, future } = get();
     const fwd = future[future.length - 1];
     if (!pdf || !fwd) return;
-    set({ pdf: fwd.pdf, future: future.slice(0, -1), past: [...past, { pdf, label: fwd.label }], selected: [], anchor: null, currentPage: Math.min(get().currentPage, fwd.pdf.sizes.length - 1) });
+    set({ pdf: fwd.pdf, future: future.slice(0, -1), past: [...past, { pdf, label: fwd.label }], selected: [], anchor: null, marks: [], currentPage: Math.min(get().currentPage, fwd.pdf.sizes.length - 1) });
     get().showToast(`Redone: ${fwd.label}`);
   },
   setOpening: (opening) => set({ opening }),
@@ -272,5 +280,7 @@ export const useStore = create<State>((set, get) => ({
     get().goToPage(i);
   },
   setSearch: (search) => set({ search }),
+  setMarks: (marks) => set({ marks }),
+  setMarkDraft: (markDraft) => set({ markDraft }),
   setSelected: (pages) => set({ selected: [...new Set(pages)].sort((a, b) => a - b), anchor: pages.length ? Math.min(...pages) : get().anchor }),
 }));

@@ -256,7 +256,7 @@ export function placeAt(page: number, x: number, y: number): void {
   const size = s.pdf?.sizes[page];
   if (!s.placing || !size) return;
   const [pw, ph] = size;
-  if (s.placing.kind === "shape" || s.placing.kind === "ink" || s.placing.kind === "field") return;
+  if (s.placing.kind === "shape" || s.placing.kind === "ink" || s.placing.kind === "field" || s.placing.kind === "redact") return;
   if (s.placing.kind === "change") {
     void pickToChange(page, x, y);
     return;

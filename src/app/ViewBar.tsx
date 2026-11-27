@@ -11,6 +11,7 @@ import { Icons } from "./icons";
 import { savePagesAsPictures, saveWordsAsText } from "./exportActions";
 import { readWordsInPictures } from "./ocrActions";
 import { emptyForm, fixAnswers, hasForm } from "./formActions";
+import { startMarking, stopMarking } from "./redactActions";
 import { addBlank, deleteChosen, insertFromFile, moveChosen, saveChosenAsNew, turnChosen } from "./pageActions";
 import { detectPlatform, shortcut } from "./platform";
 import { closeSearch, openSearch } from "./searchActions";
@@ -36,6 +37,7 @@ export function ViewBar() {
   const reading = useStore((s) => s.reading);
   const changing = useStore((s) => s.placing?.kind === "change" || s.draft?.kind === "existing" || (s.draft?.kind === "words" && !!s.draft.cover) || (!!s.draft && "id" in s.draft && s.draft.id !== undefined));
   const fielding = useStore((s) => s.placing?.kind === "field" || (s.draft?.kind === "field" && s.draft.id === undefined));
+  const marking = useStore((s) => s.placing?.kind === "redact");
   const inking = useStore((s) => s.placing?.kind === "ink" || (s.draft?.kind === "ink" && s.draft.id === undefined));
   const selected = useStore((s) => s.selected);
   const onePage = useStore((s) => s.onePage);
@@ -280,6 +282,15 @@ export function ViewBar() {
           title="Add a form box: a box to type in, a tick box or a list to choose from, that Acrobat, Preview and other readers can fill in (F)"
         >
           <Icons.Form />
+        </button>
+        <button
+          type="button"
+          className={`icon-button${marking ? " active" : ""}`}
+          onClick={() => (marking ? stopMarking() : startMarking())}
+          aria-label="Black out"
+          title="Black out (redact): drag over words or pictures to hide them for good, so they can't be read, copied or found (B)"
+        >
+          <Icons.BlackOut />
         </button>
         <button
           type="button"

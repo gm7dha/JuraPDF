@@ -5,6 +5,19 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.12 — Black out (redaction)
+
+- **Black out words or pictures for good,** as Tungsten and Acrobat do for private details (names, addresses, account
+  numbers). Use the new black-out button (or press B), then drag over what to hide. Marked places show as striped
+  boxes you can still see through, so you can check them; the × on a box unmarks it.
+- **Nothing changes until you click “Black out for good”.** Then the marked places turn solid black, and what was
+  under them is **removed from the PDF**, not just covered: it can't be copied, found or uncovered in any reader.
+- **Mark words picked with the mouse** (the new black-out button on the bar by picked words), or **mark everything
+  Find words finds** (the new button in the search bar), for example every place a name appears.
+- A blacked-out page is redrawn as a picture, so everything on it that wasn't marked looks the same, and its other
+  words can still be picked and found. Notes, links and form boxes under a black box are taken off too.
+- It's one step in Undo, until you Save.
+
 ## v0.11 — Headers, footers and page numbers
 
 - **Number the pages,** or put words along the top and bottom of every page, with the new button that looks like a

@@ -345,7 +345,7 @@ export interface ChosenPicture {
 }
 
 /** Waiting for a click on a page to put words or a chosen picture there (or, for "ink", drags to draw with). */
-export type Placing = { kind: "words" } | { kind: "picture"; picture: ChosenPicture } | { kind: "shape"; shape: ShapeKind } | { kind: "change" } | { kind: "ink" } | { kind: "field"; field: FieldKind };
+export type Placing = { kind: "words" } | { kind: "picture"; picture: ChosenPicture } | { kind: "shape"; shape: ShapeKind } | { kind: "change" } | { kind: "ink" } | { kind: "field"; field: FieldKind } | { kind: "redact" };
 
 /** A picture already on the page, being moved or sized. */
 export interface ExistingPicture {

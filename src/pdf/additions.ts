@@ -235,7 +235,7 @@ function addField(doc: PDFDocument, page: PDFPage, frame: ReturnType<typeof fram
 }
 
 /** Take a form box (by name) out of the form and off its page; false when there's none of that name. */
-function removeField(doc: PDFDocument, name: string): boolean {
+export function removeField(doc: PDFDocument, name: string): boolean {
   const field = doc.getForm().getFieldMaybe(name);
   if (!field) return false;
   // Its drawings on the pages go first (pdf-lib doesn't always find them).
@@ -352,7 +352,13 @@ function drawInk(page: PDFPage, frame: ReturnType<typeof frameOf>, item: InkItem
  */
 export async function addHiddenWords(bytes: Uint8Array, page: number, words: HiddenWord[]): Promise<Uint8Array<ArrayBuffer>> {
   const doc = await loadForEditing(bytes);
-  const p = pageOf(doc, page);
+  await writeHiddenWords(doc, pageOf(doc, page), words);
+  return save(doc);
+}
+
+/** Write words invisibly onto a page (so they can be picked, copied and found), in front of what's there. */
+export async function writeHiddenWords(doc: PDFDocument, p: PDFPage, words: HiddenWord[]): Promise<void> {
+  if (!words.length) return;
   const font = await doc.embedFont(FONTS.Helvetica);
   const key = p.node.newFontDictionary(font.name, font.ref);
   const frame = frameOf(p);
@@ -372,7 +378,6 @@ export async function addHiddenWords(bytes: Uint8Array, page: number, words: Hid
   const before = existingContents(p);
   p.pushOperators(...ops);
   arrange(p, before, false);
-  return save(doc);
 }
 
 /** PNG or JPG, from the file's first bytes (null for anything else). */

@@ -91,5 +91,7 @@ tests          Vitest, pure code only;  scripts/smoke-test.mjs drives the built 
   part of the pages (flatten); Claude's read_form and fill_form.
 - **v0.11 (done)** — **headers, footers and page numbers** (Tungsten-style): six spots, {page}/{pages}/{date}/{file},
   start number, Bates numbers, page range, preview; replaceable and removable; Claude's add_headers.
-- **Next (Tungsten-style)** — redaction, signatures, sticky-note comments, compressing, more form box kinds.
+- **v0.12 (done)** — **black out (redaction)**: mark by dragging, picked words or everything found; the marked pages
+  are redrawn as pictures with black boxes (nothing underneath survives), their other words written back invisibly.
+- **Next (Tungsten-style)** — signatures, sticky-note comments, compressing, more form box kinds.
 - **Later** — recent files, keeping work in the browser between visits, comments and highlights, compressing large PDFs.
