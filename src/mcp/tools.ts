@@ -18,6 +18,8 @@ import { answerFor, answerLabel, FORM_KIND_NAMES, type Answer, type FormBoxKind,
 import { fillForm, formFields, FormProblem } from "../pdf/forms";
 import { DEFAULT_HEADERS, dateText, hasWords, headersLabel, type HeaderSettings } from "../model/headers";
 import { addHeaders, HeaderProblem, removeHeaders } from "../pdf/headers";
+import { inReadingOrder, NOTE_COLOURS, NOTE_SIZE, readPdfDate } from "../model/notes";
+import { addNote, listNotes, NoteProblem, removeNote } from "../pdf/notes";
 import { AddProblem, addItems, addPicture, addShape, addWords, pictureType } from "../pdf/additions";
 import { moveTo, sameOrder } from "../model/pages";
 import { InputError, bool, noExtras, num, object, oneOf, text } from "./args";
@@ -33,7 +35,7 @@ export const FORMAT_GUIDE = `How JuraPDF works with PDFs:
 - Pages are numbered from 1, as the user sees them. "pages" takes a number, a list of numbers, or text like "1-3, 5", "4-" (4 to the end), "all", "odd", "even" or "last".
 - Sizes are paper names (A4, Letter…) or millimetres; "landscape" means wider than tall. A page's "turn" is how it has been rotated to show (0, 90, 180 or 270 degrees clockwise).
 - describe_pdf gives the pages and a taste of their words; read_words gives the words of chosen pages (scanned pages, being pictures, have none).
-- Changes: add_watermark (words or a PNG/JPG picture from the folder, saved into the pages), add_words and add_picture (writing or a PNG/JPG picture such as a signature on one page, placed in points from its top-left corner as it shows; describe_pdf gives the page sizes), add_shape (a see-through highlight over words, or a box, oval, line or arrow to point something out, a box or oval filled in if wanted; read_words gives where words are), add_form_box (a text box, tick box or choice list that whoever opens the PDF can fill in, e.g. to make a printed form fillable), fill_form (fill in the PDF's form boxes; read_form lists them with what's in them), add_headers (page numbers, Bates numbers or words along the top and bottom of pages), turn_pages, delete_pages (one page must stay), move_pages, add_blank_pages, bring_in_pdf (all the pages of another PDF from the folder: this is how to join PDFs), save_pages_as_pdf (some pages as a new PDF in the folder: this is how to split one). undo takes back your last change.
+- Changes: add_watermark (words or a PNG/JPG picture from the folder, saved into the pages), add_words and add_picture (writing or a PNG/JPG picture such as a signature on one page, placed in points from its top-left corner as it shows; describe_pdf gives the page sizes), add_shape (a see-through highlight over words, or a box, oval, line or arrow to point something out, a box or oval filled in if wanted; read_words gives where words are), add_form_box (a text box, tick box or choice list that whoever opens the PDF can fill in, e.g. to make a printed form fillable), fill_form (fill in the PDF's form boxes; read_form lists them with what's in them), add_headers (page numbers, Bates numbers or words along the top and bottom of pages), add_note (a sticky note, a comment pinned to a page; read_notes lists the notes and their replies, delete_note takes one off), turn_pages, delete_pages (one page must stay), move_pages, add_blank_pages, bring_in_pdf (all the pages of another PDF from the folder: this is how to join PDFs), save_pages_as_pdf (some pages as a new PDF in the folder: this is how to split one). undo takes back your last change.
 - Locked PDFs (with a password or protected against changes) can be read but not changed.
 - Talk to the user in plain words: "pages", "words", "picture", "see-through" — not PDF jargon.`;
 
@@ -183,7 +185,7 @@ async function change(s: Session, run: (bytes: Uint8Array<ArrayBuffer>) => Promi
     bytes = await run(doc.bytes);
   } catch (e) {
     if (e instanceof LockedPdf) throw new InputError("This PDF is locked against changes (it has a password or is protected), so it can't be changed. It can still be read.");
-    if (e instanceof PageProblem || e instanceof WatermarkProblem || e instanceof AddProblem || e instanceof FormProblem || e instanceof HeaderProblem) throw new InputError(e.message);
+    if (e instanceof PageProblem || e instanceof WatermarkProblem || e instanceof AddProblem || e instanceof FormProblem || e instanceof HeaderProblem || e instanceof NoteProblem) throw new InputError(e.message);
     throw e;
   }
   s.throwIfCancelled();
@@ -378,6 +380,86 @@ export const TOOLS: ToolDef[] = [
       const label = answers.length === 1 ? answerLabel(fields.find((f) => f.name === answers[0].name)!.kind as FormBoxKind, answers[0].name, answers[0].value) : `fill in ${plural(answers.length, "form box", "form boxes")}`;
       await change(s, (bytes) => fillForm(bytes, answers), label.replace(/^fill in/, "filled in").replace(/^pick/, "picked").replace(/^tick/, "ticked").replace(/^untick/, "unticked").replace(/^clear/, "cleared"));
       return say(`Filled in ${plural(answers.length, "form box", "form boxes")}.`);
+    },
+  },
+  {
+    name: "read_notes",
+    title: "Read the notes",
+    description: "The sticky notes (comments) on the PDF's pages, from any reader (Acrobat, Preview, JuraPDF…): each one's id, page, place, who wrote it and when, its words and any replies.",
+    inputSchema: { type: "object", properties: {} },
+    readOnly: true,
+    async run(s, a) {
+      noExtras(a, [], "read_notes");
+      const doc = needDoc(s);
+      const notes = inReadingOrder(listNotes(await PDFDocument.load(doc.bytes, { updateMetadata: false, ignoreEncryption: true })));
+      if (!notes.length) return say("This PDF has no notes. add_note adds one.");
+      const when = (w: string) => readPdfDate(w)?.toISOString().slice(0, 16).replace("T", " ") ?? "";
+      const by = (author: string, w: string) => [author && `by ${author}`, when(w) && `${when(w)} UTC`].filter(Boolean).join(", ");
+      return say(
+        `${plural(notes.length, "note")}:`,
+        ...notes.flatMap((n) => [
+          `- ${n.id}: page ${n.page + 1}, ${Math.round(n.x)} from the left and ${Math.round(n.y)} from the top${by(n.author, n.when) ? `, ${by(n.author, n.when)}` : ""}: ${JSON.stringify(n.text)}`,
+          ...n.replies.map((r) => `  - reply${by(r.author, r.when) ? ` ${by(r.author, r.when)}` : ""}: ${JSON.stringify(r.text)}`),
+        ]),
+      );
+    },
+  },
+  {
+    name: "add_note",
+    title: "Add a sticky note",
+    description:
+      "Pin a sticky note (a comment) to one page: a small note icon that opens to show the words, in JuraPDF, Acrobat, Preview and other readers. It doesn't change what the page shows when printed plainly. Place it in points from the page's top-left corner as it shows, e.g. next to what it's about (read_words gives where words are).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        page: { type: "number", description: "The page, from 1." },
+        words: { type: "string", description: "What the note says (several lines are fine)." },
+        x: { type: "number", description: "Points from the page's left edge to the note's icon (36 if left out)." },
+        y: { type: "number", description: "Points from the page's top edge to the note's icon (36 if left out)." },
+        author: { type: "string", description: "Whose note it is, shown with it (\"Claude\" if left out)." },
+        colour: { type: "string", enum: NOTE_COLOURS.map((c) => c.name.toLowerCase()), description: "yellow if left out." },
+      },
+      required: ["page", "words"],
+    },
+    async run(s, a) {
+      noExtras(a, ["page", "words", "x", "y", "author", "colour", "color"], "add_note");
+      const doc = needDoc(s);
+      const facts = await pageFacts(doc.bytes);
+      const page = num(a.page, "page", { min: 1, max: facts.length, integer: true }) - 1;
+      const { width, height } = facts[page];
+      const words = text(a.words, "words");
+      const x = num(a.x, "x", { min: 0, max: width, fallback: 36 });
+      const y = num(a.y, "y", { min: 0, max: height, fallback: 36 });
+      const author = a.author === undefined ? "Claude" : text(a.author, "author");
+      const colour = oneOf(a.colour ?? a.color, NOTE_COLOURS.map((c) => c.name.toLowerCase()), "colour", "yellow");
+      const rgb = NOTE_COLOURS.find((c) => c.name.toLowerCase() === colour)!.rgb;
+      let id = "";
+      await change(
+        s,
+        async (bytes) => {
+          const out = await addNote(bytes, { page, x: Math.min(x, width - NOTE_SIZE), y: Math.min(y, height - NOTE_SIZE), text: words, author, colour: rgb });
+          id = out.id;
+          return out.bytes;
+        },
+        `added a note on page ${page + 1}`,
+      );
+      return say(`Added a note on page ${page + 1} (its id is ${id}).`);
+    },
+  },
+  {
+    name: "delete_note",
+    title: "Delete a sticky note",
+    description: "Take a sticky note (and its replies) off the PDF, by its id from read_notes.",
+    inputSchema: { type: "object", properties: { id: { type: "string", description: "The note's id, e.g. \"12R\" (read_notes lists them)." } }, required: ["id"] },
+    async run(s, a) {
+      noExtras(a, ["id"], "delete_note");
+      const doc = needDoc(s);
+      const id = text(a.id, "id").trim();
+      const notes = listNotes(await PDFDocument.load(doc.bytes, { updateMetadata: false, ignoreEncryption: true }));
+      const note = notes.find((n) => n.id === id);
+      if (!note) throw new InputError(notes.length ? `There's no note ${JSON.stringify(id)}. read_notes lists them: ${notes.map((n) => n.id).join(", ")}.` : "This PDF has no notes.");
+      await change(s, (bytes) => removeNote(bytes, id), `deleted the note on page ${note.page + 1}`);
+      return say(`Deleted the note on page ${note.page + 1}${note.replies.length ? ` and its ${plural(note.replies.length, "reply", "replies")}` : ""}.`);
     },
   },
   {

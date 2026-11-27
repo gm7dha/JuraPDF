@@ -91,6 +91,10 @@ export function HelpDialog() {
         <strong>Sign</strong> (S): draw your signature, type it in a handwriting style, or bring in a photo of it (the white paper is made see-through), then click
         where it goes. Signatures are kept on this computer to use again with one click.
       </p>
+      <p>
+        <strong>Notes</strong> (N): click where a sticky note goes and type a comment. Click a note's icon to read or change it (its colour too), drag it to move it,
+        or delete it. The <strong>Notes</strong> tab in the side panel lists every note, with any replies; Acrobat, Preview and other readers show them too.
+      </p>
       <p className="muted">Coming next: recent files, and keeping your work in the browser between visits.</p>
       <div className="platform-row">
         <span className="muted small">Shortcuts shown for</span>

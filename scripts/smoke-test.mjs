@@ -1025,6 +1025,42 @@ await step("signing: draw a signature, put it on a page, and use it again", asyn
   await page.waitForFunction((n) => window.jurapdfStore.getState().past.length === n, steps);
 });
 
+await step("notes: add a sticky note, read it in the Notes list, change it and delete it", async () => {
+  const steps = await page.evaluate(() => window.jurapdfStore.getState().past.length);
+  await page.keyboard.press("Home");
+  await page.keyboard.press("n");
+  await page.getByText("Click on a page where the note should go").waitFor();
+  const p1 = await page.locator('.page[data-page="1"]').boundingBox();
+  await page.mouse.click(p1.x + p1.width * 0.7, p1.y + 120);
+  const box = page.getByRole("textbox", { name: "Note", exact: true });
+  await box.waitFor();
+  await page.getByLabel("Your name").fill("Smoke");
+  await box.fill("Check this page");
+  await page.getByRole("button", { name: "Blue note" }).click();
+  await page.locator(".note-window").getByRole("button", { name: "Save", exact: true }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "add a note on page 1");
+  const icon = page.getByRole("button", { name: "Note: Smoke: Check this page" });
+  await icon.waitFor();
+  if (process.env.SMOKE_SCREENSHOT) await page.screenshot({ path: "smoke-note.png" });
+  // In the side panel's list.
+  if (!(await page.locator(".side-panel").isVisible())) await page.getByRole("button", { name: "Page list" }).click();
+  await page.getByRole("tab", { name: "Notes" }).click();
+  await page.locator(".notes-list").getByText("Check this page").click();
+  await box.waitFor();
+  await box.fill("Checked");
+  await box.press("Control+Enter");
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "change the note on page 1");
+  await page.locator(".notes-list").getByText("Checked").waitFor();
+  if (process.env.SMOKE_SCREENSHOT) await page.screenshot({ path: "smoke-notes-list.png" });
+  await page.getByRole("button", { name: "Note: Smoke: Checked" }).click();
+  await page.getByRole("button", { name: "Delete this note" }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "delete the note on page 1");
+  await page.getByText("No notes in this PDF yet.").waitFor();
+  await page.getByRole("tab", { name: "Pages" }).click();
+  for (let i = 0; i < 3; i++) await page.keyboard.press("Control+z");
+  await page.waitForFunction((n) => window.jurapdfStore.getState().past.length === n, steps);
+});
+
 await step("Connect to Claude with no extension running says what to do", async () => {
   await page.getByRole("button", { name: "Connect to Claude" }).click();
   await page.locator('.modal:has-text("Not connected")').waitFor({ timeout: 60_000 });

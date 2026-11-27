@@ -21,8 +21,8 @@ describe("side panel width", () => {
   it("reads remembered widths kindly", () => {
     expect(readSideWidths(null)).toEqual(DEFAULT_SIDE_WIDTH);
     expect(readSideWidths("not json")).toEqual(DEFAULT_SIDE_WIDTH);
-    expect(readSideWidths('{"pages":300,"bookmarks":"wide"}')).toEqual({ pages: 300, bookmarks: 250 });
-    expect(readSideWidths('{"pages":5,"bookmarks":5000}')).toEqual({ pages: MIN_SIDE_WIDTH, bookmarks: 720 });
+    expect(readSideWidths('{"pages":300,"bookmarks":"wide"}')).toEqual({ pages: 300, bookmarks: 250, notes: 260 });
+    expect(readSideWidths('{"pages":5,"bookmarks":5000}')).toEqual({ pages: MIN_SIDE_WIDTH, bookmarks: 720, notes: 260 });
   });
 });
 

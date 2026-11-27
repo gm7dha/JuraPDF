@@ -5,6 +5,17 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.14 — Sticky notes
+
+- **Add sticky notes** to pages with the new Note button (or press N): click where the note goes and type a comment.
+  They are the same kind of note Acrobat, Preview and other PDF readers make, so everyone who opens the PDF sees them.
+- **Click a note's icon** to read it, change its words, its colour (yellow, blue, green or pink) or the name on it, or
+  delete it. **Drag the icon** to move the note. Click away or press Ctrl+Enter to save.
+- **Notes from other people** show too, with who wrote them, when, and any replies.
+- **The Notes tab** in the side panel lists every note in the PDF by page. Click one to go to it.
+- Your name is remembered on this computer for your next notes. Each change is one step in Undo.
+- Claude can read, add and delete notes too (read_notes, add_note, delete_note).
+
 ## v0.13 — Sign
 
 - **Sign PDFs** with the new Sign button (or press S). There are three ways to make your signature:

@@ -18,6 +18,7 @@ import { WhatsNewDialog } from "./WhatsNewDialog";
 import { inPopup, inTextBox } from "./popupGuard";
 import { PickedWordsBar } from "./PickedWordsBar";
 import { RedactBar } from "./RedactBar";
+import { startNoting } from "./noteActions";
 import { startMarking } from "./redactActions";
 import { SearchBar } from "./SearchBar";
 import { closeSearch, openSearch, step } from "./searchActions";
@@ -218,6 +219,11 @@ function useShortcuts() {
         if (key === "b") {
           e.preventDefault();
           startMarking();
+          return;
+        }
+        if (key === "n") {
+          e.preventDefault();
+          void startNoting();
           return;
         }
         if (key === "t" || key === "p" || key === "e" || key === "f") {

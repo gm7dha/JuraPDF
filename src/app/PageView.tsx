@@ -19,6 +19,8 @@ import { clickPage, endFieldDrag, fieldDragTo, startFieldAt, endShapeDrag, endSt
 import { DraftBox } from "./DraftBox";
 import { FormLayer } from "./FormLayer";
 import { MarksLayer } from "./MarksLayer";
+import { NotesLayer } from "./NotesLayer";
+import { finishNote, placeNote } from "./noteActions";
 import { endMarkDrag, markDragTo, startMarkAt } from "./redactActions";
 import { SearchHits } from "./SearchHits";
 
@@ -390,6 +392,10 @@ const PageSlot = memo(function PageSlot({ doc, index, box, zoom, root }: SlotPro
         const box = e.currentTarget.getBoundingClientRect();
         const x = (e.clientX - box.left) / cssScale;
         const y = (e.clientY - box.top) / cssScale;
+        if (s.placing?.kind === "note") {
+          placeNote(index, x, y);
+          return;
+        }
         if (s.placing) {
           placeAt(index, x, y);
           return;
@@ -397,6 +403,10 @@ const PageSlot = memo(function PageSlot({ doc, index, box, zoom, root }: SlotPro
         // A click away from what's being placed puts it on the page (as in other PDF editors).
         if (s.draft) {
           void finishAdding();
+          return;
+        }
+        if (s.note) {
+          void finishNote();
           return;
         }
         if (window.getSelection()?.isCollapsed === false) return;
@@ -410,6 +420,7 @@ const PageSlot = memo(function PageSlot({ doc, index, box, zoom, root }: SlotPro
       <div className="textLayer" ref={text} />
       {near && <FormLayer doc={doc} index={index} scale={cssScale} />}
       <MarksLayer index={index} scale={cssScale} />
+      {near && <NotesLayer index={index} scale={cssScale} />}
       <DraftBox index={index} scale={cssScale} />
       {!drawn && <span className="page-loading">Page {index + 1}</span>}
     </div>

@@ -3,6 +3,7 @@ import { create } from "zustand";
 import type { PDFDocumentProxy } from "../pdf/pdfjs";
 import { pickPages, type ClickKind } from "./pages";
 import type { Draft, Placing } from "./additions";
+import type { OpenNote } from "./notes";
 import type { SearchState } from "./search";
 import type { Mark } from "./redact";
 import { readSideWidths } from "./sidePanel";
@@ -24,7 +25,7 @@ export interface OpenPdf {
   password?: string;
 }
 
-export type SidePane = "pages" | "bookmarks";
+export type SidePane = "pages" | "bookmarks" | "notes";
 
 export type DialogName = "help" | "headers" | "password" | "print" | "sign" | "watermark" | "whatsNew" | null;
 
@@ -94,7 +95,10 @@ interface State {
   /** Places marked to black out (not yet done), and the one being dragged out. Cleared by every change. */
   marks: Mark[];
   markDraft: Mark | null;
+  /** The sticky note open to read or change (a new one has no id), or null. Cleared by every change. */
+  note: OpenNote | null;
 
+  setNote(note: OpenNote | null): void;
   setPdf(pdf: OpenPdf | null): void;
   /** A change to the PDF (labelled for Undo); `pdf` is the new version. */
   changePdf(pdf: OpenPdf, label: string): void;
@@ -146,7 +150,8 @@ function rememberedWidths(): Record<SidePane, number> {
 }
 function rememberedPane(): SidePane {
   try {
-    return globalThis.localStorage?.getItem(SIDE_PANE_KEY) === "bookmarks" ? "bookmarks" : "pages";
+    const pane = globalThis.localStorage?.getItem(SIDE_PANE_KEY);
+    return pane === "bookmarks" || pane === "notes" ? pane : "pages";
   } catch {
     return "pages";
   }
@@ -186,12 +191,14 @@ export const useStore = create<State>((set, get) => ({
   search: null,
   marks: [],
   markDraft: null,
+  note: null,
 
+  setNote: (note) => set({ note }),
   setPdf(pdf) {
     const { pdf: old, past, future } = get();
     const keep = new Set(pdf ? [pdf.doc] : []);
     for (const p of [old, ...past.map((s) => s.pdf), ...future.map((s) => s.pdf)]) if (p && !keep.has(p.doc)) void p.doc.destroy();
-    set({ pdf, currentPage: 0, goTo: null, zoom: get().onePage ? "page" : "width", savedAs: null, savedBytes: pdf?.bytes ?? null, past: [], future: [], selected: [], anchor: null, marks: [], markDraft: null, placing: null, draft: null, search: pdf ? get().search : null });
+    set({ pdf, currentPage: 0, goTo: null, zoom: get().onePage ? "page" : "width", savedAs: null, savedBytes: pdf?.bytes ?? null, past: [], future: [], selected: [], anchor: null, marks: [], markDraft: null, note: null, placing: null, draft: null, search: pdf ? get().search : null });
   },
   changePdf(pdf, label) {
     const { pdf: old, past, future } = get();
@@ -200,20 +207,20 @@ export const useStore = create<State>((set, get) => ({
     // Keep the last 20 versions to go back to.
     const kept = [...past, { pdf: old, label }];
     for (const s of kept.slice(0, -20)) void s.pdf.doc.destroy();
-    set({ pdf, past: kept.slice(-20), future: [], selected: [], anchor: null, marks: [], currentPage: Math.min(get().currentPage, pdf.sizes.length - 1) });
+    set({ pdf, past: kept.slice(-20), future: [], selected: [], anchor: null, marks: [], note: null, currentPage: Math.min(get().currentPage, pdf.sizes.length - 1) });
   },
   undo() {
     const { pdf, past, future } = get();
     const back = past[past.length - 1];
     if (!pdf || !back) return;
-    set({ pdf: back.pdf, past: past.slice(0, -1), future: [...future, { pdf, label: back.label }], selected: [], anchor: null, marks: [], currentPage: Math.min(get().currentPage, back.pdf.sizes.length - 1) });
+    set({ pdf: back.pdf, past: past.slice(0, -1), future: [...future, { pdf, label: back.label }], selected: [], anchor: null, marks: [], note: null, currentPage: Math.min(get().currentPage, back.pdf.sizes.length - 1) });
     get().showToast(`Undone: ${back.label}`);
   },
   redo() {
     const { pdf, past, future } = get();
     const fwd = future[future.length - 1];
     if (!pdf || !fwd) return;
-    set({ pdf: fwd.pdf, future: future.slice(0, -1), past: [...past, { pdf, label: fwd.label }], selected: [], anchor: null, marks: [], currentPage: Math.min(get().currentPage, fwd.pdf.sizes.length - 1) });
+    set({ pdf: fwd.pdf, future: future.slice(0, -1), past: [...past, { pdf, label: fwd.label }], selected: [], anchor: null, marks: [], note: null, currentPage: Math.min(get().currentPage, fwd.pdf.sizes.length - 1) });
     get().showToast(`Redone: ${fwd.label}`);
   },
   setOpening: (opening) => set({ opening }),
