@@ -222,6 +222,14 @@ button:disabled {
   border: 1.5px solid var(--panel);
 }
 
+.text-button.inline-link {
+  display: inline;
+  padding: 0;
+  height: auto;
+  font-size: inherit;
+  text-decoration: underline;
+}
+
 .whats-new-title {
   font-weight: 600;
   margin: 0 0 6px;
@@ -852,10 +860,6 @@ kbd {
   text-overflow: ellipsis;
   max-width: 320px;
   min-width: 0;
-}
-
-a.phase-badge {
-  text-decoration: none;
 }
 
 .visually-hidden {

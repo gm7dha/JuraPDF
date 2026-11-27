@@ -10,8 +10,7 @@ import { LiveButton } from "./LiveButton";
 import { Modal } from "./Modal";
 import { detectPlatform, shortcut } from "./platform";
 import { setThemeChoice, themeChoice, type ThemeChoice } from "./theme";
-
-const CHANGELOG_URL = "https://github.com/gm7dha/JuraPDF/blob/main/CHANGELOG.md";
+import { versionIsNew } from "./WhatsNewDialog";
 
 export function TopBar() {
   const pdf = useStore((s) => s.pdf);
@@ -24,6 +23,7 @@ export function TopBar() {
   const canInstall = useCanInstall();
   const [installHelp, setInstallHelp] = useState(false);
   const installed = isInstalledApp();
+  const [fresh, setFresh] = useState(versionIsNew);
 
   return (
     <header className="topbar">
@@ -43,10 +43,19 @@ export function TopBar() {
       ) : (
         savedAs && <span className="save-state">Saved · {savedAs}</span>
       )}
-      <a className="phase-badge" href={CHANGELOG_URL} target="_blank" rel="noreferrer" title="Your JuraPDF version: click to see what's new">
+      <button
+        type="button"
+        className={`phase-badge${fresh ? " fresh" : ""}`}
+        onClick={() => {
+          setFresh(false);
+          openDialog("whatsNew");
+        }}
+        title="Your JuraPDF version: click to see what's new"
+      >
         {SHORT_VERSION}
         <span className="badge-extra"> preview</span>
-      </a>
+        {fresh && <span className="badge-dot" aria-label="(new)" />}
+      </button>
       <div className="topbar-spacer" />
       {!installed && (
         <button

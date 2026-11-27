@@ -11,6 +11,7 @@ import { PageView } from "./PageView";
 import { PasswordDialog } from "./PasswordDialog";
 import { PrintDialog } from "./PrintDialog";
 import { WatermarkDialog } from "./WatermarkDialog";
+import { WhatsNewDialog } from "./WhatsNewDialog";
 import { inPopup, inTextBox } from "./popupGuard";
 import { PickedWordsBar } from "./PickedWordsBar";
 import { SearchBar } from "./SearchBar";
@@ -55,6 +56,7 @@ export function App() {
       {dialog === "password" && <PasswordDialog />}
       {dialog === "print" && <PrintDialog />}
       {dialog === "watermark" && <WatermarkDialog />}
+      {dialog === "whatsNew" && <WhatsNewDialog />}
       <Toasts />
     </div>
   );

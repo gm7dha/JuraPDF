@@ -391,6 +391,13 @@ await step("help opens and closes", async () => {
   await page.getByRole("dialog", { name: "Help and shortcuts" }).waitFor({ state: "detached" });
 });
 
+await step("what's new opens from the version", async () => {
+  await page.locator(".phase-badge").click();
+  await page.waitForSelector(".whats-new-list li", { timeout: 5_000 });
+  await page.keyboard.press("Escape");
+  await page.waitForSelector(".whats-new-list", { state: "detached" });
+});
+
 await step("a file that isn't a PDF is turned away kindly", async () => {
   await page.evaluate(() => {
     const dt = new DataTransfer();

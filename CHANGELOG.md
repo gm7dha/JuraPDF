@@ -5,6 +5,14 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.7.3 — What's new, in a window
+
+- **Version notes in a window.** Clicking the version (e.g. "v0.7.3") at the top now opens a window inside
+  JuraPDF listing what changed in this version, with the earlier versions below (click one to open it), the same
+  way JuraCAD does, instead of taking you to a web page. It works offline too.
+- **A dot for new versions.** After an update, a small red dot on the version shows there's something new to read;
+  it goes once you've looked. Help has a "what's new" link as well.
+
 ## v0.7.2 — Find words
 
 - **A search bar.** The magnifying glass beside the page number (or Ctrl+F, ⌘F on a Mac) opens a little bar at
