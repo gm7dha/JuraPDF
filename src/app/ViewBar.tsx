@@ -285,6 +285,15 @@ export function ViewBar() {
         </button>
         <button
           type="button"
+          className="icon-button"
+          onClick={() => s().openDialog("sign")}
+          aria-label="Sign"
+          title="Sign: draw, type or bring in your signature, then click where it goes (S)"
+        >
+          <Icons.Sign />
+        </button>
+        <button
+          type="button"
           className={`icon-button${marking ? " active" : ""}`}
           onClick={() => (marking ? stopMarking() : startMarking())}
           aria-label="Black out"

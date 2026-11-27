@@ -374,6 +374,13 @@ export const Icons = {
       <rect x="4" y="10" width="13" height="4" rx="0.5" fill="currentColor" />
     </Svg>
   ),
+  /** Sign: a signature's scrawl on a line. */
+  Sign: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M3 15c2-4 4-7 5-6s-2 7 0 7 3-5 4-5-0.5 4 1 4 2-2 3-2 1.5 1 3 1" />
+      <path d="M3 20h18" />
+    </Svg>
+  ),
   /** Pick things on a page: an arrow pointer. */
   Pointer: (p: IconProps) => (
     <Svg {...p}>

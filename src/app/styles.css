@@ -2339,3 +2339,77 @@ textarea.form-box {
 .primary-button.danger:hover {
   background: #000;
 }
+
+/* ------------------------------------------------------------------ signing */
+
+.sign-pad {
+  display: block;
+  width: 100%;
+  aspect-ratio: 520 / 180;
+  margin-top: 10px;
+  background:
+    linear-gradient(to top, transparent 24%, #b9c2cc 24%, #b9c2cc calc(24% + 1px), transparent calc(24% + 1px)),
+    #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  touch-action: none;
+}
+
+.sign-pad.drawing {
+  cursor: crosshair;
+}
+
+.sign-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.saved-signatures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 4px 0 14px;
+}
+
+.saved-signature {
+  position: relative;
+}
+
+.saved-signature-use {
+  display: grid;
+  place-items: center;
+  width: 150px;
+  height: 64px;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.saved-signature-use:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.saved-signature-use img,
+.sign-preview {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.sign-picture {
+  margin-top: 10px;
+}
+
+.sign-preview {
+  display: block;
+  max-height: 160px;
+  margin-top: 10px;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}

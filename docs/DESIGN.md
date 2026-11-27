@@ -93,5 +93,7 @@ tests          Vitest, pure code only;  scripts/smoke-test.mjs drives the built 
   start number, Bates numbers, page range, preview; replaceable and removable; Claude's add_headers.
 - **v0.12 (done)** — **black out (redaction)**: mark by dragging, picked words or everything found; the marked pages
   are redrawn as pictures with black boxes (nothing underneath survives), their other words written back invisibly.
-- **Next (Tungsten-style)** — signatures, sticky-note comments, compressing, more form box kinds.
+- **v0.13 (done)** — **sign**: draw, type (system handwriting fonts) or bring in a signature picture (paper made
+  see-through), kept in localStorage, placed as a picture.
+- **Next (Tungsten-style)** — sticky-note comments, compressing, more form box kinds.
 - **Later** — recent files, keeping work in the browser between visits, comments and highlights, compressing large PDFs.

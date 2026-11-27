@@ -13,6 +13,7 @@ import { PasswordDialog } from "./PasswordDialog";
 import { PrintDialog } from "./PrintDialog";
 import { WatermarkDialog } from "./WatermarkDialog";
 import { HeadersDialog } from "./HeadersDialog";
+import { SignDialog } from "./SignDialog";
 import { WhatsNewDialog } from "./WhatsNewDialog";
 import { inPopup, inTextBox } from "./popupGuard";
 import { PickedWordsBar } from "./PickedWordsBar";
@@ -62,6 +63,7 @@ export function App() {
       {dialog === "print" && <PrintDialog />}
       {dialog === "watermark" && <WatermarkDialog />}
       {dialog === "headers" && <HeadersDialog />}
+      {dialog === "sign" && <SignDialog />}
       {dialog === "whatsNew" && <WhatsNewDialog />}
       <Toasts />
     </div>
@@ -206,6 +208,11 @@ function useShortcuts() {
         if (shapes[key]) {
           e.preventDefault();
           void startShape(shapes[key]);
+          return;
+        }
+        if (key === "s") {
+          e.preventDefault();
+          s.openDialog("sign");
           return;
         }
         if (key === "b") {

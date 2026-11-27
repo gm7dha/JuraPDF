@@ -5,6 +5,18 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.13 — Sign
+
+- **Sign PDFs** with the new Sign button (or press S). There are three ways to make your signature:
+  - **Draw it** with the mouse, a finger or a pen, in black or blue ink.
+  - **Type your name** in a handwriting style.
+  - **Bring in a picture** of your signature (a photo or scan on white paper). The white paper is made see-through,
+    so only the ink goes on the page.
+- **Click where it goes,** then move it or make it bigger or smaller, like any picture. It stays changeable
+  afterwards, and Undo shows it as "sign page 3".
+- **Your signatures are kept on this computer** (up to six), so next time it's one click. The × on one forgets it.
+  They're never sent anywhere.
+
 ## v0.12 — Black out (redaction)
 
 - **Black out words or pictures for good,** as Tungsten and Acrobat do for private details (names, addresses, account

@@ -51,6 +51,8 @@ export interface PictureItem {
   height: number;
   /** The picture already in the PDF to draw (its name there), when one of JuraPDF's own pictures is moved. */
   image?: string;
+  /** A signature (from the Sign window): named so in Undo. */
+  signature?: boolean;
   id?: number;
 }
 
@@ -325,7 +327,7 @@ function styleOf(item: AddItem): string {
 /** What a change is called in the Undo list. */
 export function additionLabel(item: AddItem): string {
   if (item.kind === "shape") return `add ${itemName(item)} to page ${item.page + 1}`;
-  if (item.kind === "picture") return `add a picture to page ${item.page + 1}`;
+  if (item.kind === "picture") return item.signature ? `sign page ${item.page + 1}` : `add a picture to page ${item.page + 1}`;
   if (item.kind === "ink") return `draw on page ${item.page + 1}`;
   if (item.kind === "field") return `add ${itemName(item)} to page ${item.page + 1}`;
   const first = linesOf(item.text)[0] ?? "";
