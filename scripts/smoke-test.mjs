@@ -953,6 +953,23 @@ await step("adding a form box, filling it in, and making the answer part of the 
   await page.waitForFunction((n) => window.jurapdfStore.getState().past.length === n, steps);
 });
 
+await step("adding page numbers, then taking them off", async () => {
+  const steps = await page.evaluate(() => window.jurapdfStore.getState().past.length);
+  await page.getByRole("button", { name: "Headers and footers", exact: true }).click();
+  await page.locator('.modal:has-text("Headers, footers and page numbers")').waitFor();
+  await page.getByRole("button", { name: "Page 1 of 9" }).click();
+  await page.getByRole("button", { name: /^(Add to|Change on) every page$/ }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "add page numbers");
+  await page.locator('.page[data-page="1"] .textLayer', { hasText: "Page 1 of 3" }).waitFor();
+  if (process.env.SMOKE_SCREENSHOT) await page.screenshot({ path: "smoke-headers.png" });
+  // Opened again, it knows they're there and can take them off.
+  await page.getByRole("button", { name: "Headers and footers", exact: true }).click();
+  await page.getByRole("button", { name: "Take them off" }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "take off headers and footers");
+  for (let i = 0; i < 2; i++) await page.keyboard.press("Control+z");
+  await page.waitForFunction((n) => window.jurapdfStore.getState().past.length === n, steps);
+});
+
 await step("Connect to Claude with no extension running says what to do", async () => {
   await page.getByRole("button", { name: "Connect to Claude" }).click();
   await page.locator('.modal:has-text("Not connected")').waitFor({ timeout: 60_000 });

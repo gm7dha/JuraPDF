@@ -281,6 +281,15 @@ export function ViewBar() {
         >
           <Icons.Form />
         </button>
+        <button
+          type="button"
+          className="icon-button"
+          onClick={() => s().openDialog("headers")}
+          aria-label="Headers and footers"
+          title="Headers, footers and page numbers: words or numbers along the top and bottom of the pages (Bates numbers too)"
+        >
+          <Icons.PageNumbers />
+        </button>
         {form && (
           <>
             <button

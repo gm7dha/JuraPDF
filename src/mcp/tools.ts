@@ -16,6 +16,8 @@ import { addWatermark, LockedPdf, WatermarkProblem, type WatermarkPicture } from
 import { additionLabel, choicesOf, FIELD_SIZE, cleanSize, DEFAULT_WORDS, linesOf, SHAPE_NAMES, SHAPE_STYLE, startingPictureSize, type ShapeKind } from "../model/additions";
 import { answerFor, answerLabel, FORM_KIND_NAMES, type Answer, type FormBoxKind, type FormValue } from "../model/forms";
 import { fillForm, formFields, FormProblem } from "../pdf/forms";
+import { DEFAULT_HEADERS, dateText, hasWords, headersLabel, type HeaderSettings } from "../model/headers";
+import { addHeaders, HeaderProblem, removeHeaders } from "../pdf/headers";
 import { AddProblem, addItems, addPicture, addShape, addWords, pictureType } from "../pdf/additions";
 import { moveTo, sameOrder } from "../model/pages";
 import { InputError, bool, noExtras, num, object, oneOf, text } from "./args";
@@ -31,7 +33,7 @@ export const FORMAT_GUIDE = `How JuraPDF works with PDFs:
 - Pages are numbered from 1, as the user sees them. "pages" takes a number, a list of numbers, or text like "1-3, 5", "4-" (4 to the end), "all", "odd", "even" or "last".
 - Sizes are paper names (A4, Letter…) or millimetres; "landscape" means wider than tall. A page's "turn" is how it has been rotated to show (0, 90, 180 or 270 degrees clockwise).
 - describe_pdf gives the pages and a taste of their words; read_words gives the words of chosen pages (scanned pages, being pictures, have none).
-- Changes: add_watermark (words or a PNG/JPG picture from the folder, saved into the pages), add_words and add_picture (writing or a PNG/JPG picture such as a signature on one page, placed in points from its top-left corner as it shows; describe_pdf gives the page sizes), add_shape (a see-through highlight over words, or a box, oval, line or arrow to point something out, a box or oval filled in if wanted; read_words gives where words are), add_form_box (a text box, tick box or choice list that whoever opens the PDF can fill in, e.g. to make a printed form fillable), fill_form (fill in the PDF's form boxes; read_form lists them with what's in them), turn_pages, delete_pages (one page must stay), move_pages, add_blank_pages, bring_in_pdf (all the pages of another PDF from the folder: this is how to join PDFs), save_pages_as_pdf (some pages as a new PDF in the folder: this is how to split one). undo takes back your last change.
+- Changes: add_watermark (words or a PNG/JPG picture from the folder, saved into the pages), add_words and add_picture (writing or a PNG/JPG picture such as a signature on one page, placed in points from its top-left corner as it shows; describe_pdf gives the page sizes), add_shape (a see-through highlight over words, or a box, oval, line or arrow to point something out, a box or oval filled in if wanted; read_words gives where words are), add_form_box (a text box, tick box or choice list that whoever opens the PDF can fill in, e.g. to make a printed form fillable), fill_form (fill in the PDF's form boxes; read_form lists them with what's in them), add_headers (page numbers, Bates numbers or words along the top and bottom of pages), turn_pages, delete_pages (one page must stay), move_pages, add_blank_pages, bring_in_pdf (all the pages of another PDF from the folder: this is how to join PDFs), save_pages_as_pdf (some pages as a new PDF in the folder: this is how to split one). undo takes back your last change.
 - Locked PDFs (with a password or protected against changes) can be read but not changed.
 - Talk to the user in plain words: "pages", "words", "picture", "see-through" — not PDF jargon.`;
 
@@ -181,7 +183,7 @@ async function change(s: Session, run: (bytes: Uint8Array<ArrayBuffer>) => Promi
     bytes = await run(doc.bytes);
   } catch (e) {
     if (e instanceof LockedPdf) throw new InputError("This PDF is locked against changes (it has a password or is protected), so it can't be changed. It can still be read.");
-    if (e instanceof PageProblem || e instanceof WatermarkProblem || e instanceof AddProblem || e instanceof FormProblem) throw new InputError(e.message);
+    if (e instanceof PageProblem || e instanceof WatermarkProblem || e instanceof AddProblem || e instanceof FormProblem || e instanceof HeaderProblem) throw new InputError(e.message);
     throw e;
   }
   s.throwIfCancelled();
@@ -254,6 +256,66 @@ export const TOOLS: ToolDef[] = [
         used += block.length;
       }
       return say(...out);
+    },
+  },
+  {
+    name: "add_headers",
+    title: "Add headers, footers or page numbers",
+    description:
+      "Put words or page numbers along the top and bottom of pages, at the left, middle or right. In the words, {page} is the page's number, {pages} the last number, {date} today's date and {file} the file's name: e.g. bottom_middle \"Page {page} of {pages}\", or Bates numbers with bottom_right \"ABC{page}\" and digits 6. Adding them again replaces the ones added before; take_off: true takes them off.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        top_left: { type: "string" },
+        top_middle: { type: "string" },
+        top_right: { type: "string" },
+        bottom_left: { type: "string" },
+        bottom_middle: { type: "string" },
+        bottom_right: { type: "string" },
+        font: { type: "string", enum: Object.keys(FONT_NAMES), description: "Helvetica if left out." },
+        size: { type: "number", description: "Letter size in points (10 if left out)." },
+        colour: { type: "string", description: `${Object.keys(COLOURS).filter((c) => c !== "gray").join(", ")} or "#rrggbb" (dark grey if left out).` },
+        margin: { type: "number", description: "Points from the page's edges (28, about 1 cm, if left out)." },
+        pages: { type: "string", description: "Which pages, e.g. \"2-\" to leave out a cover page (all if left out)." },
+        start_at: { type: "number", description: "The number the first of those pages gets (1 if left out)." },
+        digits: { type: "number", description: "Make numbers at least this many digits long with zeros in front, e.g. 6 for 000001 (0 if left out)." },
+        take_off: { type: "boolean", description: "Take off the headers and footers added before instead." },
+      },
+    },
+    async run(s, a) {
+      const slots = { top_left: "topLeft", top_middle: "topCentre", top_right: "topRight", bottom_left: "bottomLeft", bottom_middle: "bottomCentre", bottom_right: "bottomRight" } as const;
+      noExtras(a, [...Object.keys(slots), "font", "size", "colour", "color", "margin", "pages", "start_at", "digits", "take_off"], "add_headers");
+      const doc = needDoc(s);
+      if (bool(a.take_off, "take_off")) {
+        await change(s, (bytes) => removeHeaders(bytes), "took off headers and footers");
+        return say("Took off the headers and footers.");
+      }
+      const t = Object.fromEntries(Object.entries(slots).map(([k, slot]) => [slot, a[k] === undefined ? "" : text(a[k], k, "")])) as HeaderSettings["text"];
+      const count = (await pageFacts(doc.bytes)).length;
+      const settings: HeaderSettings = {
+        ...DEFAULT_HEADERS,
+        text: t,
+        font: oneOf(a.font, Object.keys(FONT_NAMES) as FontChoice[], "font", DEFAULT_HEADERS.font),
+        size: num(a.size, "size", { min: 4, max: 72, fallback: DEFAULT_HEADERS.size }),
+        colour: a.colour === undefined && a.color === undefined ? DEFAULT_HEADERS.colour : colourOf(a.colour ?? a.color),
+        margin: num(a.margin, "margin", { min: 0, max: 200, fallback: DEFAULT_HEADERS.margin }),
+        pages: a.pages === undefined ? "all" : "range",
+        range: a.pages === undefined ? "" : pagesOf(a.pages, count, "pages").map((p) => p + 1).join(", "),
+        startAt: num(a.start_at, "start_at", { min: 0, max: 9_999_999, integer: true, fallback: 1 }),
+        digits: num(a.digits, "digits", { min: 0, max: 12, integer: true, fallback: 0 }),
+      };
+      if (!hasWords(settings)) throw new InputError("Give the words for at least one spot, e.g. bottom_middle: \"Page {page} of {pages}\".");
+      let pages: number[] = [];
+      await change(
+        s,
+        async (bytes) => {
+          const out = await addHeaders(bytes, settings, doc.name, dateText(new Date(), "en-GB"));
+          pages = out.pages;
+          return out.bytes;
+        },
+        `added ${headersLabel(settings)}`,
+      );
+      return say(`Added ${headersLabel(settings)} to ${pages.length === count ? "every page" : pagesLabel(pages.map((p) => p - 1))}.`);
     },
   },
   {

@@ -2221,3 +2221,41 @@ textarea.form-box {
 .page-scroller.placing .form-layer {
   display: none;
 }
+
+/* ------------------------------------------------------------------ headers, footers and page numbers */
+
+.quick-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.chip-button {
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.chip-button:hover {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+/* Three spots along the top, three along the bottom. */
+.slot-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px 8px;
+}
+
+.slot-grid .text-box {
+  width: 100%;
+  min-width: 0;
+}

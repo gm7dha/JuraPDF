@@ -41,6 +41,7 @@ const host: LiveHost = {
     const s = useStore.getState();
     if (!s.pdf) return "The user has no PDF open in JuraPDF.";
     if (s.dialog === "watermark") return "The user has the Watermark window open in JuraPDF.";
+    if (s.dialog === "headers") return "The user has the Headers and page numbers window open in JuraPDF.";
     if (s.dialog === "print") return "The user has the Print window open in JuraPDF.";
     if (s.dialog === "password") return "JuraPDF is asking the user for a password.";
     if (s.draft || s.placing) return "The user is adding words or a picture to a page in JuraPDF.";

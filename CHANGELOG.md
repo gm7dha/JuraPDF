@@ -5,6 +5,20 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.11 — Headers, footers and page numbers
+
+- **Number the pages,** or put words along the top and bottom of every page, with the new button that looks like a
+  numbered page. There are six spots: top left, middle and right, and the same along the bottom.
+- **Fill-ins that change on each page:** the page number, the number of pages, today's date and the file's name. For
+  example "Page {page} of {pages}" shows as "Page 3 of 12".
+- **Quick starts** for the usual jobs: "Page 1 of 9", plain numbers, numbers at the right, a name and date header, and
+  **Bates numbers** (a code plus a number with zeros in front, like ABC000123, as used for legal and work files).
+- **Choose the pages** (for example 2-10, to leave a cover page out), the number to start from, the letters, size,
+  colour and how far from the edge. A preview shows the page as it will look.
+- **Change them or take them off later:** opening the window again shows the settings they were added with. Adding
+  them again replaces the old ones rather than writing over them, and "Take them off" removes them.
+- **Claude can add them too** (add_headers), for example "number the pages, leaving out the cover".
+
 ## v0.10 — Fill in forms
 
 - **Fill in any PDF form right in JuraPDF.** Form boxes are tinted light blue, as in other PDF readers. Click a box to
