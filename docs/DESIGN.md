@@ -80,4 +80,10 @@ tests          Vitest, pure code only;  scripts/smoke-test.mjs drives the built 
   colours in each place found, counts them and goes to the next / previous one on any page; capitals and accents
   don't matter unless asked; looks again after every change; points out pages with no words (scans) and offers to
   read them.
+- **v0.8 (done)** — **better editing** (asked for by the owner, "like Acrobat or Preview"): everything JuraPDF adds
+  stays changeable (marked in the page and remembered, see CLAUDE.md); fixed words keep the PDF's own font, size and
+  colour; filled and see-through shapes; freehand pen; underline and cross out picked words; colour swatches; tool
+  shortcuts; nudge, copy, delete; Ctrl+Z within what's being placed.
+- **Next** — **fillable forms** (asked for by the owner, as in Tungsten PDF): add text boxes, tick boxes and the like
+  that Acrobat and other readers can fill in.
 - **Later** — recent files, keeping work in the browser between visits, comments and highlights, compressing large PDFs.

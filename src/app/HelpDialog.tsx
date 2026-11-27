@@ -48,8 +48,13 @@ export function HelpDialog() {
       </p>
       <p>
         <strong>Highlight</strong> (the marker button): drag across words to colour them in, see-through so they still show. The <strong>box</strong>, <strong>oval</strong>,{" "}
-        <strong>line</strong> and <strong>arrow</strong> buttons draw by dragging on a page (an arrow points to where you let go). Drag the round handles to change it, pick a colour
-        and thickness, then <strong>Done</strong>. Or pick words with the mouse, and press <strong>Highlight</strong> on the little bar by them.
+        <strong>line</strong> and <strong>arrow</strong> buttons draw by dragging on a page (an arrow points to where you let go). Drag the round handles to change it, pick a colour,
+        a fill colour for the inside, a thickness and how see-through, then <strong>Done</strong>. The <strong>pen</strong> draws freehand: drag as many times as you like, then
+        Done. Or pick words with the mouse, and press <strong>Highlight</strong>, <strong>underline</strong> or <strong>cross out</strong> on the little bar by them.
+      </p>
+      <p>
+        Everything you add stays changeable, even after saving: <strong>click it</strong> to move it, size it, change its colour or words, copy it or delete it. Each tool has a
+        one-letter shortcut (see below).
       </p>
       <p>
         <strong>Bring in</strong> takes other PDFs, or PNG and JPG pictures (each becomes a page). <strong>Save pages as pictures</strong> saves the pages as PNG pictures (several in
@@ -57,13 +62,13 @@ export function HelpDialog() {
       </p>
       <p>
         <strong>Change what's on a page</strong> (the pencil): click a picture to move it, resize it, swap it or delete it, or click some words to retype them (the old ones are
-        covered with white). Best for short fixes, as a PDF doesn't move the rest of the line along.
+        covered over, and the new ones are written in the PDF's own font, size and colour when it has the letters). Best for short fixes, as a PDF doesn't move the rest of the line along.
       </p>
       <p>
         <strong>Read words in pictures</strong> (the button after the arrow): finds the words in a scanned page or a photo, so they can be picked, copied, highlighted and found
         with Find words. It runs on your computer; the first time it fetches its reader (about 7 MB), then it works offline.
       </p>
-      <p className="muted">Coming next: changing what's already on a page, and saving pages as pictures.</p>
+      <p className="muted">Coming next: fillable forms (boxes that other PDF readers can type into or tick).</p>
       <div className="platform-row">
         <span className="muted small">Shortcuts shown for</span>
         <div className="segmented two" role="radiogroup" aria-label="Keyboard type">

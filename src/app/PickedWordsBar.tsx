@@ -18,7 +18,7 @@ function pickedSpot(): { left: number; top: number } | null {
   const rects = [...range.getClientRects()].filter((r) => r.width > 0 && r.height > 0 && r.height < window.innerHeight / 3);
   const last = rects[rects.length - 1];
   if (!last) return null;
-  return { left: Math.min(window.innerWidth - 190, Math.max(8, last.right - 60)), top: Math.min(window.innerHeight - 44, last.bottom + 8) };
+  return { left: Math.min(window.innerWidth - 270, Math.max(8, last.right - 60)), top: Math.min(window.innerHeight - 44, last.bottom + 8) };
 }
 
 export function PickedWordsBar() {
@@ -47,6 +47,12 @@ export function PickedWordsBar() {
     <div className="picked-bar" role="toolbar" aria-label="Picked words" style={spot} onMouseDown={(e) => e.preventDefault()}>
       <button type="button" className="picked-button" onClick={() => void highlightPicked()} aria-label="Highlight the picked words" title="Colour in the picked words with see-through yellow">
         <Icons.Highlight size={16} /> Highlight
+      </button>
+      <button type="button" className="picked-button" onClick={() => void highlightPicked("underline")} aria-label="Underline the picked words" title="Draw a line under the picked words">
+        <Icons.Underline size={16} />
+      </button>
+      <button type="button" className="picked-button" onClick={() => void highlightPicked("crossout")} aria-label="Cross out the picked words" title="Draw a line through the picked words">
+        <Icons.CrossOut size={16} />
       </button>
       <button
         type="button"

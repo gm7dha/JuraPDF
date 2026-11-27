@@ -43,6 +43,12 @@ export const FONTS: Record<FontChoice, StandardFonts> = {
   TimesRomanBold: StandardFonts.TimesRomanBold,
   Courier: StandardFonts.Courier,
   CourierBold: StandardFonts.CourierBold,
+  HelveticaOblique: StandardFonts.HelveticaOblique,
+  HelveticaBoldOblique: StandardFonts.HelveticaBoldOblique,
+  TimesRomanItalic: StandardFonts.TimesRomanItalic,
+  TimesRomanBoldItalic: StandardFonts.TimesRomanBoldItalic,
+  CourierOblique: StandardFonts.CourierOblique,
+  CourierBoldOblique: StandardFonts.CourierBoldOblique,
 };
 
 /**
@@ -120,6 +126,22 @@ export function keptSizes(bytes: Uint8Array): [number, number][] | null {
       const [w, h] = x2 > x1 && y2 > y1 ? [x2 - x1, y2 - y1] : [media.width, media.height];
       return normalRotation(page.getRotation().angle) % 180 ? [h, w] : [w, h];
     });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The PDF read with pdf-lib for looking at, not changing (the one kept for the
+ * next change, which stays kept). Null when pdf-lib can't read it.
+ */
+export async function peekForReading(bytes: Uint8Array): Promise<PDFDocument | null> {
+  const kept = lastSaved.get(bytes);
+  if (kept) return kept;
+  try {
+    const doc = await PDFDocument.load(bytes, { updateMetadata: false, parseSpeed: ParseSpeeds.Fastest });
+    if (!lastSaved.has(bytes)) lastSaved.set(bytes, doc);
+    return doc;
   } catch {
     return null;
   }
@@ -220,6 +242,9 @@ export function existingContents(page: PDFPage): number {
   return contents instanceof PDFArray ? contents.size() : 0;
 }
 
+/** The wrapping JuraPDF put round pages' own drawing, per PDF (known while this copy of the PDF is in use). */
+const wrappers = new WeakMap<PDFDocument, { open: Set<string>; close: Set<string> }>();
+
 /**
  * Put the watermark's drawing behind or in front of the page's own. In front,
  * the page's own drawing is wrapped so any settings it leaves behind (a
@@ -232,8 +257,15 @@ export function arrange(page: PDFPage, before: number, behind: boolean): void {
   const own = all.slice(0, before);
   const mark = all.slice(before);
   const ctx = page.doc.context;
+  // In front of a page JuraPDF has already wrapped: what's there now is the page's own drawing (closed off) and
+  // earlier additions (each closed off by itself), so it needn't be wrapped again (and again, with every addition).
+  let wrap = wrappers.get(page.doc);
+  if (!wrap) wrappers.set(page.doc, (wrap = { open: new Set(), close: new Set() }));
+  if (!behind && own.length >= 2 && wrap.open.has(String(own[0])) && own.some((r) => wrap.close.has(String(r)))) return;
   const q = ctx.register(ctx.flateStream("q\n"));
   const Q = ctx.register(ctx.flateStream("\nQ\n"));
+  wrap.open.add(String(q));
+  wrap.close.add(String(Q));
   const order = behind ? [...mark, q, ...own, Q] : [q, ...own, Q, ...mark];
   while (contents.size() > 0) contents.remove(0);
   for (const item of order) contents.push(item);

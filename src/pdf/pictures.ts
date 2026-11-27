@@ -30,7 +30,7 @@ interface Found extends PictureSpot {
 }
 
 /** All of a page's drawing instructions as one run of bytes. */
-function contentOf(page: PDFPage): Uint8Array {
+export function contentOf(page: PDFPage): Uint8Array {
   const ctx = page.doc.context;
   const contents = page.node.Contents();
   const streams = contents instanceof PDFArray ? contents.asArray().map((r) => ctx.lookup(r)) : contents ? [contents] : [];

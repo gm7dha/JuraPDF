@@ -6,13 +6,11 @@
  */
 import type { PointerEvent as ReactPointerEvent } from "react";
 
-import { arrowHead, HIGHLIGHT_OPACITY, SHAPE_NAMES, shapeBox, type ShapeItem } from "../model/additions";
+import { arrowHead, canFill, HIGHLIGHT_SWATCHES, opacityOf, SHAPE_NAMES, shapeBox, type ShapeItem } from "../model/additions";
 import { cancelAdding, finishAdding, updateDraft } from "./addActions";
 import { dragFrom } from "./DraftBox";
+import { ColourButton, KeptButtons, SeeThrough, Thickness } from "./DraftControls";
 import { Icons } from "./icons";
-
-const MIN_THICKNESS = 0.5;
-const MAX_THICKNESS = 20;
 
 export function ShapeDraft({ draft, scale, pageW, pageH }: { draft: ShapeItem; scale: number; pageW: number; pageH: number }) {
   const s = (v: number) => v * scale;
@@ -32,16 +30,23 @@ export function ShapeDraft({ draft, scale, pageW, pageH }: { draft: ShapeItem; s
     });
   };
 
-  /** Drag one end (or corner). */
-  const startEnd = (end: 1 | 2) => (e: ReactPointerEvent) => {
-    const x = end === 1 ? draft.x1 : draft.x2;
-    const y = end === 1 ? draft.y1 : draft.y2;
-    dragFrom(e, scale, (dx, dy) => {
-      const nx = clampX(x + dx);
-      const ny = clampY(y + dy);
-      updateDraft(end === 1 ? { x1: nx, y1: ny } : { x2: nx, y2: ny });
-    });
+  /** Drag a corner (or an end): `xs` and `ys` say which of the two x's and y's it moves. */
+  const startCorner = (xs: "x1" | "x2", ys: "y1" | "y2") => (e: ReactPointerEvent) => {
+    const x = draft[xs];
+    const y = draft[ys];
+    dragFrom(e, scale, (dx, dy) => updateDraft({ [xs]: clampX(x + dx), [ys]: clampY(y + dy) }));
   };
+  const corners: ["x1" | "x2", "y1" | "y2"][] = isLine
+    ? [
+        ["x1", "y1"],
+        ["x2", "y2"],
+      ]
+    : [
+        ["x1", "y1"],
+        ["x2", "y1"],
+        ["x1", "y2"],
+        ["x2", "y2"],
+      ];
 
   const keys = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
@@ -54,31 +59,35 @@ export function ShapeDraft({ draft, scale, pageW, pageH }: { draft: ShapeItem; s
     }
   };
 
+  const opacity = opacityOf(draft);
+  const fill = draft.fill && canFill(draft.shape) ? draft.fill : "none";
   let drawing: React.ReactNode;
   if (draft.shape === "highlight") {
-    drawing = <rect x={s(box.x)} y={s(box.y)} width={s(box.width)} height={s(box.height)} fill={draft.colour} opacity={HIGHLIGHT_OPACITY} className="shape-highlight" />;
+    drawing = <rect x={s(box.x)} y={s(box.y)} width={s(box.width)} height={s(box.height)} fill={draft.colour} opacity={opacity} className="shape-highlight" />;
   } else if (draft.shape === "box") {
-    drawing = <rect x={s(box.x + width / 2)} y={s(box.y + width / 2)} width={s(Math.max(0, box.width - width))} height={s(Math.max(0, box.height - width))} fill="none" stroke={draft.colour} strokeWidth={s(width)} />;
+    // As the PDF draws it: the line runs along the edge of the box dragged out, half inside it and half out.
+    drawing = <rect x={s(box.x)} y={s(box.y)} width={s(box.width)} height={s(box.height)} fill={fill} stroke={draft.colour} strokeWidth={s(width)} opacity={opacity} />;
   } else if (draft.shape === "oval") {
     drawing = (
       <ellipse
         cx={s(box.x + box.width / 2)}
         cy={s(box.y + box.height / 2)}
-        rx={s(Math.max(0, box.width - width) / 2)}
-        ry={s(Math.max(0, box.height - width) / 2)}
-        fill="none"
+        rx={s(box.width / 2)}
+        ry={s(box.height / 2)}
+        fill={fill}
         stroke={draft.colour}
         strokeWidth={s(width)}
+        opacity={opacity}
       />
     );
   } else {
     const head = draft.shape === "arrow" ? arrowHead(draft) : null;
     const end = head ? [(head[1][0] + head[2][0]) / 2, (head[1][1] + head[2][1]) / 2] : [draft.x2, draft.y2];
     drawing = (
-      <>
+      <g opacity={opacity}>
         <line x1={s(draft.x1)} y1={s(draft.y1)} x2={s(end[0])} y2={s(end[1])} stroke={draft.colour} strokeWidth={s(width)} strokeLinecap="round" />
         {head && <polygon points={head.map(([x, y]) => `${s(x)},${s(y)}`).join(" ")} fill={draft.colour} />}
-      </>
+      </g>
     );
   }
 
@@ -92,27 +101,25 @@ export function ShapeDraft({ draft, scale, pageW, pageH }: { draft: ShapeItem; s
   const name = SHAPE_NAMES[draft.shape].toLowerCase();
   const barTop = Math.min(draft.y1, draft.y2);
   return (
-    <div className="draft shape" style={{ left: 0, top: 0 }} onKeyDown={keys} onClick={(e) => e.stopPropagation()}>
+    <div className="draft shape" style={{ left: 0, top: 0 }} onKeyDown={keys} onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
       <svg className="shape-draft" width={s(pageW)} height={s(pageH)} aria-hidden="true">
         {drawing}
         {grab}
-        <circle cx={s(draft.x1)} cy={s(draft.y1)} r={6} className="shape-handle" onPointerDown={startEnd(1)} />
-        <circle cx={s(draft.x2)} cy={s(draft.y2)} r={6} className="shape-handle" onPointerDown={startEnd(2)} />
+        {corners.map(([xs, ys]) => (
+          <circle key={xs + ys} cx={s(draft[xs])} cy={s(draft[ys])} r={6} className="shape-handle" onPointerDown={startCorner(xs, ys)} />
+        ))}
       </svg>
       <div className="draft-bar" role="toolbar" aria-label={`${SHAPE_NAMES[draft.shape]} to add`} style={{ left: s(box.x) - 2, top: s(barTop) - 6, bottom: "auto", transform: "translateY(-100%)" }}>
-        <input type="color" aria-label="Colour" title="Colour" value={draft.colour} onChange={(e) => updateDraft({ colour: e.target.value })} />
-        {draft.shape !== "highlight" && (
-          <input
-            type="number"
-            aria-label="Thickness"
-            title="How thick the lines are, in points"
-            min={MIN_THICKNESS}
-            max={MAX_THICKNESS}
-            step={0.5}
-            value={draft.thickness}
-            onChange={(e) => e.target.value && updateDraft({ thickness: Math.min(MAX_THICKNESS, Math.max(MIN_THICKNESS, Number(e.target.value) || 2)) })}
-          />
-        )}
+        <ColourButton
+          label={draft.shape === "highlight" ? "Colour" : "Line colour"}
+          value={draft.colour}
+          swatches={draft.shape === "highlight" ? HIGHLIGHT_SWATCHES : undefined}
+          onChange={(c) => c && updateDraft({ colour: c })}
+        />
+        {canFill(draft.shape) && <ColourButton label="Fill colour (inside)" value={draft.fill ?? null} allowNone onChange={(c) => updateDraft({ fill: c })} />}
+        {draft.shape !== "highlight" && <Thickness value={draft.thickness} />}
+        {draft.shape !== "highlight" && <SeeThrough value={draft.seeThrough ?? 0} onChange={(v) => updateDraft({ seeThrough: v })} />}
+        {draft.id !== undefined && <KeptButtons name={name} />}
         <button type="button" className="primary-button draft-done" onClick={() => void finishAdding()} title={`Put the ${name} on the page (Enter)`}>
           Done
         </button>

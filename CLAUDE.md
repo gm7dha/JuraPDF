@@ -62,10 +62,24 @@
   starts using `BASELINE` per font so the PDF words land where the screen font showed them; `src/pdf/additions.ts`
   writes them through `toPageSpace`, in front, wrapped like a watermark): `addActions.ts` runs placing (`placing` in
   the store: the next click on a page) and the `draft` (`DraftBox.tsx`, drawn inside the page at `cssScale`), Done
-  writes one undo step. Live with Claude is busy while either is open. Claude tools: add_words, add_picture, add_shape. Shapes (`ShapeItem`:
+  writes one undo step. Live with Claude is busy while either is open. Claude tools: add_words, add_picture, add_shape (with fill and see_through). Shapes (`ShapeItem`:
   highlight, box, oval, line, arrow from (x1,y1) to (x2,y2); `addShape`, a highlight see-through with Multiply) are drawn by
   dragging on the page (PageView's pointerdown while `placing` is a shape) and changed in `ShapeDraft.tsx` (an SVG over the page). Words picked with the mouse get `PickedWordsBar` (Highlight, Copy):
   `pickedWordBoxes` reads the selection's boxes from the words layers, `highlightsFor` joins them per line, `addShapes` writes them as one step.
+- Everything JuraPDF adds stays changeable (v0.8, `src/pdf/items.ts`): `addItems` draws each addition between
+  `/JuraPDF<id> BMC … EMC` and remembers it (`Kept`: id, item, box) as JSON in the page's `/JuraPDFItems`; `changeItem`
+  cuts the marked span out (`removeMarked`) and draws it again on top (pictures reuse their image by name). `keptIn`
+  reads them per version (WeakMap by bytes, filled by `noteKept` after each write); `keptAt`/`hits` (model) pick one by a
+  click: a plain click on the page (`clickPage`) or the pencil opens it as a draft with `id`, and `Underneath`
+  (DraftBox) shows the page without it (`pageWithout`, a one-page copy). Drafts: `markDraft`/`undoDraft` (Ctrl+Z inside
+  a draft), `nudgeDraft`, `duplicateDraft`, `deleteDraft`; a click away from a draft is Done; after a write the draft stays
+  on show until the page is redrawn (`landed`). `arrange` doesn't wrap a page it already wrapped (per-PDF sets), so
+  nesting stays shallow. Shapes have `fill` and `seeThrough`; `InkItem` is the pen (`InkDraft.tsx`, `thinStroke`).
+- Changed words keep the PDF's own font (`src/pdf/fonts.ts` `pageFont`: simple fonts by ToUnicode or WinAnsi and their
+  Widths, Type0 Identity-H by ToUnicode and W; `src/model/fontCodes.ts` pure), found by the name pdf.js gives
+  (`RunFont` in `wordRuns`, via `page.commonObjs`); typed in the font pdf.js loaded into the browser (`own.screen`);
+  when a letter's missing the nearest built-in font is used (`nearestFont`, 12 fonts incl. slanted). Colours come
+  from the drawing (`coloursIn`: paper = commonest colour, ink = furthest from it).
 - Changing what's on a page (pencil, `placing` {kind: "change"}, `startChanging`/`pickToChange` in addActions.ts): a click picks a
   run of words (`wordRuns` in pdfjs.ts; draft = words with `cover`, written by `addWords` as a white box then the words) or a
   picture (`src/pdf/pictures.ts`: `parseContent` (src/model/contentStream.ts) walks the page's instructions tracking q/Q/cm to find

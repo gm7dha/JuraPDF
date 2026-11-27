@@ -614,7 +614,10 @@ await step("adding words and a picture to pages", async () => {
   if (process.env.SMOKE_SCREENSHOT) await page.screenshot({ path: "smoke-add.png" });
   await page.getByRole("button", { name: "Done" }).click();
   await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "add a picture to page 2");
-  expect((await page.locator(".draft").count()) === 0, "nothing left waiting to be added");
+  // What was placed stays on show until the page is drawn again with it, then goes.
+  await page.locator(".draft").waitFor({ state: "detached", timeout: 5_000 }).catch(() => {
+    throw new Error("nothing left waiting to be added");
+  });
 
   // Esc stops adding; Undo takes both back.
   await page.getByRole("button", { name: "Add words" }).click();
@@ -854,6 +857,60 @@ await step("bringing in a picture as a page, and saving pages as pictures and th
   await page.evaluate(() => window.jurapdfStore.getState().setSelected([]));
   await page.keyboard.press("Control+z");
   await page.waitForFunction(() => window.jurapdfStore.getState().pdf.sizes.length === 3);
+});
+
+await step("filling a box, picking it again later to move and delete it, and drawing with the pen", async () => {
+  const label = () => page.evaluate(() => window.jurapdfStore.getState().past.at(-1)?.label);
+  const steps = await page.evaluate(() => window.jurapdfStore.getState().past.length);
+  await page.keyboard.press("Home");
+  const p1 = await page.locator('.page[data-page="1"]').boundingBox();
+  // R draws a box; it shows filled in as soon as a fill colour is picked.
+  await page.keyboard.press("r");
+  await page.mouse.move(p1.x + p1.width * 0.5, p1.y + p1.height * 0.42);
+  await page.mouse.down();
+  await page.mouse.move(p1.x + p1.width * 0.7, p1.y + p1.height * 0.49, { steps: 4 });
+  await page.mouse.up();
+  await page.getByRole("button", { name: "Fill colour (inside)" }).click();
+  await page.locator(".colour-menu .swatch").nth(5).click();
+  const shown = await page.evaluate(() => document.querySelector(".shape-draft rect")?.getAttribute("fill"));
+  expect(shown === "#ffd400", `the fill should show straight away: ${shown}`);
+  await page.getByRole("button", { name: "Done" }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "add a box to page 1");
+  await page.locator(".draft").waitFor({ state: "detached" });
+  // Later, with no tool on, a click on it picks it again; drag it, Done.
+  await page.mouse.click(p1.x + p1.width * 0.6, p1.y + p1.height * 0.455);
+  await page.locator(".shape-draft").waitFor();
+  const picked = await page.evaluate(() => window.jurapdfStore.getState().draft);
+  expect(picked?.kind === "shape" && picked.fill === "#ffd400" && picked.id !== undefined, `the box should open again as it was: ${JSON.stringify(picked)}`);
+  await page.mouse.move(p1.x + p1.width * 0.6, p1.y + p1.height * 0.455);
+  await page.mouse.down();
+  await page.mouse.move(p1.x + p1.width * 0.6 - 80, p1.y + p1.height * 0.455 + 40, { steps: 4 });
+  await page.mouse.up();
+  await page.getByRole("button", { name: "Done" }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "move a box on page 1");
+  await page.locator(".draft").waitFor({ state: "detached" });
+  // Pick it where it is now, and the Delete key takes it off.
+  await page.mouse.click(p1.x + p1.width * 0.6 - 80, p1.y + p1.height * 0.455 + 40);
+  await page.locator(".shape-draft").waitFor();
+  await page.keyboard.press("Delete");
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "delete a box on page 1");
+  // P: the pen. Two strokes, then Enter.
+  await page.keyboard.press("p");
+  for (const y of [0.3, 0.33]) {
+    await page.mouse.move(p1.x + p1.width * 0.55, p1.y + p1.height * y);
+    await page.mouse.down();
+    await page.mouse.move(p1.x + p1.width * 0.75, p1.y + p1.height * (y + 0.02), { steps: 6 });
+    await page.mouse.up();
+  }
+  const strokes = await page.evaluate(() => window.jurapdfStore.getState().draft?.strokes?.length);
+  expect(strokes === 2, `two strokes should be drawn: ${strokes}`);
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "draw on page 1");
+  await page.keyboard.press("Escape");
+  if (process.env.SMOKE_SCREENSHOT) await page.screenshot({ path: "smoke-editing.png" });
+  for (let i = 0; i < 4; i++) await page.keyboard.press("Control+z");
+  await page.waitForFunction((n) => window.jurapdfStore.getState().past.length === n, steps);
+  expect((await label()) !== "draw on page 1", "Undo takes it all back");
 });
 
 await step("Connect to Claude with no extension running says what to do", async () => {

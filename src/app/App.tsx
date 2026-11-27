@@ -4,7 +4,8 @@ import { hasUnsavedChanges, useStore } from "../model/store";
 import { zoomIn, zoomOut } from "../model/zoom";
 import { openFile, openFromFile, saveToFile } from "./fileActions";
 import { HelpDialog } from "./HelpDialog";
-import { cancelAdding } from "./addActions";
+import { cancelAdding, deleteDraft, duplicateDraft, finishAdding, nudgeDraft, startChanging, startInk, startShape, startWords, undoDraft } from "./addActions";
+import type { ShapeKind } from "../model/additions";
 import { deleteChosen } from "./pageActions";
 import { Icons } from "./icons";
 import { PageView } from "./PageView";
@@ -165,6 +166,49 @@ function useShortcuts() {
         return;
       }
       if (inPopup(e.target, document) || inTextBox(e.target)) return;
+      // Something being placed or changed: Ctrl+Z steps back in it, Delete takes it off, the arrows nudge it.
+      if (s.draft && !e.altKey) {
+        const arrows: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+        if (mod && key === "z" && !e.shiftKey && undoDraft()) {
+          e.preventDefault();
+          return;
+        }
+        if (mod && key === "d") {
+          e.preventDefault();
+          void duplicateDraft();
+          return;
+        }
+        if (!mod && (e.key === "Delete" || e.key === "Backspace")) {
+          e.preventDefault();
+          void deleteDraft();
+          return;
+        }
+        if (!mod && arrows[e.key]) {
+          e.preventDefault();
+          const [dx, dy] = arrows[e.key];
+          nudgeDraft(dx * (e.shiftKey ? 10 : 1), dy * (e.shiftKey ? 10 : 1));
+          return;
+        }
+        if (!mod && e.key === "Enter" && !(e.target instanceof HTMLButtonElement)) {
+          e.preventDefault();
+          void finishAdding();
+          return;
+        }
+      }
+      // One key for each tool (as in other PDF editors), when nothing is being typed.
+      if (!mod && !e.altKey && !e.shiftKey && s.pdf && !document.querySelector('[aria-modal="true"]')) {
+        const shapes: Record<string, ShapeKind> = { h: "highlight", r: "box", o: "oval", l: "line", a: "arrow" };
+        if (shapes[key]) {
+          e.preventDefault();
+          void startShape(shapes[key]);
+          return;
+        }
+        if (key === "t" || key === "p" || key === "e") {
+          e.preventDefault();
+          void (key === "t" ? startWords() : key === "p" ? startInk() : startChanging());
+          return;
+        }
+      }
       if (mod && !e.altKey) {
         if (key === "z" || key === "y") {
           e.preventDefault();

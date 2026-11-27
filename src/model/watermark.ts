@@ -10,7 +10,19 @@
 import { parsePageRange } from "./printMark";
 
 export type WatermarkKind = "words" | "picture";
-export type FontChoice = "Helvetica" | "HelveticaBold" | "TimesRoman" | "TimesRomanBold" | "Courier" | "CourierBold";
+export type FontChoice =
+  | "Helvetica"
+  | "HelveticaBold"
+  | "HelveticaOblique"
+  | "HelveticaBoldOblique"
+  | "TimesRoman"
+  | "TimesRomanBold"
+  | "TimesRomanItalic"
+  | "TimesRomanBoldItalic"
+  | "Courier"
+  | "CourierBold"
+  | "CourierOblique"
+  | "CourierBoldOblique";
 export type AngleChoice = "diagonal" | "level" | "custom";
 export type Placement = "middle" | "top" | "bottom" | "top-left" | "top-right" | "bottom-left" | "bottom-right" | "repeat";
 export type PageChoice = "all" | "odd" | "even" | "range";
@@ -61,11 +73,24 @@ export const DEFAULT_WATERMARK: WatermarkSettings = {
 export const FONT_NAMES: Record<FontChoice, string> = {
   Helvetica: "Helvetica (plain)",
   HelveticaBold: "Helvetica bold",
+  HelveticaOblique: "Helvetica slanted",
+  HelveticaBoldOblique: "Helvetica bold slanted",
   TimesRoman: "Times (plain)",
   TimesRomanBold: "Times bold",
+  TimesRomanItalic: "Times slanted",
+  TimesRomanBoldItalic: "Times bold slanted",
   Courier: "Courier (typewriter)",
   CourierBold: "Courier bold",
+  CourierOblique: "Courier slanted",
+  CourierBoldOblique: "Courier bold slanted",
 };
+
+/** The built-in font nearest to one described as serif, typewriter or plain, bold and/or slanted. */
+export function nearestFont(family: "sans" | "serif" | "mono", bold: boolean, slanted: boolean): FontChoice {
+  const base = family === "serif" ? "TimesRoman" : family === "mono" ? "Courier" : "Helvetica";
+  const tail = family === "serif" ? (bold ? (slanted ? "BoldItalic" : "Bold") : slanted ? "Italic" : "") : bold ? (slanted ? "BoldOblique" : "Bold") : slanted ? "Oblique" : "";
+  return `${base}${tail}` as FontChoice;
+}
 
 export const PLACEMENT_NAMES: Record<Placement, string> = {
   middle: "In the middle",

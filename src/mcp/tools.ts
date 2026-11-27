@@ -29,7 +29,7 @@ export const FORMAT_GUIDE = `How JuraPDF works with PDFs:
 - Pages are numbered from 1, as the user sees them. "pages" takes a number, a list of numbers, or text like "1-3, 5", "4-" (4 to the end), "all", "odd", "even" or "last".
 - Sizes are paper names (A4, Letter…) or millimetres; "landscape" means wider than tall. A page's "turn" is how it has been rotated to show (0, 90, 180 or 270 degrees clockwise).
 - describe_pdf gives the pages and a taste of their words; read_words gives the words of chosen pages (scanned pages, being pictures, have none).
-- Changes: add_watermark (words or a PNG/JPG picture from the folder, saved into the pages), add_words and add_picture (writing or a PNG/JPG picture such as a signature on one page, placed in points from its top-left corner as it shows; describe_pdf gives the page sizes), add_shape (a see-through highlight over words, or a box, oval, line or arrow to point something out; read_words gives where words are), turn_pages, delete_pages (one page must stay), move_pages, add_blank_pages, bring_in_pdf (all the pages of another PDF from the folder: this is how to join PDFs), save_pages_as_pdf (some pages as a new PDF in the folder: this is how to split one). undo takes back your last change.
+- Changes: add_watermark (words or a PNG/JPG picture from the folder, saved into the pages), add_words and add_picture (writing or a PNG/JPG picture such as a signature on one page, placed in points from its top-left corner as it shows; describe_pdf gives the page sizes), add_shape (a see-through highlight over words, or a box, oval, line or arrow to point something out, a box or oval filled in if wanted; read_words gives where words are), turn_pages, delete_pages (one page must stay), move_pages, add_blank_pages, bring_in_pdf (all the pages of another PDF from the folder: this is how to join PDFs), save_pages_as_pdf (some pages as a new PDF in the folder: this is how to split one). undo takes back your last change.
 - Locked PDFs (with a password or protected against changes) can be read but not changed.
 - Talk to the user in plain words: "pages", "words", "picture", "see-through" — not PDF jargon.`;
 
@@ -462,11 +462,13 @@ export const TOOLS: ToolDef[] = [
         y2: { type: "number", description: "Points from the top edge to the opposite corner." },
         colour: { type: "string", description: `${Object.keys(COLOURS).filter((c) => c !== "gray").join(", ")}, yellow or "#rrggbb" (yellow for a highlight, red otherwise, if left out).` },
         thickness: { type: "number", description: "How thick the lines are in points, 0.5–20 (2 if left out; not used by a highlight)." },
+        fill: { type: "string", description: "A box or oval filled in with this colour (same choices as colour); left empty if left out." },
+        see_through: { type: "number", description: "How see-through a box, oval, line or arrow is, 0 (solid, if left out) to 90 percent." },
       },
       required: ["page", "shape", "x1", "y1", "x2", "y2"],
     },
     async run(s, a) {
-      noExtras(a, ["page", "shape", "x1", "y1", "x2", "y2", "colour", "color", "thickness"], "add_shape");
+      noExtras(a, ["page", "shape", "x1", "y1", "x2", "y2", "colour", "color", "thickness", "fill", "see_through"], "add_shape");
       const doc = needDoc(s);
       const facts = await pageFacts(doc.bytes);
       const page = num(a.page, "page", { min: 1, max: facts.length, integer: true }) - 1;
@@ -483,6 +485,8 @@ export const TOOLS: ToolDef[] = [
         y2: num(a.y2, "y2", { min: 0, max: height }),
         colour: c === undefined ? SHAPE_STYLE[shape].colour : typeof c === "string" && c.trim().toLowerCase() === "yellow" ? "#ffd400" : colourOf(c),
         thickness: shape === "highlight" ? 0 : num(a.thickness, "thickness", { min: 0.5, max: 20, fallback: SHAPE_STYLE[shape].thickness }),
+        fill: a.fill === undefined || a.fill === null || a.fill === "" || (shape !== "box" && shape !== "oval") ? null : typeof a.fill === "string" && a.fill.trim().toLowerCase() === "yellow" ? "#ffd400" : colourOf(a.fill),
+        seeThrough: shape === "highlight" ? undefined : num(a.see_through, "see_through", { min: 0, max: 90, fallback: 0 }),
       };
       if (Math.hypot(item.x2 - item.x1, item.y2 - item.y1) < 2) throw new InputError("The two corners are in the same place: give two points apart.");
       const label = additionLabel(item).replace(/^add/, "added");

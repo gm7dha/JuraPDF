@@ -150,6 +150,47 @@ export interface WordRun {
   size: number;
   /** "serif", "sans-serif" or "monospace", as near as can be told. */
   family: string;
+  /** The font the words are in, as the PDF names it, and what pdf.js tells of it (null when it can't be told). */
+  font: RunFont | null;
+}
+
+export interface RunFont {
+  /** Its name in the PDF, e.g. "ABCDEF+Calibri-Bold". */
+  base: string;
+  bold: boolean;
+  italic: boolean;
+  /** The font pdf.js loaded into the browser for it (a CSS font name), if it did. */
+  screen?: string;
+}
+
+/** Whether pdf.js put a font of this name into the browser (it does for most fonts carried in a PDF). */
+function inBrowser(family: string): boolean {
+  if (typeof document === "undefined" || !document.fonts) return false;
+  for (const face of document.fonts) if (face.family.replace(/^["']|["']$/g, "") === family && face.status === "loaded") return true;
+  return false;
+}
+
+/** What pdf.js knows of a font it has loaded for a page. */
+function fontFacts(page: PDFPageProxy, loadedName: string): RunFont | null {
+  try {
+    if (!page.commonObjs.has(loadedName)) return null;
+    const f = page.commonObjs.get(loadedName) as { name?: string; bold?: boolean; black?: boolean; italic?: boolean };
+    if (!f?.name) return null;
+    return { base: f.name, bold: !!(f.bold || f.black) || /bold|black|heavy/i.test(f.name), italic: !!f.italic || /italic|oblique/i.test(f.name), screen: inBrowser(loadedName) ? loadedName : undefined };
+  } catch {
+    return null;
+  }
+}
+
+/** The browser font pdf.js loaded for the font a page's PDF calls `base`, if any (to type in). */
+export async function screenFontFor(doc: PDFDocumentProxy, index: number, base: string): Promise<string | undefined> {
+  const page = await doc.getPage(index + 1);
+  const content = await page.getTextContent();
+  for (const name of Object.keys(content.styles)) {
+    const f = fontFacts(page, name);
+    if (f?.base === base) return f.screen;
+  }
+  return undefined;
 }
 
 /** The runs of words on a page that run straight across it as shown. */
@@ -162,11 +203,23 @@ export async function wordRuns(doc: PDFDocumentProxy, index: number): Promise<Wo
     if (!("str" in item) || !item.str.trim()) continue;
     const [a, b, , , e, f] = pdfjs.Util.transform(unit.transform, item.transform);
     if (Math.abs(b) > Math.abs(a) * 0.05 || a <= 0) continue;
-    const size = Math.hypot(a, b);
+    // The letter size is how tall the letters are drawn (a squeeze across doesn't change it).
+    const [, , c, d] = pdfjs.Util.transform(unit.transform, item.transform);
+    const size = Math.hypot(c, d) || Math.hypot(a, b);
     const style = content.styles[item.fontName];
     const ascent = style?.ascent && style.ascent > 0.5 ? style.ascent : 0.8;
     const descent = style?.descent && style.descent < 0 ? -style.descent : 0.2;
-    out.push({ text: item.str, x: e, y: f - ascent * size, width: item.width, height: (ascent + descent) * size, baseline: f, size, family: style?.fontFamily ?? "sans-serif" });
+    out.push({
+      text: item.str,
+      x: e,
+      y: f - ascent * size,
+      width: item.width,
+      height: (ascent + descent) * size,
+      baseline: f,
+      size,
+      family: style?.fontFamily ?? "sans-serif",
+      font: fontFacts(page, item.fontName),
+    });
   }
   return out;
 }
