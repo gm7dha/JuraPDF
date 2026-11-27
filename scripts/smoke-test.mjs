@@ -177,7 +177,9 @@ await step("finding words: highlights, a count, next and previous, then close", 
   await page.keyboard.press("Control+f");
   const box = page.getByLabel("Words to find");
   await box.waitFor({ timeout: 5000 });
-  expect(await box.evaluate((el) => el === document.activeElement), "Ctrl+F should put the typing spot in the search box");
+  // The typing spot goes in once the bar is on the page (the next frame).
+  const focused = await page.waitForFunction(() => document.activeElement?.getAttribute("aria-label") === "Words to find", null, { timeout: 3000 }).then(() => true, () => false);
+  expect(focused, "Ctrl+F should put the typing spot in the search box");
   await box.fill("smoke PAGE");
   await countIs("1 of 3");
   // The place found is coloured in right over its words.
