@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { useStore } from "../model/store";
 import { highlightPicked } from "./addActions";
+import { markPicked } from "./redactActions";
 import { Icons } from "./icons";
 
 /** Where to show the bar (window pixels), or null when no words on a page are picked. */
@@ -53,6 +54,9 @@ export function PickedWordsBar() {
       </button>
       <button type="button" className="picked-button" onClick={() => void highlightPicked("crossout")} aria-label="Cross out the picked words" title="Draw a line through the picked words">
         <Icons.CrossOut size={16} />
+      </button>
+      <button type="button" className="picked-button" onClick={markPicked} aria-label="Black out the picked words" title="Mark the picked words to black out (for good, once you click “Black out for good”)">
+        <Icons.BlackOut size={16} />
       </button>
       <button
         type="button"

@@ -82,6 +82,11 @@ export function HelpDialog() {
         {"{page}"} for the page number, {"{pages}"} for the number of pages, {"{date}"} for today's date and {"{file}"} for the file's name, or use the buttons. Open it
         again to change them or take them off.
       </p>
+      <p>
+        <strong>Black out</strong> (B): drag over words or pictures to mark them, or mark picked words or everything Find words finds. Nothing changes until{" "}
+        <strong>Black out for good</strong>: then what's under the black is removed from the PDF, so nobody can copy, find or uncover it. The page becomes a picture, but its
+        other words can still be picked and found.
+      </p>
       <p className="muted">Coming next: recent files, and keeping your work in the browser between visits.</p>
       <div className="platform-row">
         <span className="muted small">Shortcuts shown for</span>

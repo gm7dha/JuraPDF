@@ -970,6 +970,34 @@ await step("adding page numbers, then taking them off", async () => {
   await page.waitForFunction((n) => window.jurapdfStore.getState().past.length === n, steps);
 });
 
+await step("blacking out words for good, then Undo", async () => {
+  const steps = await page.evaluate(() => window.jurapdfStore.getState().past.length);
+  await page.keyboard.press("Home");
+  const words = page.locator('.page[data-page="1"] .textLayer span', { hasText: "Smoke page 1" }).first();
+  await words.waitFor();
+  const box = await words.boundingBox();
+  // B, then drag over the words.
+  await page.keyboard.press("b");
+  await page.mouse.move(box.x - 4, box.y - 4);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width + 4, box.y + box.height + 4, { steps: 4 });
+  await page.mouse.up();
+  await page.locator(".black-mark").first().waitFor();
+  await page.getByRole("button", { name: "Black out for good" }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "black out 1 place on page 1");
+  await page.locator('.page[data-page="1"].drawn').waitFor();
+  // The words are gone from the PDF itself, not just covered.
+  const bytes = Buffer.from(await page.evaluate(() => Array.from(window.jurapdfStore.getState().pdf.bytes)));
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const doc = await pdfjs.getDocument({ data: new Uint8Array(bytes), isEvalSupported: false }).promise;
+  const text = (await (await doc.getPage(1)).getTextContent()).items.map((i) => i.str).join(" ");
+  await doc.destroy();
+  expect(!text.includes("Smoke page"), `the blacked-out words should be gone: ${text}`);
+  if (process.env.SMOKE_SCREENSHOT) await page.screenshot({ path: "smoke-redact.png" });
+  await page.keyboard.press("Control+z");
+  await page.waitForFunction((n) => window.jurapdfStore.getState().past.length === n, steps);
+});
+
 await step("Connect to Claude with no extension running says what to do", async () => {
   await page.getByRole("button", { name: "Connect to Claude" }).click();
   await page.locator('.modal:has-text("Not connected")').waitFor({ timeout: 60_000 });

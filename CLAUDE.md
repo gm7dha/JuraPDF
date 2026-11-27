@@ -89,6 +89,13 @@
   pure: six `SLOTS`, codes {page} {pages} {date} {file}, `startAt`, `digits` for Bates numbers, `linesFor`; `src/pdf/headers.ts`):
   drawn between `/JuraPDFHeaders BMC … EMC` (taken off with `removeMarked(page, tag)` before writing again, or by
   `removeHeaders`), settings remembered as JSON in the catalog's `/JuraPDFHeaders` (`headersIn`). Claude: add_headers.
+- Black out / redaction (v0.12, `src/app/redactActions.ts`, `MarksLayer.tsx`, `RedactBar.tsx`, key B, `placing` {kind: "redact"},
+  `marks`/`markDraft` in the store, cleared by every change; `src/model/redact.ts` pure; `src/pdf/redact.ts` `blackOut`): each
+  marked page is drawn by pdf.js at 200 dpi without annotations (`pageBlackedOut`), black boxes painted on, and the page's
+  Resources and Contents replaced by that JPG (placed via `toPageSpace`, turn kept); its level words outside the marks
+  (`wordsOutside`, letter by letter) go back invisibly (`writeHiddenWords`); annotations under a mark go, and form fields with
+  them. Marks come from dragging, `markPicked` (picked words) or `markFound` (search hits → `pageTextBoxes` → `lettersBox`).
+  Browser only (needs a canvas), so Claude has no black-out tool yet.
 - Changed words keep the PDF's own font (`src/pdf/fonts.ts` `pageFont`: simple fonts by ToUnicode or WinAnsi and their
   Widths, Type0 Identity-H by ToUnicode and W; `src/model/fontCodes.ts` pure), found by the name pdf.js gives
   (`RunFont` in `wordRuns`, via `page.commonObjs`); typed in the font pdf.js loaded into the browser (`own.screen`);

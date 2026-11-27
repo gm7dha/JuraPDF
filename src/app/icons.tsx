@@ -367,6 +367,13 @@ export const Icons = {
       <path d="M8 6.5h8M10.5 17.5h1.2v-2.5l-1 .6M13.5 15h1.5l-1.5 2.5h1.7" />
     </Svg>
   ),
+  /** Black out (redact): lines of words with one blacked out. */
+  BlackOut: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M4 6h16M4 18h10" />
+      <rect x="4" y="10" width="13" height="4" rx="0.5" fill="currentColor" />
+    </Svg>
+  ),
   /** Pick things on a page: an arrow pointer. */
   Pointer: (p: IconProps) => (
     <Svg {...p}>

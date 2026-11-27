@@ -2259,3 +2259,83 @@ textarea.form-box {
   width: 100%;
   min-width: 0;
 }
+
+/* ------------------------------------------------------------------ blacking out (redaction) */
+
+.page-scroller.placing .marks-layer {
+  pointer-events: none;
+}
+
+.marks-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* Marked, not yet blacked out: see-through black with red stripes, so what's under it can still be checked. */
+.black-mark {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1.5px solid #d1373a;
+  background: repeating-linear-gradient(135deg, rgba(0, 0, 0, 0.35) 0 6px, rgba(209, 55, 58, 0.25) 6px 12px);
+}
+
+.black-mark.drawing {
+  border-style: dashed;
+}
+
+.black-mark-x {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.black-mark-x:hover {
+  background: var(--error-soft);
+  color: var(--error-ink);
+}
+
+.redact-bar {
+  position: fixed;
+  z-index: 30;
+  top: 104px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100vw - 32px);
+  flex-wrap: wrap;
+  padding: 6px 8px 6px 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  color: var(--ink);
+}
+
+.redact-count {
+  font-size: 13px;
+}
+
+.primary-button.danger {
+  background: #1f2a37;
+  border-color: #1f2a37;
+  color: #fff;
+}
+
+.primary-button.danger:hover {
+  background: #000;
+}

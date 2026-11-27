@@ -9,6 +9,7 @@ import workerUrl from "virtual:pdfjs-worker-url";
 
 import type { Size } from "../model/zoom";
 import { formBoxesFrom, type FormBox } from "../model/forms";
+import type { TextBox } from "../model/redact";
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
@@ -255,4 +256,49 @@ export async function formBoxes(page: PDFPageProxy): Promise<FormBox[]> {
   const viewport = page.getViewport({ scale: 1 });
   const annotations = await page.getAnnotations({ intent: "display" });
   return formBoxesFrom(annotations, (rect) => viewport.convertToViewportRectangle(rect));
+}
+
+/**
+ * Each bit of a page's words (in the same order as `pageTextBits`) with its box
+ * as shown, in points from the top-left; `level` is false for words that
+ * don't run across the page (their box is only rough).
+ */
+export async function pageTextBoxes(doc: PDFDocumentProxy, index: number): Promise<(TextBox & { level: boolean })[]> {
+  const page = await doc.getPage(index + 1);
+  const unit = page.getViewport({ scale: 1 });
+  const out: (TextBox & { level: boolean })[] = [];
+  for (const item of (await page.getTextContent()).items) {
+    if (!("str" in item)) continue;
+    const [a, b, , , e, f] = pdfjs.Util.transform(unit.transform, item.transform);
+    const height = Math.hypot(a, b) || item.height;
+    const level = Math.abs(b) <= Math.abs(a) * 0.05 && a > 0;
+    // A little below the baseline too, for the tails of letters.
+    out.push({ str: item.str, x: e, y: f - height, width: item.width, height: height * 1.2, level });
+  }
+  return out;
+}
+
+/**
+ * Page `index` drawn as a JPG picture at `dpi`, with black boxes over `marks`
+ * (points from the top-left as shown). Notes and form boxes aren't drawn: the
+ * ones left on the page still show by themselves.
+ */
+export async function pageBlackedOut(doc: PDFDocumentProxy, index: number, dpi: number, marks: readonly { x: number; y: number; width: number; height: number }[]): Promise<Uint8Array> {
+  const page = await doc.getPage(index + 1);
+  const unit = page.getViewport({ scale: 1 });
+  const scale = Math.min(dpi / 72, Math.sqrt(MAX_PIXELS / (unit.width * unit.height)));
+  const viewport = page.getViewport({ scale });
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(viewport.width));
+  canvas.height = Math.max(1, Math.round(viewport.height));
+  const ctx = canvas.getContext("2d", { alpha: false });
+  if (!ctx) throw new Error("This browser couldn't draw the page.");
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  await page.render({ canvasContext: ctx, viewport, annotationMode: pdfjs.AnnotationMode.DISABLE }).promise;
+  ctx.fillStyle = "#000";
+  for (const m of marks) ctx.fillRect(Math.floor(m.x * scale), Math.floor(m.y * scale), Math.ceil(m.width * scale) + 1, Math.ceil(m.height * scale) + 1);
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
+  if (!blob) throw new Error("This browser couldn't make the picture.");
+  return new Uint8Array(await blob.arrayBuffer());
 }

@@ -6,6 +6,7 @@
 import { noWordsNote, searchCount } from "../model/search";
 import { useStore } from "../model/store";
 import { Icons } from "./icons";
+import { markFound } from "./redactActions";
 import { closeSearch, readPagesWithoutWords, setMatchCase, setQuery, step } from "./searchActions";
 
 export function SearchBar() {
@@ -55,6 +56,16 @@ export function SearchBar() {
         </button>
         <button type="button" className="icon-button small" onClick={() => step(1)} disabled={!search.hits.length} aria-label="Next place found" title="Next place found (Enter)">
           <Icons.Down size={16} />
+        </button>
+        <button
+          type="button"
+          className="icon-button small"
+          onClick={() => void markFound()}
+          disabled={!search.hits.length}
+          aria-label="Black out everything found"
+          title="Mark every place found to black out (you check them, then click “Black out for good”)"
+        >
+          <Icons.BlackOut size={16} />
         </button>
         <button type="button" className="icon-button small" onClick={() => closeSearch()} aria-label="Close the search" title="Close (Esc)">
           <Icons.Cross size={14} />
