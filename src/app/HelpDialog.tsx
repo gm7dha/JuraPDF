@@ -70,7 +70,12 @@ export function HelpDialog() {
       </p>
       <p>
         <strong>Add a form box</strong> (F): drag on a page to add a text box, a tick box or a choice list that people can fill in with Acrobat, Preview or any other PDF
-        reader. Give each one a name so the answers are easy to tell apart.
+        reader. Give each one a name so the answers are easy to tell apart. To move or change one later, use the pencil.
+      </p>
+      <p>
+        <strong>Fill in a form</strong>: the boxes of any PDF form are tinted blue. Click one to type in it, tick it or pick a choice; Tab goes to the next one, and each
+        answer is one step you can undo. When a PDF has a form, two more buttons show: <strong>Empty the form</strong> (the eraser) and <strong>Make the answers part of the
+        pages</strong> (the padlock), which keeps what's filled in but takes the boxes away so nobody can change the answers.
       </p>
       <p className="muted">Coming next: recent files, and keeping your work in the browser between visits.</p>
       <div className="platform-row">

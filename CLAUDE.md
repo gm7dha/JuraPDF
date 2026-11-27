@@ -78,7 +78,13 @@
 - Form boxes (v0.9, `FieldItem` kind "field": text / tick / choice; `FieldDraft.tsx`, `startField`/`fieldDragTo` in addActions.ts,
   key F): written as real AcroForm fields by pdf-lib (`addField` in src/pdf/additions.ts, grey border, white inside), remembered
   in `/JuraPDFItems` like other additions but found by field name, not by a marked span: `removeField` takes the widgets off
-  every page and then the field; `pageWithout` drops the widgets (`dropWidgets`). Filling forms in JuraPDF itself isn't done yet.
+  every page and then the field; `pageWithout` drops the widgets (`dropWidgets`). A plain click on one fills it in; the pencil changes it.
+- Filling in forms (v0.10): `FormLayer.tsx` (in each PageSlot while near) lays an input / textarea / tick button / select over each
+  box `formBoxes` (pdfjs.ts → `formBoxesFrom`, src/model/forms.ts) finds with pdf.js, tinted blue, its words see-through unless focused
+  or just typed (the canvas draws the PDF's own appearance). Keys are name + count so focus survives each new version. Leaving a box
+  → `fillIn` (`src/app/formActions.ts`, one at a time) → `fillForm` (`src/pdf/forms.ts`, pdf-lib; round buttons may be given by their
+  "on" name as pdf.js knows them; several-line boxes get a size that fits, `fitLines`; if pdf-lib can't draw a box, NeedAppearances).
+  `clearForm` / `flattenForm` (ViewBar eraser and padlock, shown when `hasForm`). Claude: read_form, fill_form (`answerFor`).
 - Changed words keep the PDF's own font (`src/pdf/fonts.ts` `pageFont`: simple fonts by ToUnicode or WinAnsi and their
   Widths, Type0 Identity-H by ToUnicode and W; `src/model/fontCodes.ts` pure), found by the name pdf.js gives
   (`RunFont` in `wordRuns`, via `page.commonObjs`); typed in the font pdf.js loaded into the browser (`own.screen`);
@@ -111,7 +117,7 @@
   (`name` on hello/doc/change); `MAX_MESSAGE_BYTES` 150 MB. The session holds a `PdfDoc` {name, bytes}, Claude's own
   undo list and a `label` per change ("turned page 2") that becomes the tab's undo step ("Claude: turned page 2",
   `describeChange`). `tools.ts`: format_guide, live_status, describe_pdf, read_words, list_pdfs, open_pdf, new_pdf,
-  save_pdf, add_watermark, add_words, add_picture, add_shape, add_form_box, turn_pages, delete_pages, move_pages, add_blank_pages, bring_in_pdf, save_pages_as_pdf, undo —
+  save_pdf, add_watermark, add_words, add_picture, add_shape, add_form_box, read_form, fill_form, turn_pages, delete_pages, move_pages, add_blank_pages, bring_in_pdf, save_pages_as_pdf, undo —
   page numbers from 1 (`pagesOf`), changes through `src/pdf/pages.ts` and `watermark.ts`. `reading.ts` reads words with
   pdf.js's legacy build in Node (the worker imported into the bundle as `globalThis.pdfjsWorker`). `quietStdout.ts` is
   imported first by server.ts so nothing pdf.js prints reaches stdout. In the app: `LiveButton` in the TopBar (with a

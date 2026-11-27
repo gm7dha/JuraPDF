@@ -17,6 +17,7 @@ import { keptAt } from "../model/additions";
 import { keptIn, keptKnown } from "../pdf/items";
 import { clickPage, endFieldDrag, fieldDragTo, startFieldAt, endShapeDrag, endStroke, finishAdding, justDragged, placeAt, startShapeAt, startStrokeAt, strokeTo, updateDraft } from "./addActions";
 import { DraftBox } from "./DraftBox";
+import { FormLayer } from "./FormLayer";
 import { SearchHits } from "./SearchHits";
 
 export function PageView() {
@@ -363,6 +364,10 @@ const PageSlot = memo(function PageSlot({ doc, index, box, zoom, root }: SlotPro
         // Things JuraPDF added show a hand: a click picks them to change.
         const s = useStore.getState();
         if (s.placing || s.draft || e.buttons || !s.pdf) return;
+        if ((e.target as Element).closest(".form-box")) {
+          e.currentTarget.classList.remove("over-kept");
+          return;
+        }
         const known = keptKnown(s.pdf.bytes);
         if (!known) {
           void keptIn(s.pdf.bytes);
@@ -375,6 +380,8 @@ const PageSlot = memo(function PageSlot({ doc, index, box, zoom, root }: SlotPro
       onClick={(e) => {
         const s = useStore.getState();
         if (justDragged()) return;
+        // Filling in a form box isn't a click on the page.
+        if ((e.target as Element).closest(".form-box")) return;
         const box = e.currentTarget.getBoundingClientRect();
         const x = (e.clientX - box.left) / cssScale;
         const y = (e.clientY - box.top) / cssScale;
@@ -396,6 +403,7 @@ const PageSlot = memo(function PageSlot({ doc, index, box, zoom, root }: SlotPro
       <div className="page-canvas" ref={holder} />
       <SearchHits index={index} spans={spans} />
       <div className="textLayer" ref={text} />
+      {near && <FormLayer doc={doc} index={index} scale={cssScale} />}
       <DraftBox index={index} scale={cssScale} />
       {!drawn && <span className="page-loading">Page {index + 1}</span>}
     </div>

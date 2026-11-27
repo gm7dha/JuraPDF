@@ -10,6 +10,7 @@ import { cancelAdding, startChanging, startField, startInk, startPicture, startS
 import { Icons } from "./icons";
 import { savePagesAsPictures, saveWordsAsText } from "./exportActions";
 import { readWordsInPictures } from "./ocrActions";
+import { emptyForm, fixAnswers, hasForm } from "./formActions";
 import { addBlank, deleteChosen, insertFromFile, moveChosen, saveChosenAsNew, turnChosen } from "./pageActions";
 import { detectPlatform, shortcut } from "./platform";
 import { closeSearch, openSearch } from "./searchActions";
@@ -45,6 +46,16 @@ export function ViewBar() {
 
   const [pageText, setPageText] = useState(String(current + 1));
   useEffect(() => setPageText(String(current + 1)), [current, pdf]);
+  // Whether this version has a form to fill in (for the form's own buttons).
+  const [form, setForm] = useState(false);
+  useEffect(() => {
+    let stopped = false;
+    if (!pdf) setForm(false);
+    else void hasForm(pdf.doc).then((has) => !stopped && setForm(has));
+    return () => {
+      stopped = true;
+    };
+  }, [pdf?.doc]);
   const [zoomText, setZoomText] = useState(zoomLabel(shown));
   useEffect(() => setZoomText(zoomLabel(shown)), [shown]);
 
@@ -270,6 +281,28 @@ export function ViewBar() {
         >
           <Icons.Form />
         </button>
+        {form && (
+          <>
+            <button
+              type="button"
+              className="icon-button"
+              onClick={() => void emptyForm()}
+              aria-label="Empty the form"
+              title="Empty the form: take out everything typed, ticked or picked in its boxes (Undo brings it back)"
+            >
+              <Icons.Eraser />
+            </button>
+            <button
+              type="button"
+              className="icon-button"
+              onClick={() => void fixAnswers()}
+              aria-label="Make the answers part of the pages"
+              title="Make the answers part of the pages: what's filled in stays where it is, but the form boxes go, so nobody can change the answers (Undo brings them back)"
+            >
+              <Icons.Lock />
+            </button>
+          </>
+        )}
         <button
           type="button"
           className={`icon-button${reading !== null ? " active" : ""}`}

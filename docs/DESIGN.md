@@ -86,4 +86,7 @@ tests          Vitest, pure code only;  scripts/smoke-test.mjs drives the built 
   shortcuts; nudge, copy, delete; Ctrl+Z within what's being placed.
 - **v0.9 (done)** — **fillable forms** (asked for by the owner, as in Tungsten PDF): add text boxes, tick boxes and
   choice lists as real form fields that Acrobat and other readers can fill in; changeable like other additions.
+- **v0.10 (done)** — **filling in forms** (asked for by the owner, as in Tungsten PDF): any PDF's form boxes (text, tick,
+  round buttons, drop-down lists, lists) filled in on the page, each answer an undo step; empty the form; make the answers
+  part of the pages (flatten); Claude's read_form and fill_form.
 - **Later** — recent files, keeping work in the browser between visits, comments and highlights, compressing large PDFs.

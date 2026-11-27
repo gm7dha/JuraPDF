@@ -14,6 +14,8 @@ import { DEFAULT_WATERMARK, FONT_NAMES, PLACEMENT_NAMES, type FontChoice, type P
 import { addBlankPage, deletePages, extractPages, insertPdf, PageProblem, reorderPages, turnPages } from "../pdf/pages";
 import { addWatermark, LockedPdf, WatermarkProblem, type WatermarkPicture } from "../pdf/watermark";
 import { additionLabel, choicesOf, FIELD_SIZE, cleanSize, DEFAULT_WORDS, linesOf, SHAPE_NAMES, SHAPE_STYLE, startingPictureSize, type ShapeKind } from "../model/additions";
+import { answerFor, answerLabel, FORM_KIND_NAMES, type Answer, type FormBoxKind, type FormValue } from "../model/forms";
+import { fillForm, formFields, FormProblem } from "../pdf/forms";
 import { AddProblem, addItems, addPicture, addShape, addWords, pictureType } from "../pdf/additions";
 import { moveTo, sameOrder } from "../model/pages";
 import { InputError, bool, noExtras, num, object, oneOf, text } from "./args";
@@ -29,7 +31,7 @@ export const FORMAT_GUIDE = `How JuraPDF works with PDFs:
 - Pages are numbered from 1, as the user sees them. "pages" takes a number, a list of numbers, or text like "1-3, 5", "4-" (4 to the end), "all", "odd", "even" or "last".
 - Sizes are paper names (A4, Letter…) or millimetres; "landscape" means wider than tall. A page's "turn" is how it has been rotated to show (0, 90, 180 or 270 degrees clockwise).
 - describe_pdf gives the pages and a taste of their words; read_words gives the words of chosen pages (scanned pages, being pictures, have none).
-- Changes: add_watermark (words or a PNG/JPG picture from the folder, saved into the pages), add_words and add_picture (writing or a PNG/JPG picture such as a signature on one page, placed in points from its top-left corner as it shows; describe_pdf gives the page sizes), add_shape (a see-through highlight over words, or a box, oval, line or arrow to point something out, a box or oval filled in if wanted; read_words gives where words are), add_form_box (a text box, tick box or choice list that whoever opens the PDF can fill in, e.g. to make a printed form fillable), turn_pages, delete_pages (one page must stay), move_pages, add_blank_pages, bring_in_pdf (all the pages of another PDF from the folder: this is how to join PDFs), save_pages_as_pdf (some pages as a new PDF in the folder: this is how to split one). undo takes back your last change.
+- Changes: add_watermark (words or a PNG/JPG picture from the folder, saved into the pages), add_words and add_picture (writing or a PNG/JPG picture such as a signature on one page, placed in points from its top-left corner as it shows; describe_pdf gives the page sizes), add_shape (a see-through highlight over words, or a box, oval, line or arrow to point something out, a box or oval filled in if wanted; read_words gives where words are), add_form_box (a text box, tick box or choice list that whoever opens the PDF can fill in, e.g. to make a printed form fillable), fill_form (fill in the PDF's form boxes; read_form lists them with what's in them), turn_pages, delete_pages (one page must stay), move_pages, add_blank_pages, bring_in_pdf (all the pages of another PDF from the folder: this is how to join PDFs), save_pages_as_pdf (some pages as a new PDF in the folder: this is how to split one). undo takes back your last change.
 - Locked PDFs (with a password or protected against changes) can be read but not changed.
 - Talk to the user in plain words: "pages", "words", "picture", "see-through" — not PDF jargon.`;
 
@@ -179,7 +181,7 @@ async function change(s: Session, run: (bytes: Uint8Array<ArrayBuffer>) => Promi
     bytes = await run(doc.bytes);
   } catch (e) {
     if (e instanceof LockedPdf) throw new InputError("This PDF is locked against changes (it has a password or is protected), so it can't be changed. It can still be read.");
-    if (e instanceof PageProblem || e instanceof WatermarkProblem || e instanceof AddProblem) throw new InputError(e.message);
+    if (e instanceof PageProblem || e instanceof WatermarkProblem || e instanceof AddProblem || e instanceof FormProblem) throw new InputError(e.message);
     throw e;
   }
   s.throwIfCancelled();
@@ -252,6 +254,68 @@ export const TOOLS: ToolDef[] = [
         used += block.length;
       }
       return say(...out);
+    },
+  },
+  {
+    name: "read_form",
+    title: "Read the form",
+    description: "The PDF's form boxes (any PDF's, not only ones added with add_form_box): each one's name, kind, what's in it now, its choices and its pages. fill_form fills them in.",
+    inputSchema: { type: "object", properties: {} },
+    readOnly: true,
+    async run(s, a) {
+      noExtras(a, [], "read_form");
+      const doc = needDoc(s);
+      const fields = await formFields(doc.bytes);
+      if (!fields.length) return say("This PDF has no form boxes to fill in. add_form_box adds some.");
+      const shown = (v: FormValue) => (typeof v === "boolean" ? (v ? "ticked" : "not ticked") : Array.isArray(v) ? (v.length ? v.map((x) => JSON.stringify(x)).join(", ") : "nothing picked") : v === "" ? "empty" : JSON.stringify(v));
+      return say(
+        `${plural(fields.length, "form box", "form boxes")}:`,
+        ...fields.map((f) => {
+          const where = f.pages.length ? ` on ${pagesLabel(f.pages)}` : "";
+          const bits = [
+            `- ${JSON.stringify(f.name)}: ${FORM_KIND_NAMES[f.kind]}${f.multiline ? " (several lines)" : ""}${where}, ${shown(f.value)}`,
+            f.options?.length ? `choices ${f.options.map((o) => JSON.stringify(o)).join(", ")}` : "",
+            f.readOnly ? "can't be changed" : "",
+          ];
+          return bits.filter(Boolean).join("; ");
+        }),
+      );
+    },
+  },
+  {
+    name: "fill_form",
+    title: "Fill in the form",
+    description:
+      "Fill in the PDF's form boxes by name (read_form lists them): words for a text box (\"\" empties it), true or false for a tick box, one of the choices for round buttons and drop-down lists, a list of choices for a list where several can be picked. All the answers are one change.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        answers: {
+          type: "object",
+          description: "Each box's name and its answer, e.g. {\"Work order\": \"W245354\", \"Agree\": true, \"Shift\": \"Night\"}.",
+          additionalProperties: { anyOf: [{ type: "string" }, { type: "boolean" }, { type: "number" }, { type: "array", items: { type: "string" } }] },
+        },
+      },
+      required: ["answers"],
+    },
+    async run(s, a) {
+      noExtras(a, ["answers"], "fill_form");
+      const doc = needDoc(s);
+      const given = object(a.answers, "answers");
+      const names = Object.keys(given);
+      if (!names.length) throw new InputError("answers is empty: give each box's name and what to put in it.");
+      const fields = await formFields(doc.bytes);
+      if (!fields.length) throw new InputError("This PDF has no form boxes to fill in. add_form_box adds some.");
+      const answers: Answer[] = names.map((name) => {
+        const field = fields.find((f) => f.name === name) ?? fields.find((f) => f.name.toLowerCase() === name.toLowerCase());
+        if (!field) throw new InputError(`There's no form box called ${JSON.stringify(name)}. read_form lists them: ${fields.map((f) => JSON.stringify(f.name)).join(", ")}.`);
+        const r = answerFor(field, given[name]);
+        if ("problem" in r) throw new InputError(r.problem);
+        return { name: field.name, value: r.value };
+      });
+      const label = answers.length === 1 ? answerLabel(fields.find((f) => f.name === answers[0].name)!.kind as FormBoxKind, answers[0].name, answers[0].value) : `fill in ${plural(answers.length, "form box", "form boxes")}`;
+      await change(s, (bytes) => fillForm(bytes, answers), label.replace(/^fill in/, "filled in").replace(/^pick/, "picked").replace(/^tick/, "ticked").replace(/^untick/, "unticked").replace(/^clear/, "cleared"));
+      return say(`Filled in ${plural(answers.length, "form box", "form boxes")}.`);
     },
   },
   {

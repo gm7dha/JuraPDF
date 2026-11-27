@@ -2135,3 +2135,89 @@ span.bookmark-fold {
   background: rgba(255, 128, 0, 0.6);
   box-shadow: 0 0 0 2px rgba(255, 128, 0, 0.85);
 }
+
+/* ------------------------------------------------------------------ filling in forms */
+
+/* Over the page's words, under anything being placed. Only the boxes themselves take clicks. */
+.form-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Each box: tinted light blue as other readers show them; the page's drawing shows what's in it. */
+.form-box {
+  position: absolute;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0 2px;
+  border: 0;
+  border-radius: 0;
+  background: rgba(31, 111, 209, 0.1);
+  color: transparent;
+  font-family: Helvetica, Arial, sans-serif;
+  pointer-events: auto;
+  outline: none;
+  cursor: text;
+}
+
+.form-box:hover {
+  background: rgba(31, 111, 209, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(31, 111, 209, 0.5);
+}
+
+/* Being typed in (or just typed, until the page shows it): the words show here, on white. */
+.form-box:focus,
+.form-box.typing {
+  background: #fff;
+  color: #000;
+  caret-color: #000;
+  box-shadow: inset 0 0 0 1.5px #1f6fd1;
+}
+
+textarea.form-box {
+  resize: none;
+  overflow: auto;
+  padding-top: 1px;
+}
+
+.form-tick {
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
+
+.form-tick.round {
+  border-radius: 50%;
+}
+
+.form-tick:focus:not(.typing) {
+  background: rgba(31, 111, 209, 0.16);
+  color: transparent;
+}
+
+.form-list {
+  cursor: pointer;
+  opacity: 1;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+/* A list shows its choices only while it's being used; the page's drawing shows what's picked. */
+.form-list option {
+  color: #000;
+  background: #fff;
+}
+
+.form-box:disabled {
+  cursor: not-allowed;
+  background: transparent;
+}
+
+/* While placing or changing things on a page, the form boxes step aside. */
+.page-scroller.placing .form-layer {
+  display: none;
+}
