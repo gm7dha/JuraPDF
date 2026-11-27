@@ -397,6 +397,14 @@ export const Icons = {
       <path d="M5 11h14M5 13h14" />
     </Svg>
   ),
+  /** Stamp: a rubber stamp's handle and its block, on a line. */
+  RubberStamp: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M10 3h4v5l-1 2h-2l-1-2z" />
+      <path d="M5 13a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3H5z" />
+      <path d="M4 20h16" />
+    </Svg>
+  ),
   /** Pick things on a page: an arrow pointer. */
   Pointer: (p: IconProps) => (
     <Svg {...p}>

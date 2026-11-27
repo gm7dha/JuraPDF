@@ -92,6 +92,10 @@ export function HelpDialog() {
         where it goes. Signatures are kept on this computer to use again with one click.
       </p>
       <p>
+        <strong>Stamp</strong> (K): APPROVED, RECEIVED, CONFIDENTIAL and more, or your own words, in green, blue, red or black, with your name and today's date under them if
+        wanted. Click where it goes, then move it or size it like a picture. It stays changeable afterwards.
+      </p>
+      <p>
         <strong>Notes</strong> (N): click where a sticky note goes and type a comment. Click a note's icon to read or change it (its colour too), drag it to move it,
         or delete it. The <strong>Notes</strong> tab in the side panel lists every note, with any replies; Acrobat, Preview and other readers show them too.
       </p>

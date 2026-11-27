@@ -733,9 +733,9 @@ export async function finishAdding(keepTool = false): Promise<void> {
     const old = canvasOf(draft.page);
     const bytes =
       draft.kind === "picture"
-        ? await addItems(s.pdf.bytes, [{ kind: "picture", page: draft.page, x: draft.x, y: draft.y, width: draft.width, height: draft.height, signature: draft.picture?.name === "Signature" || undefined }], draft.picture)
+        ? await addItems(s.pdf.bytes, [{ kind: "picture", page: draft.page, x: draft.x, y: draft.y, width: draft.width, height: draft.height, signature: draft.picture?.name === "Signature" || undefined, stamp: draft.picture?.stamp }], draft.picture)
         : await addItems(s.pdf.bytes, [draft]);
-    await applyChange(bytes, additionLabel(draft.kind === "picture" && draft.picture?.name === "Signature" ? { ...draft, signature: true } : draft));
+    await applyChange(bytes, additionLabel(draft.kind === "picture" ? { ...draft, signature: draft.picture?.name === "Signature" || undefined, stamp: draft.picture?.stamp } : draft));
     if (keepTool) useStore.getState().setPlacing({ kind: "ink" });
     await landed(draft.page, old, draft);
   } catch (e) {

@@ -305,6 +305,15 @@ export function ViewBar() {
         </button>
         <button
           type="button"
+          className="icon-button"
+          onClick={() => s().openDialog("stamp")}
+          aria-label="Stamp"
+          title="Stamp: APPROVED, RECEIVED, CONFIDENTIAL or your own words, with a name and the date if wanted (K)"
+        >
+          <Icons.RubberStamp />
+        </button>
+        <button
+          type="button"
           className={`icon-button${marking ? " active" : ""}`}
           onClick={() => (marking ? stopMarking() : startMarking())}
           aria-label="Black out"

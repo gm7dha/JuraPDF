@@ -15,6 +15,7 @@ import { WatermarkDialog } from "./WatermarkDialog";
 import { HeadersDialog } from "./HeadersDialog";
 import { SignDialog } from "./SignDialog";
 import { CompressDialog } from "./CompressDialog";
+import { StampDialog } from "./StampDialog";
 import { WhatsNewDialog } from "./WhatsNewDialog";
 import { inPopup, inTextBox } from "./popupGuard";
 import { PickedWordsBar } from "./PickedWordsBar";
@@ -67,6 +68,7 @@ export function App() {
       {dialog === "headers" && <HeadersDialog />}
       {dialog === "sign" && <SignDialog />}
       {dialog === "compress" && <CompressDialog />}
+      {dialog === "stamp" && <StampDialog />}
       {dialog === "whatsNew" && <WhatsNewDialog />}
       <Toasts />
     </div>
@@ -221,6 +223,11 @@ function useShortcuts() {
         if (key === "b") {
           e.preventDefault();
           startMarking();
+          return;
+        }
+        if (key === "k") {
+          e.preventDefault();
+          s.openDialog("stamp");
           return;
         }
         if (key === "n") {

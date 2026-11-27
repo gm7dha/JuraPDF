@@ -101,5 +101,7 @@ tests          Vitest, pure code only;  scripts/smoke-test.mjs drives the built 
 - **v0.15 (done)** — **make smaller**: pictures over what the largest page needs at 200/150/96 dpi are redrawn smaller
   in the browser (JPGs saved again; others kept lossless unless "as small as possible"), unused objects dropped,
   object streams; Claude's tidy_pdf (tidying only).
+- **v0.16 (done)** — **stamps**: ready-made and own words, colour, name and date, drawn by the browser as a PNG
+  and placed like a signature (changeable picture, "stamp “X” on page N").
 - **Next (Tungsten-style)** — more form box kinds.
 - **Later** — recent files, keeping work in the browser between visits, replying to notes.
