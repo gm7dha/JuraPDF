@@ -15,7 +15,7 @@ import { drawPage, drawTextLayer, isCancelled, type PDFDocumentProxy } from "../
 import { drawAhead, keepCanvas, keptCanvas } from "./pageCanvases";
 import { keptAt } from "../model/additions";
 import { keptIn, keptKnown } from "../pdf/items";
-import { clickPage, endShapeDrag, endStroke, finishAdding, justDragged, placeAt, startShapeAt, startStrokeAt, strokeTo, updateDraft } from "./addActions";
+import { clickPage, endFieldDrag, fieldDragTo, startFieldAt, endShapeDrag, endStroke, finishAdding, justDragged, placeAt, startShapeAt, startStrokeAt, strokeTo, updateDraft } from "./addActions";
 import { DraftBox } from "./DraftBox";
 import { SearchHits } from "./SearchHits";
 
@@ -323,7 +323,7 @@ const PageSlot = memo(function PageSlot({ doc, index, box, zoom, root }: SlotPro
       onPointerDown={(e) => {
         // Drawing a shape: press, drag, let go. With the pen: each press, drag and let go is a stroke.
         const kind = useStore.getState().placing?.kind;
-        if (e.button !== 0 || (kind !== "shape" && kind !== "ink")) return;
+        if (e.button !== 0 || (kind !== "shape" && kind !== "ink" && kind !== "field")) return;
         e.preventDefault();
         const el = e.currentTarget;
         const box = el.getBoundingClientRect();
@@ -334,6 +334,7 @@ const PageSlot = memo(function PageSlot({ doc, index, box, zoom, root }: SlotPro
         ];
         const [x, y] = pt(e);
         if (kind === "ink") startStrokeAt(index, x, y);
+        else if (kind === "field") startFieldAt(index, x, y);
         else startShapeAt(index, x, y);
         el.setPointerCapture(e.pointerId);
         const move = (ev: PointerEvent) => {
@@ -342,6 +343,7 @@ const PageSlot = memo(function PageSlot({ doc, index, box, zoom, root }: SlotPro
           for (const one of all.length ? all : [ev]) {
             const [x2, y2] = pt(one);
             if (kind === "ink") strokeTo(x2, y2);
+            else if (kind === "field") fieldDragTo(x2, y2);
             else updateDraft({ x2, y2 });
           }
         };
@@ -350,6 +352,7 @@ const PageSlot = memo(function PageSlot({ doc, index, box, zoom, root }: SlotPro
           el.removeEventListener("pointerup", up);
           el.removeEventListener("pointercancel", up);
           if (kind === "ink") endStroke();
+          else if (kind === "field") endFieldDrag();
           else endShapeDrag();
         };
         el.addEventListener("pointermove", move);

@@ -13,8 +13,8 @@ import { parsePageRange } from "../model/printMark";
 import { DEFAULT_WATERMARK, FONT_NAMES, PLACEMENT_NAMES, type FontChoice, type Placement, type WatermarkSettings } from "../model/watermark";
 import { addBlankPage, deletePages, extractPages, insertPdf, PageProblem, reorderPages, turnPages } from "../pdf/pages";
 import { addWatermark, LockedPdf, WatermarkProblem, type WatermarkPicture } from "../pdf/watermark";
-import { additionLabel, cleanSize, DEFAULT_WORDS, linesOf, SHAPE_NAMES, SHAPE_STYLE, startingPictureSize, type ShapeKind } from "../model/additions";
-import { AddProblem, addPicture, addShape, addWords, pictureType } from "../pdf/additions";
+import { additionLabel, choicesOf, FIELD_SIZE, cleanSize, DEFAULT_WORDS, linesOf, SHAPE_NAMES, SHAPE_STYLE, startingPictureSize, type ShapeKind } from "../model/additions";
+import { AddProblem, addItems, addPicture, addShape, addWords, pictureType } from "../pdf/additions";
 import { moveTo, sameOrder } from "../model/pages";
 import { InputError, bool, noExtras, num, object, oneOf, text } from "./args";
 import { isLocked, pageFacts, pageWords } from "./reading";
@@ -29,7 +29,7 @@ export const FORMAT_GUIDE = `How JuraPDF works with PDFs:
 - Pages are numbered from 1, as the user sees them. "pages" takes a number, a list of numbers, or text like "1-3, 5", "4-" (4 to the end), "all", "odd", "even" or "last".
 - Sizes are paper names (A4, Letter…) or millimetres; "landscape" means wider than tall. A page's "turn" is how it has been rotated to show (0, 90, 180 or 270 degrees clockwise).
 - describe_pdf gives the pages and a taste of their words; read_words gives the words of chosen pages (scanned pages, being pictures, have none).
-- Changes: add_watermark (words or a PNG/JPG picture from the folder, saved into the pages), add_words and add_picture (writing or a PNG/JPG picture such as a signature on one page, placed in points from its top-left corner as it shows; describe_pdf gives the page sizes), add_shape (a see-through highlight over words, or a box, oval, line or arrow to point something out, a box or oval filled in if wanted; read_words gives where words are), turn_pages, delete_pages (one page must stay), move_pages, add_blank_pages, bring_in_pdf (all the pages of another PDF from the folder: this is how to join PDFs), save_pages_as_pdf (some pages as a new PDF in the folder: this is how to split one). undo takes back your last change.
+- Changes: add_watermark (words or a PNG/JPG picture from the folder, saved into the pages), add_words and add_picture (writing or a PNG/JPG picture such as a signature on one page, placed in points from its top-left corner as it shows; describe_pdf gives the page sizes), add_shape (a see-through highlight over words, or a box, oval, line or arrow to point something out, a box or oval filled in if wanted; read_words gives where words are), add_form_box (a text box, tick box or choice list that whoever opens the PDF can fill in, e.g. to make a printed form fillable), turn_pages, delete_pages (one page must stay), move_pages, add_blank_pages, bring_in_pdf (all the pages of another PDF from the folder: this is how to join PDFs), save_pages_as_pdf (some pages as a new PDF in the folder: this is how to split one). undo takes back your last change.
 - Locked PDFs (with a password or protected against changes) can be read but not changed.
 - Talk to the user in plain words: "pages", "words", "picture", "see-through" — not PDF jargon.`;
 
@@ -491,6 +491,58 @@ export const TOOLS: ToolDef[] = [
       if (Math.hypot(item.x2 - item.x1, item.y2 - item.y1) < 2) throw new InputError("The two corners are in the same place: give two points apart.");
       const label = additionLabel(item).replace(/^add/, "added");
       await change(s, (bytes) => addShape(bytes, item), label);
+      return say(`Added ${additionLabel(item).replace(/^add /, "")}.`);
+    },
+  },
+  {
+    name: "add_form_box",
+    title: "Add a form box to fill in",
+    description:
+      "Put a form box on one page that whoever opens the PDF (in Acrobat, Preview, a browser…) can fill in: a text box to type in, a tick box, or a choice list. Give its top-left corner in points from the page's top-left as it shows, and its size (left out: a usual size for the kind). read_words gives where the words are, e.g. to put a box beside a label.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        page: { type: "number", description: "The page, from 1." },
+        kind: { type: "string", enum: ["text", "tick", "choice"], description: "A text box, a tick box or a choice list." },
+        x: { type: "number", description: "Points from the left edge to its left side." },
+        y: { type: "number", description: "Points from the top edge to its top." },
+        width: { type: "number", description: "Its width in points (180 for a text box, 14 for a tick box, 150 for a list, if left out)." },
+        height: { type: "number", description: "Its height in points (22, or 14 for a tick box, if left out; a tick box is square)." },
+        name: { type: "string", description: "Its name in the form, e.g. \"Work order\" (each box's is different; a number is added if it's taken)." },
+        several_lines: { type: "boolean", description: "A text box: let several lines be typed (false if left out)." },
+        choices: { type: "array", items: { type: "string" }, description: "A choice list: what can be chosen." },
+      },
+      required: ["page", "kind", "x", "y"],
+    },
+    async run(s, a) {
+      noExtras(a, ["page", "kind", "x", "y", "width", "height", "name", "several_lines", "choices"], "add_form_box");
+      const doc = needDoc(s);
+      const facts = await pageFacts(doc.bytes);
+      const page = num(a.page, "page", { min: 1, max: facts.length, integer: true }) - 1;
+      const { width: pw, height: ph } = facts[page];
+      const field = oneOf(a.kind, ["text", "tick", "choice"] as const, "kind");
+      const size = FIELD_SIZE[field];
+      const width = num(a.width, "width", { min: 6, max: pw, fallback: size.width });
+      const height = field === "tick" ? width : num(a.height, "height", { min: 6, max: ph, fallback: size.height });
+      let choices: string[] | undefined;
+      if (field === "choice") {
+        if (!Array.isArray(a.choices) || !a.choices.every((c) => typeof c === "string")) throw new InputError("choices should be a list of words, e.g. [\"Day\", \"Night\"].");
+        choices = choicesOf((a.choices as string[]).join("\n"));
+        if (!choices.length) throw new InputError("choices should have at least one choice.");
+      }
+      const item = {
+        kind: "field" as const,
+        field,
+        page,
+        x: num(a.x, "x", { min: 0, max: pw - 1 }),
+        y: num(a.y, "y", { min: 0, max: ph - 1 }),
+        width,
+        height,
+        name: a.name === undefined ? "" : text(a.name, "name"),
+        multiline: bool(a.several_lines, "several_lines"),
+        choices,
+      };
+      await change(s, (bytes) => addItems(bytes, [item]), additionLabel(item).replace(/^add/, "added"));
       return say(`Added ${additionLabel(item).replace(/^add /, "")}.`);
     },
   },

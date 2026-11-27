@@ -87,7 +87,67 @@ export interface InkItem {
   id?: number;
 }
 
-export type AddItem = WordsItem | PictureItem | ShapeItem | InkItem;
+/** The kinds of form box: a box to type in, a tick box, or a list to choose from. */
+export type FieldKind = "text" | "tick" | "choice";
+
+/**
+ * A form box (a "fillable field"): Acrobat, Preview and other PDF readers let
+ * whoever opens the PDF type in it, tick it or choose from it.
+ */
+export interface FieldItem {
+  kind: "field";
+  field: FieldKind;
+  page: number;
+  /** Its top-left corner and size, in points as shown. */
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** Its name in the form (each is different; shown to people filling it in by some readers). */
+  name: string;
+  /** A text box: several lines rather than one. */
+  multiline?: boolean;
+  /** A text box: the letter size, or 0 to fit the box. */
+  size?: number;
+  /** A choice list: what can be chosen. */
+  choices?: string[];
+  id?: number;
+}
+
+export const FIELD_NAMES: Record<FieldKind, string> = { text: "Text box", tick: "Tick box", choice: "Choice list" };
+
+/** A form box's size when it's put on with a click rather than dragged. */
+export const FIELD_SIZE: Record<FieldKind, { width: number; height: number }> = {
+  text: { width: 180, height: 22 },
+  tick: { width: 14, height: 14 },
+  choice: { width: 150, height: 22 },
+};
+
+/** A form box dragged out from (x1, y1) to (x2, y2); a click (or a tiny drag) gets the usual size. Tick boxes stay square. */
+export function fieldBox(kind: FieldKind, x1: number, y1: number, x2: number, y2: number): Rect {
+  const w = Math.abs(x2 - x1);
+  const h = Math.abs(y2 - y1);
+  if (Math.max(w, h) < 6) return { x: x1, y: y1, ...FIELD_SIZE[kind] };
+  if (kind === "tick") {
+    const side = Math.max(8, Math.min(Math.max(w, h), 72));
+    return { x: x2 < x1 ? x1 - side : x1, y: y2 < y1 ? y1 - side : y1, width: side, height: side };
+  }
+  return { x: Math.min(x1, x2), y: Math.min(y1, y2), width: Math.max(w, 12), height: Math.max(h, 10) };
+}
+
+/** A name for a new form box that no other has ("Text 3"), given the names in use. */
+export function freshFieldName(kind: FieldKind, taken: Iterable<string>): string {
+  const used = new Set(taken);
+  const base = { text: "Text", tick: "Tick", choice: "Choice" }[kind];
+  for (let n = 1; ; n++) if (!used.has(`${base} ${n}`)) return `${base} ${n}`;
+}
+
+/** Choices typed one to a line (or with commas), tidied: no blanks, no repeats. */
+export function choicesOf(text: string): string[] {
+  return [...new Set(text.split(/[\n,]/).map((c) => c.trim()).filter(Boolean))];
+}
+
+export type AddItem = WordsItem | PictureItem | ShapeItem | InkItem | FieldItem;
 
 /** One of JuraPDF's own additions, as remembered in the page (so it can be picked and changed again later). */
 export interface Kept {
@@ -242,6 +302,7 @@ export function itemName(item: AddItem): string {
   if (item.kind === "shape") return `${item.shape === "arrow" || item.shape === "oval" ? "an" : "a"} ${SHAPE_NAMES[item.shape].toLowerCase()}`;
   if (item.kind === "picture") return "a picture";
   if (item.kind === "ink") return "a drawing";
+  if (item.kind === "field") return `a ${FIELD_NAMES[item.field].toLowerCase()}`;
   return "words";
 }
 
@@ -266,6 +327,7 @@ export function additionLabel(item: AddItem): string {
   if (item.kind === "shape") return `add ${itemName(item)} to page ${item.page + 1}`;
   if (item.kind === "picture") return `add a picture to page ${item.page + 1}`;
   if (item.kind === "ink") return `draw on page ${item.page + 1}`;
+  if (item.kind === "field") return `add ${itemName(item)} to page ${item.page + 1}`;
   const first = linesOf(item.text)[0] ?? "";
   if (item.cover) return `change words on page ${item.page + 1} to “${first.length > 30 ? `${first.slice(0, 29)}…` : first}”`;
   return `add “${first.length > 30 ? `${first.slice(0, 29)}…` : first}” to page ${item.page + 1}`;
@@ -283,7 +345,7 @@ export interface ChosenPicture {
 }
 
 /** Waiting for a click on a page to put words or a chosen picture there (or, for "ink", drags to draw with). */
-export type Placing = { kind: "words" } | { kind: "picture"; picture: ChosenPicture } | { kind: "shape"; shape: ShapeKind } | { kind: "change" } | { kind: "ink" };
+export type Placing = { kind: "words" } | { kind: "picture"; picture: ChosenPicture } | { kind: "shape"; shape: ShapeKind } | { kind: "change" } | { kind: "ink" } | { kind: "field"; field: FieldKind };
 
 /** A picture already on the page, being moved or sized. */
 export interface ExistingPicture {
@@ -305,7 +367,7 @@ export interface ExistingPicture {
 export type PictureDraft = PictureItem & { picture?: ChosenPicture; preview?: string };
 
 /** Words or a picture on a page, being typed, moved or sized, not yet written into the PDF. */
-export type Draft = WordsItem | PictureDraft | ShapeItem | InkItem | ExistingPicture;
+export type Draft = WordsItem | PictureDraft | ShapeItem | InkItem | FieldItem | ExistingPicture;
 
 /** The line of words a click landed on (boxes in points), or null. */
 export function lineAt<T extends Rect>(lines: T[], x: number, y: number): T | null {

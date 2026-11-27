@@ -144,6 +144,9 @@ describe("reading and changing a PDF", () => {
     expect(await ok(s, "add_shape", { page: 1, shape: "arrow", x1: 300, y1: 300, x2: 200, y2: 200, colour: "blue", thickness: 3 })).toBe("Added an arrow to page 1.");
     expect(await bad(s, "add_shape", { page: 1, shape: "star", x1: 1, y1: 1, x2: 50, y2: 50 })).toMatch(/shape/);
     expect(await bad(s, "add_shape", { page: 1, shape: "box", x1: 10, y1: 10, x2: 10, y2: 10 })).toMatch(/same place/);
+    expect(await ok(s, "add_form_box", { page: 1, kind: "text", x: 100, y: 100, name: "Work order" })).toBe("Added a text box to page 1.");
+    expect(await ok(s, "add_form_box", { page: 1, kind: "choice", x: 100, y: 140, choices: ["Yes", "No"] })).toBe("Added a choice list to page 1.");
+    expect(await bad(s, "add_form_box", { page: 1, kind: "choice", x: 100, y: 180 })).toMatch(/choice/i);
     expect(await bad(s, "add_words", { page: 1, words: "Tick ✓" })).toMatch(/✓/);
     expect(await bad(s, "add_words", { page: 99, words: "x" })).toMatch(/page must be/);
     expect(await bad(s, "add_picture", { page: 1, picture: "missing.png" })).toMatch(/no file called/);

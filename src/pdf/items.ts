@@ -6,7 +6,7 @@
  * under the page's `JuraPDFItems`). To change one, its marked instructions are
  * taken out and it's drawn again; everything else on the page stays as it was.
  */
-import { PDFDocument, PDFHexString, PDFName, PDFString, beginMarkedContent, endMarkedContent, type PDFPage } from "pdf-lib";
+import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFString, beginMarkedContent, endMarkedContent, type PDFPage } from "pdf-lib";
 
 import { readKept, keptText, type Kept } from "../model/additions";
 import { splice } from "../model/contentStream";
@@ -59,6 +59,24 @@ export function removeMarked(page: PDFPage, id: number): boolean {
   return true;
 }
 
+/** Take a form box's own drawing (its "widgets") off a page copied on its own; false when it has none there. */
+function dropWidgets(page: PDFPage, name: string): boolean {
+  const annots = page.node.lookupMaybe(PDFName.of("Annots"), PDFArray);
+  if (!annots) return false;
+  const nameOf = (d: PDFDict | undefined): string | undefined => {
+    const t = d?.lookupMaybe(PDFName.of("T"), PDFString, PDFHexString)?.decodeText();
+    return t ?? (d ? nameOf(d.lookupMaybe(PDFName.of("Parent"), PDFDict)) : undefined);
+  };
+  let dropped = false;
+  for (let i = annots.size() - 1; i >= 0; i--) {
+    if (nameOf(annots.lookupMaybe(i, PDFDict)) === name) {
+      annots.remove(i);
+      dropped = true;
+    }
+  }
+  return dropped;
+}
+
 /** Each page's additions, kept per version of the file (reading them is quick, but clicks shouldn't wait). */
 const known = new WeakMap<Uint8Array, Kept[][]>();
 
@@ -90,6 +108,9 @@ export async function pageWithout(bytes: Uint8Array, index: number, id: number):
   const doc = await PDFDocument.create({ updateMetadata: false });
   const [page] = await doc.copyPages(source, [index]);
   doc.addPage(page);
-  if (!removeMarked(page, id)) return null;
+  const item = keptOn(source.getPage(index), index).find((k) => k.id === id)?.item;
+  if (item?.kind === "field") {
+    if (!dropWidgets(page, item.name)) return null;
+  } else if (!removeMarked(page, id)) return null;
   return doc.save({ objectsPerTick: Infinity });
 }

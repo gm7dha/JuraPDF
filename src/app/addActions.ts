@@ -22,6 +22,11 @@ import {
   SHAPE_STYLE,
   sizedShape,
   startingPictureSize,
+  FIELD_NAMES,
+  FIELD_SIZE,
+  fieldBox,
+  freshFieldName,
+  type FieldKind,
   type Draft,
   type ShapeKind,
 } from "../model/additions";
@@ -29,7 +34,7 @@ import { fontLabel } from "../model/fontCodes";
 import { useStore } from "../model/store";
 import { nearestFont, type FontChoice } from "../model/watermark";
 import { AddProblem, addItems, addShapes, changeItem, pictureType } from "../pdf/additions";
-import { keptIn } from "../pdf/items";
+import { keptIn, keptKnown } from "../pdf/items";
 import { changePicture, picturesOn } from "../pdf/pictures";
 import { screenFontFor, wordRuns } from "../pdf/pdfjs";
 import { LockedPdf } from "../pdf/watermark";
@@ -88,6 +93,57 @@ export function startShapeAt(page: number, x: number, y: number): void {
   s.setDraft({ kind: "shape", shape, page, x1: x, y1: y, x2: x, y2: y, ...lastShape[shape] });
   s.setPlacing(null);
   dropHint();
+}
+
+/** The kind of form box last added, and the names of the boxes in the PDF's form (for a new one's name). */
+let lastField: FieldKind = "text";
+let fieldStart: { x: number; y: number } | null = null;
+
+/** Get ready to add a form box (the next drag, or click, on a page puts it there). */
+export async function startField(field: FieldKind = lastField): Promise<void> {
+  await settle();
+  const s = useStore.getState();
+  if (!s.pdf) return;
+  dropPicture();
+  s.setDraft(null);
+  s.setPlacing({ kind: "field", field });
+  say(`Click on a page where the ${FIELD_NAMES[field].toLowerCase()} should go, or drag out its size. Esc stops.`);
+}
+
+/** A press on a page while adding a form box: it's dragged out from here. */
+export function startFieldAt(page: number, x: number, y: number): void {
+  const s = useStore.getState();
+  if (s.placing?.kind !== "field" || !s.pdf) return;
+  const field = s.placing.field;
+  fieldStart = { x, y };
+  // (Names already used, if known: the name is made unique when it's written anyway.)
+  const names = (keptKnown(s.pdf.bytes) ?? []).flat().flatMap((k) => (k.item.kind === "field" ? [k.item.name] : []));
+  s.setDraft({ kind: "field", field, page, ...fieldBox(field, x, y, x, y), name: freshFieldName(field, names), multiline: false, size: 0, choices: field === "choice" ? ["Yes", "No"] : undefined });
+  s.setPlacing(null);
+  dropHint();
+}
+
+/** The drag that puts a form box on a page went on to here. */
+export function fieldDragTo(x: number, y: number): void {
+  const d = useStore.getState().draft;
+  if (d?.kind !== "field" || !fieldStart) return;
+  useStore.getState().setDraft({ ...d, ...fieldBox(d.field, fieldStart.x, fieldStart.y, x, y) });
+}
+
+export function endFieldDrag(): void {
+  fieldStart = null;
+  noteDragEnd();
+}
+
+/** Make the form box being placed another kind (a text box, tick box or choice list), keeping it about where it is. */
+export function setFieldKind(field: FieldKind): void {
+  const d = useStore.getState().draft;
+  if (d?.kind !== "field" || d.field === field) return;
+  lastField = field;
+  const was = FIELD_SIZE[d.field];
+  const size = d.width === was.width && d.height === was.height ? FIELD_SIZE[field] : field === "tick" ? { width: Math.min(d.width, d.height), height: Math.min(d.width, d.height) } : { width: Math.max(d.width, 60), height: Math.max(d.height, 16) };
+  const fresh = /^(Text|Tick|Choice) \d+$/.test(d.name);
+  updateDraft({ field, ...size, name: fresh ? d.name.replace(/^\w+/, { text: "Text", tick: "Tick", choice: "Choice" }[field]) : d.name, choices: field === "choice" ? (d.choices ?? ["Yes", "No"]) : d.choices }, true);
 }
 
 /** The last colour, thickness and see-through used for the pen. */
@@ -200,7 +256,7 @@ export function placeAt(page: number, x: number, y: number): void {
   const size = s.pdf?.sizes[page];
   if (!s.placing || !size) return;
   const [pw, ph] = size;
-  if (s.placing.kind === "shape" || s.placing.kind === "ink") return;
+  if (s.placing.kind === "shape" || s.placing.kind === "ink" || s.placing.kind === "field") return;
   if (s.placing.kind === "change") {
     void pickToChange(page, x, y);
     return;

@@ -68,7 +68,7 @@ export function helpRows(p: Platform) {
     [`${k.mod} + Z`, "Undo (e.g. take a watermark off again)"],
     [mac ? `${k.mod} + ${k.shift} + Z  or  ${k.mod} + Y` : `${k.mod} + Y  or  ${k.mod} + ${k.shift} + Z`, "Redo"],
     [`${k.mod} + P`, "Print (with an Uncontrolled Document watermark and your own words if you like)"],
-    ["T / H / R / O / L / A / P / E", "Add words / highlight / box / oval / line / arrow / draw with the pen / change what's on a page"],
+    ["T / H / R / O / L / A / P / F / E", "Add words / highlight / box / oval / line / arrow / draw with the pen / form box / change what's on a page"],
     ["Arrow keys", "Nudge what's picked (with Shift: further)"],
     ["Delete", "Take what's picked off the page"],
     [`${k.mod} + D`, "Copy what's picked"],

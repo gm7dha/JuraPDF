@@ -5,6 +5,18 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.9 — Fillable forms
+
+- **Add form boxes that anyone can fill in.** The new form button (or the F key) adds a text box, a tick box or a
+  choice list (a drop-down to pick from) wherever you drag on the page. They're real form boxes, so Acrobat, Preview,
+  Tungsten and other PDF readers let people type into them, tick them or pick a choice, and save what they filled in.
+- **Name each box** (for example "Work order"), so the answers are easy to tell apart. Text boxes can hold several
+  lines, and their letter size can be set or left to fit the box.
+- **Change them later** just like everything else you add: click one to move it, make it bigger, rename it, copy it
+  or delete it. Undo works as usual.
+- **Claude can add them too** (add_form_box), for example "add a text box for the work order number at the top".
+- The tool buttons fit better on smaller screens.
+
 ## v0.8 — Better editing: change anything you've added
 
 - **Change things after you've added them.** Words, pictures, boxes, ovals, lines, arrows, highlights and drawings

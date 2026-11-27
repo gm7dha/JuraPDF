@@ -337,6 +337,15 @@ export const Icons = {
       <path d="M16.5 6.5C15.5 5 14 4.5 12 4.5c-2.5 0-4.5 1.3-4.5 3.4 0 1.6 1.1 2.6 3 3.1M8 17c1 1.7 2.6 2.5 4.5 2.5 2.6 0 4.5-1.4 4.5-3.5 0-.9-.3-1.6-.8-2.1M4 12h16" />
     </Svg>
   ),
+  /** A form box: a box with a text cursor in it, and a tick box. */
+  Form: (p: IconProps) => (
+    <Svg {...p}>
+      <rect x="3" y="4" width="18" height="7" rx="1.5" />
+      <path d="M7 6v3" />
+      <rect x="3" y="14" width="6" height="6" rx="1" />
+      <path d="m4.5 17 1.2 1.2 2-2.4M12 17h8" />
+    </Svg>
+  ),
   /** Pick things on a page: an arrow pointer. */
   Pointer: (p: IconProps) => (
     <Svg {...p}>
