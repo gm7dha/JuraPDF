@@ -311,6 +311,38 @@ export const Icons = {
       <path d="M5 19 18 6M10 6h8v8" />
     </Svg>
   ),
+  /** Copy: two sheets, one over the other. */
+  Copy: (p: IconProps) => (
+    <Svg {...p}>
+      <rect x="8" y="8" width="12" height="12" rx="2" />
+      <path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8" />
+    </Svg>
+  ),
+  /** Draw freehand: a pen and a squiggle. */
+  Pen: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="m15 4 5 5-9 9H6v-5z" />
+      <path d="M3 21c2-1.5 3.5-1.5 5 0s3 1.5 5 0" />
+    </Svg>
+  ),
+  /** Underline words: a U with a line under it. */
+  Underline: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M7 4v6a5 5 0 0 0 10 0V4M5 20h14" />
+    </Svg>
+  ),
+  /** Cross out words: an S with a line through it. */
+  CrossOut: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M16.5 6.5C15.5 5 14 4.5 12 4.5c-2.5 0-4.5 1.3-4.5 3.4 0 1.6 1.1 2.6 3 3.1M8 17c1 1.7 2.6 2.5 4.5 2.5 2.6 0 4.5-1.4 4.5-3.5 0-.9-.3-1.6-.8-2.1M4 12h16" />
+    </Svg>
+  ),
+  /** Pick things on a page: an arrow pointer. */
+  Pointer: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M6 3.5v15l4-3.8 2.6 5.8 2.6-1.2-2.6-5.7H18z" />
+    </Svg>
+  ),
   /** Read words in pictures: a picture with lines of words coming out of it. */
   ReadWords: (p: IconProps) => (
     <Svg {...p}>

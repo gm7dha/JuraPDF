@@ -13,7 +13,9 @@ import { useStore } from "../model/store";
 import { CSS_PER_PT, PAGE_MARGIN_Y, currentPageAt, keepSpotInView, layoutPages, pagesAhead, pagesInView, resolveZoom, WHEEL_PAUSE, wheelFlip, wheelResting, type PageBox, type Size } from "../model/zoom";
 import { drawPage, drawTextLayer, isCancelled, type PDFDocumentProxy } from "../pdf/pdfjs";
 import { drawAhead, keepCanvas, keptCanvas } from "./pageCanvases";
-import { endShapeDrag, placeAt, startShapeAt, updateDraft } from "./addActions";
+import { keptAt } from "../model/additions";
+import { keptIn, keptKnown } from "../pdf/items";
+import { clickPage, endShapeDrag, endStroke, finishAdding, justDragged, placeAt, startShapeAt, startStrokeAt, strokeTo, updateDraft } from "./addActions";
 import { DraftBox } from "./DraftBox";
 import { SearchHits } from "./SearchHits";
 
@@ -319,8 +321,9 @@ const PageSlot = memo(function PageSlot({ doc, index, box, zoom, root }: SlotPro
       ref={ref}
       className={`page${drawn ? " drawn" : ""}`}
       onPointerDown={(e) => {
-        // Drawing a shape: press, drag, let go.
-        if (e.button !== 0 || useStore.getState().placing?.kind !== "shape") return;
+        // Drawing a shape: press, drag, let go. With the pen: each press, drag and let go is a stroke.
+        const kind = useStore.getState().placing?.kind;
+        if (e.button !== 0 || (kind !== "shape" && kind !== "ink")) return;
         e.preventDefault();
         const el = e.currentTarget;
         const box = el.getBoundingClientRect();
@@ -330,26 +333,59 @@ const PageSlot = memo(function PageSlot({ doc, index, box, zoom, root }: SlotPro
           Math.min(ph, Math.max(0, (ev.clientY - box.top) / cssScale)),
         ];
         const [x, y] = pt(e);
-        startShapeAt(index, x, y);
+        if (kind === "ink") startStrokeAt(index, x, y);
+        else startShapeAt(index, x, y);
         el.setPointerCapture(e.pointerId);
         const move = (ev: PointerEvent) => {
-          const [x2, y2] = pt(ev);
-          updateDraft({ x2, y2 });
+          // Every point the pointer passed through (browsers bunch quick moves together).
+          const all = kind === "ink" && "getCoalescedEvents" in ev ? ev.getCoalescedEvents() : [ev];
+          for (const one of all.length ? all : [ev]) {
+            const [x2, y2] = pt(one);
+            if (kind === "ink") strokeTo(x2, y2);
+            else updateDraft({ x2, y2 });
+          }
         };
         const up = () => {
           el.removeEventListener("pointermove", move);
           el.removeEventListener("pointerup", up);
           el.removeEventListener("pointercancel", up);
-          endShapeDrag();
+          if (kind === "ink") endStroke();
+          else endShapeDrag();
         };
         el.addEventListener("pointermove", move);
         el.addEventListener("pointerup", up);
         el.addEventListener("pointercancel", up);
       }}
-      onClick={(e) => {
-        if (!useStore.getState().placing) return;
+      onPointerMove={(e) => {
+        // Things JuraPDF added show a hand: a click picks them to change.
+        const s = useStore.getState();
+        if (s.placing || s.draft || e.buttons || !s.pdf) return;
+        const known = keptKnown(s.pdf.bytes);
+        if (!known) {
+          void keptIn(s.pdf.bytes);
+          return;
+        }
         const box = e.currentTarget.getBoundingClientRect();
-        placeAt(index, (e.clientX - box.left) / cssScale, (e.clientY - box.top) / cssScale);
+        const over = keptAt(known[index] ?? [], (e.clientX - box.left) / cssScale, (e.clientY - box.top) / cssScale, false);
+        e.currentTarget.classList.toggle("over-kept", !!over);
+      }}
+      onClick={(e) => {
+        const s = useStore.getState();
+        if (justDragged()) return;
+        const box = e.currentTarget.getBoundingClientRect();
+        const x = (e.clientX - box.left) / cssScale;
+        const y = (e.clientY - box.top) / cssScale;
+        if (s.placing) {
+          placeAt(index, x, y);
+          return;
+        }
+        // A click away from what's being placed puts it on the page (as in other PDF editors).
+        if (s.draft) {
+          void finishAdding();
+          return;
+        }
+        if (window.getSelection()?.isCollapsed === false) return;
+        void clickPage(index, x, y);
       }}
       data-page={index + 1}
       style={{ top: box.top, width: box.width, height: box.height, left: `calc(50% - ${box.width / 2}px)`, ["--scale-factor" as string]: cssScale }}

@@ -4,7 +4,7 @@
  * top-left corner, like on screen; src/pdf/additions.ts turns them into the
  * page's own space and writes them.
  */
-import { toPageSpace, type FontChoice, type PageFrame } from "./watermark";
+import { FONT_NAMES, toPageSpace, type FontChoice, type PageFrame } from "./watermark";
 
 /** Words typed onto a page (one or more lines, left-aligned). */
 export interface WordsItem {
@@ -20,8 +20,24 @@ export interface WordsItem {
   size: number;
   /** "#rrggbb". */
   colour: string;
-  /** Changing words already on the page: the old words' box, covered over with white first. */
+  /** Changing words already on the page: the old words' box, covered over first (white unless `coverColour`). */
   cover?: Rect;
+  /** The colour behind the old words, to cover them with ("#rrggbb"; white if left out). */
+  coverColour?: string;
+  /** Written in the PDF's own font where it has all the letters (else in `font`, the nearest built-in one). */
+  own?: OwnFont;
+  /** Which of JuraPDF's own additions on the page this is, when it's being changed. */
+  id?: number;
+}
+
+/** A font that's already in the PDF, kept when its words are changed. */
+export interface OwnFont {
+  /** Its name in the PDF, e.g. "ABCDEF+Calibri-Bold". */
+  base: string;
+  /** The name to show, e.g. "Calibri bold". */
+  label: string;
+  /** The font pdf.js loaded into the browser for it, to type in (a CSS font name). */
+  screen?: string;
 }
 
 /** A picture (PNG or JPG) put onto a page. */
@@ -33,6 +49,9 @@ export interface PictureItem {
   y: number;
   width: number;
   height: number;
+  /** The picture already in the PDF to draw (its name there), when one of JuraPDF's own pictures is moved. */
+  image?: string;
+  id?: number;
 }
 
 export type ShapeKind = "highlight" | "box" | "oval" | "line" | "arrow";
@@ -50,9 +69,33 @@ export interface ShapeItem {
   colour: string;
   /** How thick its lines are, in points (not used by a highlight, which is filled). */
   thickness: number;
+  /** A box or oval filled in with this colour ("#rrggbb"), or not filled (left out or null). */
+  fill?: string | null;
+  /** How see-through it is, 0 (solid) to 90, in percent (a highlight is always partly see-through). */
+  seeThrough?: number;
+  id?: number;
 }
 
-export type AddItem = WordsItem | PictureItem | ShapeItem;
+/** Drawing freehand, like a pen: one or more strokes, each a run of points (as shown, from the top-left). */
+export interface InkItem {
+  kind: "ink";
+  page: number;
+  strokes: [number, number][][];
+  colour: string;
+  thickness: number;
+  seeThrough?: number;
+  id?: number;
+}
+
+export type AddItem = WordsItem | PictureItem | ShapeItem | InkItem;
+
+/** One of JuraPDF's own additions, as remembered in the page (so it can be picked and changed again later). */
+export interface Kept {
+  id: number;
+  item: AddItem;
+  /** The box it covers (points from the page's top-left as shown). */
+  box: Rect;
+}
 
 export const SHAPE_NAMES: Record<ShapeKind, string> = {
   highlight: "Highlight",
@@ -73,6 +116,21 @@ export const SHAPE_STYLE: Record<ShapeKind, { colour: string; thickness: number 
 
 /** How see-through a highlight is (the words under it still show). */
 export const HIGHLIGHT_OPACITY = 0.45;
+
+/** How solid a shape or pen drawing is (0–1), from its see-through percentage. */
+export function opacityOf(item: Pick<ShapeItem, "seeThrough"> & { shape?: ShapeKind }): number {
+  if (item.shape === "highlight") return HIGHLIGHT_OPACITY;
+  return 1 - Math.min(90, Math.max(0, item.seeThrough ?? 0)) / 100;
+}
+
+/** Shapes that can be filled in. */
+export const canFill = (shape: ShapeKind): boolean => shape === "box" || shape === "oval";
+
+/** Colours offered with one click (as in most PDF readers), then "any colour". */
+export const SWATCHES = ["#000000", "#1f2a37", "#d1373a", "#e07b00", "#ffd400", "#2e8b3a", "#1f5fbf", "#7b3fb5", "#ffffff"];
+export const HIGHLIGHT_SWATCHES = ["#ffd400", "#7ee05c", "#5cc8ff", "#ff7ac6", "#ff9f40"];
+
+export const DEFAULT_INK = { colour: "#1f5fbf", thickness: 2 };
 
 /** The box a shape fills (left, top, width, height), whichever way it was drawn. */
 export function shapeBox(s: Pick<ShapeItem, "x1" | "y1" | "x2" | "y2">): { x: number; y: number; width: number; height: number } {
@@ -112,24 +170,20 @@ export const LINE_HEIGHT = 1.2;
  * browser lays out a line LINE_HEIGHT tall in the closest screen font, so the
  * words land where they were typed.
  */
-export const BASELINE: Record<FontChoice, number> = {
-  Helvetica: 0.947,
-  HelveticaBold: 0.947,
-  TimesRoman: 0.933,
-  TimesRomanBold: 0.933,
-  Courier: 0.866,
-  CourierBold: 0.866,
+const ALL_FONTS = Object.keys(FONT_NAMES) as FontChoice[];
+const familyOf = (f: FontChoice): "sans" | "serif" | "mono" => (f.startsWith("Times") ? "serif" : f.startsWith("Courier") ? "mono" : "sans");
+const SCREEN_FAMILY = {
+  sans: 'Helvetica, Arial, "Liberation Sans", sans-serif',
+  serif: '"Times New Roman", Times, "Liberation Serif", serif',
+  mono: '"Courier New", Courier, "Liberation Mono", monospace',
 };
 
+export const BASELINE: Record<FontChoice, number> = Object.fromEntries(ALL_FONTS.map((f) => [f, { sans: 0.947, serif: 0.933, mono: 0.866 }[familyOf(f)]])) as Record<FontChoice, number>;
+
 /** The closest screen font to each PDF font, for typing in. */
-export const SCREEN_FONT: Record<FontChoice, { family: string; weight: number }> = {
-  Helvetica: { family: 'Helvetica, Arial, "Liberation Sans", sans-serif', weight: 400 },
-  HelveticaBold: { family: 'Helvetica, Arial, "Liberation Sans", sans-serif', weight: 700 },
-  TimesRoman: { family: '"Times New Roman", Times, "Liberation Serif", serif', weight: 400 },
-  TimesRomanBold: { family: '"Times New Roman", Times, "Liberation Serif", serif', weight: 700 },
-  Courier: { family: '"Courier New", Courier, "Liberation Mono", monospace', weight: 400 },
-  CourierBold: { family: '"Courier New", Courier, "Liberation Mono", monospace', weight: 700 },
-};
+export const SCREEN_FONT: Record<FontChoice, { family: string; weight: number; style: "normal" | "italic" }> = Object.fromEntries(
+  ALL_FONTS.map((f) => [f, { family: SCREEN_FAMILY[familyOf(f)], weight: f.includes("Bold") ? 700 : 400, style: /Italic|Oblique/.test(f) ? "italic" : "normal" }]),
+) as Record<FontChoice, { family: string; weight: number; style: "normal" | "italic" }>;
 
 export const DEFAULT_WORDS = { font: "Helvetica" as FontChoice, size: 14, colour: "#1f2a37" };
 export const MIN_WORD_SIZE = 4;
@@ -183,10 +237,35 @@ export function keepOnPage(x: number, y: number, w: number, h: number, pageW: nu
   };
 }
 
+/** What a thing added to a page is called ("a box", "an arrow", "some words"). */
+export function itemName(item: AddItem): string {
+  if (item.kind === "shape") return `${item.shape === "arrow" || item.shape === "oval" ? "an" : "a"} ${SHAPE_NAMES[item.shape].toLowerCase()}`;
+  if (item.kind === "picture") return "a picture";
+  if (item.kind === "ink") return "a drawing";
+  return "words";
+}
+
+/** What changing (or, with null, deleting) one of JuraPDF's own additions is called in the Undo list. */
+export function changeLabel(was: AddItem, now: AddItem | null): string {
+  const name = itemName(was);
+  const where = `on page ${was.page + 1}`;
+  if (!now) return `delete ${name} ${where}`;
+  if (now.page !== was.page) return `move ${name} to page ${now.page + 1}`;
+  return `${styleOf(was) === styleOf(now) ? "move" : "change"} ${name} ${where}`;
+}
+
+/** Everything about an item but where it is (for telling a move from a restyle). */
+function styleOf(item: AddItem): string {
+  const { x1, y1, x2, y2, strokes, x, y, width, height, page, id, own, preview, picture, ...rest } = item as unknown as Record<string, unknown>;
+  void [x1, y1, x2, y2, strokes, x, y, width, height, page, id, preview, picture];
+  return JSON.stringify({ ...rest, own: (own as OwnFont | undefined)?.base });
+}
+
 /** What a change is called in the Undo list. */
 export function additionLabel(item: AddItem): string {
-  if (item.kind === "shape") return `add ${item.shape === "arrow" || item.shape === "oval" ? "an" : "a"} ${SHAPE_NAMES[item.shape].toLowerCase()} to page ${item.page + 1}`;
+  if (item.kind === "shape") return `add ${itemName(item)} to page ${item.page + 1}`;
   if (item.kind === "picture") return `add a picture to page ${item.page + 1}`;
+  if (item.kind === "ink") return `draw on page ${item.page + 1}`;
   const first = linesOf(item.text)[0] ?? "";
   if (item.cover) return `change words on page ${item.page + 1} to “${first.length > 30 ? `${first.slice(0, 29)}…` : first}”`;
   return `add “${first.length > 30 ? `${first.slice(0, 29)}…` : first}” to page ${item.page + 1}`;
@@ -203,8 +282,8 @@ export interface ChosenPicture {
   pixelsHigh: number;
 }
 
-/** Waiting for a click on a page to put words or a chosen picture there. */
-export type Placing = { kind: "words" } | { kind: "picture"; picture: ChosenPicture } | { kind: "shape"; shape: ShapeKind } | { kind: "change" };
+/** Waiting for a click on a page to put words or a chosen picture there (or, for "ink", drags to draw with). */
+export type Placing = { kind: "words" } | { kind: "picture"; picture: ChosenPicture } | { kind: "shape"; shape: ShapeKind } | { kind: "change" } | { kind: "ink" };
 
 /** A picture already on the page, being moved or sized. */
 export interface ExistingPicture {
@@ -222,8 +301,11 @@ export interface ExistingPicture {
   preview: string;
 }
 
+/** A picture being placed: a new one (`picture`), or one of JuraPDF's own being moved (`preview`). */
+export type PictureDraft = PictureItem & { picture?: ChosenPicture; preview?: string };
+
 /** Words or a picture on a page, being typed, moved or sized, not yet written into the PDF. */
-export type Draft = WordsItem | (PictureItem & { picture: ChosenPicture }) | ShapeItem | ExistingPicture;
+export type Draft = WordsItem | PictureDraft | ShapeItem | InkItem | ExistingPicture;
 
 /** The line of words a click landed on (boxes in points), or null. */
 export function lineAt<T extends Rect>(lines: T[], x: number, y: number): T | null {
@@ -288,4 +370,123 @@ export function highlightsFor(page: number, rects: Rect[], colour: string): Shap
     const pad = l.height * 0.1;
     return { kind: "shape", shape: "highlight", page, x1: l.x - pad / 2, y1: l.y - pad, x2: l.x + l.width + pad / 2, y2: l.y + l.height + pad, colour, thickness: 0 };
   });
+}
+
+/** The box a pen drawing covers (allowing for how thick it is). */
+export function inkBox(item: Pick<InkItem, "strokes" | "thickness">): Rect {
+  const pts = item.strokes.flat();
+  if (!pts.length) return { x: 0, y: 0, width: 0, height: 0 };
+  const xs = pts.map((p) => p[0]);
+  const ys = pts.map((p) => p[1]);
+  const pad = item.thickness / 2;
+  const x = Math.min(...xs) - pad;
+  const y = Math.min(...ys) - pad;
+  return { x, y, width: Math.max(...xs) + pad - x, height: Math.max(...ys) + pad - y };
+}
+
+/**
+ * Thin out a pen stroke: points closer than `gap` points to the last one kept
+ * are dropped (a hand-drawn line has far more than it needs), the last point stays.
+ */
+export function thinStroke(points: [number, number][], gap = 0.8): [number, number][] {
+  if (points.length < 3) return points.map((p) => [p[0], p[1]]);
+  const out: [number, number][] = [[points[0][0], points[0][1]]];
+  for (const p of points.slice(1, -1)) {
+    const last = out[out.length - 1];
+    if (Math.hypot(p[0] - last[0], p[1] - last[1]) >= gap) out.push([p[0], p[1]]);
+  }
+  const end = points[points.length - 1];
+  out.push([end[0], end[1]]);
+  return out.map(([x, y]) => [Math.round(x * 100) / 100, Math.round(y * 100) / 100]);
+}
+
+/** A smooth SVG path through a stroke's points (curves through the midpoints), in the units given by `k` per point. */
+export function strokePath(points: [number, number][], k = 1): string {
+  if (!points.length) return "";
+  const p = points.map(([x, y]) => [x * k, y * k]);
+  if (p.length === 1) return `M ${p[0][0]} ${p[0][1]} l 0.01 0`;
+  let d = `M ${p[0][0]} ${p[0][1]}`;
+  for (let i = 1; i < p.length - 1; i++) {
+    const mx = (p[i][0] + p[i + 1][0]) / 2;
+    const my = (p[i][1] + p[i + 1][1]) / 2;
+    d += ` Q ${p[i][0]} ${p[i][1]} ${mx} ${my}`;
+  }
+  const last = p[p.length - 1];
+  return `${d} L ${last[0]} ${last[1]}`;
+}
+
+/** How far a point is from a line segment. */
+export function distanceToSegment(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const len = dx * dx + dy * dy;
+  const t = len ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len)) : 0;
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
+
+const inside = (r: Rect, x: number, y: number, pad = 0) => x >= r.x - pad && x <= r.x + r.width + pad && y >= r.y - pad && y <= r.y + r.height + pad;
+
+/**
+ * Whether a click at (x, y) lands on a kept addition. `loose`: anywhere in a
+ * box or oval counts (when picking things to change); otherwise only its
+ * edge, unless it's filled (so words inside an empty box can still be picked).
+ * `slack` is how near counts, in points.
+ */
+export function hits(k: Kept, x: number, y: number, loose: boolean, slack = 4): boolean {
+  const item = k.item;
+  if (item.kind === "shape" && (item.shape === "line" || item.shape === "arrow")) {
+    return distanceToSegment(x, y, item.x1, item.y1, item.x2, item.y2) <= item.thickness / 2 + slack;
+  }
+  if (item.kind === "ink") {
+    if (!inside(k.box, x, y, slack)) return false;
+    return item.strokes.some((s) => s.length === 1 ? Math.hypot(x - s[0][0], y - s[0][1]) <= item.thickness / 2 + slack : s.slice(1).some((p, i) => distanceToSegment(x, y, s[i][0], s[i][1], p[0], p[1]) <= item.thickness / 2 + slack));
+  }
+  if (item.kind === "shape" && (item.shape === "box" || item.shape === "oval") && !loose && !item.fill) {
+    if (!inside(k.box, x, y, slack)) return false;
+    const b = k.box;
+    if (item.shape === "box") return !inside({ x: b.x + slack + item.thickness, y: b.y + slack + item.thickness, width: b.width - 2 * (slack + item.thickness), height: b.height - 2 * (slack + item.thickness) }, x, y);
+    // An oval's edge: where (x, y) sits compared with the ellipse.
+    const rx = b.width / 2;
+    const ry = b.height / 2;
+    const r = Math.hypot((x - b.x - rx) / Math.max(rx, 0.1), (y - b.y - ry) / Math.max(ry, 0.1));
+    return Math.abs(r - 1) * Math.min(rx, ry) <= slack + item.thickness;
+  }
+  return inside(k.box, x, y, slack / 2);
+}
+
+/** The topmost kept addition under a click (the last one drawn), or null. */
+export function keptAt(kept: Kept[], x: number, y: number, loose: boolean): Kept | null {
+  for (let i = kept.length - 1; i >= 0; i--) if (hits(kept[i], x, y, loose)) return kept[i];
+  return null;
+}
+
+/** An addition moved by (dx, dy) points. */
+export function moveItem<T extends AddItem>(item: T, dx: number, dy: number): T {
+  if (item.kind === "shape") return { ...item, x1: item.x1 + dx, y1: item.y1 + dy, x2: item.x2 + dx, y2: item.y2 + dy };
+  if (item.kind === "ink") return { ...item, strokes: item.strokes.map((s) => s.map(([x, y]) => [x + dx, y + dy] as [number, number])) };
+  return { ...item, x: item.x + dx, y: item.y + dy };
+}
+
+/** A pen drawing stretched from the box it fills (`from`) to another box (`to`). */
+export function fitInk(item: InkItem, from: Rect, to: Rect): InkItem {
+  const sx = from.width > 0 ? to.width / from.width : 1;
+  const sy = from.height > 0 ? to.height / from.height : 1;
+  return { ...item, strokes: item.strokes.map((s) => s.map(([x, y]) => [to.x + (x - from.x) * sx, to.y + (y - from.y) * sy] as [number, number])) };
+}
+
+/** Read the additions remembered in a page (written by `keptText`); anything unreadable is left out. */
+export function readKept(text: string | undefined): Kept[] {
+  if (!text) return [];
+  try {
+    const list = JSON.parse(text) as unknown;
+    if (!Array.isArray(list)) return [];
+    return list.filter((k): k is Kept => !!k && typeof k === "object" && Number.isInteger((k as Kept).id) && !!(k as Kept).item && !!(k as Kept).box);
+  } catch {
+    return [];
+  }
+}
+
+/** The additions to remember in a page, as text. */
+export function keptText(kept: Kept[]): string {
+  return JSON.stringify(kept.map(({ id, item, box }) => ({ id, item: { ...item, id: undefined }, box })));
 }

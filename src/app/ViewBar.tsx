@@ -6,7 +6,7 @@ import { useStore } from "../model/store";
 import { paperName, sizeLabel } from "../model/pdfFile";
 import { parsePageNumber, parseZoom, zoomIn, zoomLabel, zoomOut } from "../model/zoom";
 import { SHAPE_NAMES, type ShapeKind } from "../model/additions";
-import { cancelAdding, startChanging, startPicture, startShape, startWords } from "./addActions";
+import { cancelAdding, startChanging, startInk, startPicture, startShape, startWords } from "./addActions";
 import { Icons } from "./icons";
 import { savePagesAsPictures, saveWordsAsText } from "./exportActions";
 import { readWordsInPictures } from "./ocrActions";
@@ -15,11 +15,11 @@ import { detectPlatform, shortcut } from "./platform";
 import { closeSearch, openSearch } from "./searchActions";
 
 const SHAPES: { shape: ShapeKind; icon: (p: { size?: number }) => JSX.Element; tip: string }[] = [
-  { shape: "highlight", icon: Icons.Highlight, tip: "Highlight: drag across words to colour them in, see-through so they still show" },
-  { shape: "box", icon: Icons.Box, tip: "Draw a box: drag from one corner to the other" },
-  { shape: "oval", icon: Icons.Oval, tip: "Draw an oval: drag across where it should go" },
-  { shape: "line", icon: Icons.Line, tip: "Draw a line: drag from one end to the other" },
-  { shape: "arrow", icon: Icons.Arrow, tip: "Draw an arrow: drag from its tail to where it points" },
+  { shape: "highlight", icon: Icons.Highlight, tip: "Highlight: drag across words to colour them in, see-through so they still show (H)" },
+  { shape: "box", icon: Icons.Box, tip: "Draw a box: drag from one corner to the other; it can be filled in too (R)" },
+  { shape: "oval", icon: Icons.Oval, tip: "Draw an oval: drag across where it should go; it can be filled in too (O)" },
+  { shape: "line", icon: Icons.Line, tip: "Draw a line: drag from one end to the other (L)" },
+  { shape: "arrow", icon: Icons.Arrow, tip: "Draw an arrow: drag from its tail to where it points (A)" },
 ];
 
 export function ViewBar() {
@@ -33,7 +33,8 @@ export function ViewBar() {
   const placingShape = useStore((s) => (s.placing?.kind === "shape" ? s.placing.shape : null));
   const draftShape = useStore((s) => (s.draft?.kind === "shape" ? s.draft.shape : null));
   const reading = useStore((s) => s.reading);
-  const changing = useStore((s) => s.placing?.kind === "change" || s.draft?.kind === "existing" || (s.draft?.kind === "words" && !!s.draft.cover));
+  const changing = useStore((s) => s.placing?.kind === "change" || s.draft?.kind === "existing" || (s.draft?.kind === "words" && !!s.draft.cover) || (!!s.draft && "id" in s.draft && s.draft.id !== undefined));
+  const inking = useStore((s) => s.placing?.kind === "ink" || (s.draft?.kind === "ink" && s.draft.id === undefined));
   const selected = useStore((s) => s.selected);
   const onePage = useStore((s) => s.onePage);
   const searching = useStore((s) => !!s.search);
@@ -211,18 +212,18 @@ export function ViewBar() {
         <button
           type="button"
           className={`icon-button${changing ? " active" : ""}`}
-          onClick={() => (changing ? cancelAdding() : startChanging())}
+          onClick={() => (changing ? cancelAdding() : void startChanging())}
           aria-label="Change what's on a page"
-          title="Change what's already on a page: click a picture to move, resize, swap or delete it, or click some words to fix them"
+          title="Change what's already on a page: click anything you added, a picture or some words to move, resize, restyle or delete it (E). Things you added can also be clicked any time."
         >
           <Icons.Pencil />
         </button>
         <button
           type="button"
           className={`icon-button${placing === "words" || (draftKind === "words" && !changing) ? " active" : ""}`}
-          onClick={() => (placing === "words" ? cancelAdding() : startWords())}
+          onClick={() => (placing === "words" ? cancelAdding() : void startWords())}
           aria-label="Add words"
-          title="Add words to a page: click where they should go, then type"
+          title="Add words to a page: click where they should go, then type (T)"
         >
           <Icons.Words />
         </button>
@@ -242,7 +243,7 @@ export function ViewBar() {
               key={shape}
               type="button"
               className={`icon-button${on ? " active" : ""}`}
-              onClick={() => (on ? cancelAdding() : startShape(shape))}
+              onClick={() => (on ? cancelAdding() : void startShape(shape))}
               aria-label={shape === "highlight" ? "Highlight" : `Draw ${shape === "oval" || shape === "arrow" ? "an" : "a"} ${SHAPE_NAMES[shape].toLowerCase()}`}
               title={tip}
             >
@@ -250,6 +251,15 @@ export function ViewBar() {
             </button>
           );
         })}
+        <button
+          type="button"
+          className={`icon-button${inking ? " active" : ""}`}
+          onClick={() => (inking ? cancelAdding() : void startInk())}
+          aria-label="Draw freehand"
+          title="Draw freehand, like a pen: drag on a page, as many strokes as you like, then Done (P)"
+        >
+          <Icons.Pen />
+        </button>
         <button
           type="button"
           className={`icon-button${reading !== null ? " active" : ""}`}

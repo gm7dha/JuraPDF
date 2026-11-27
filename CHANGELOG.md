@@ -5,6 +5,28 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.8 — Better editing: change anything you've added
+
+- **Change things after you've added them.** Words, pictures, boxes, ovals, lines, arrows, highlights and drawings
+  you've put on a page stay changeable, even after saving and opening the PDF again. Just click one (the pointer
+  turns into a hand over it) to move it, make it bigger or smaller, change its colour or words, copy it, or delete it.
+- **Changing words keeps their look.** When you fix words already in a PDF with the pencil, they're now written in
+  the PDF's own font, at the same size and in the same colour, so they match the words around them. If the PDF's font
+  is missing a letter you type, JuraPDF says so and uses the closest built-in font instead.
+- **Fill in boxes and ovals,** in any colour, and make shapes and drawings see-through (a quarter, half or three
+  quarters).
+- **Changes show straight away.** Picking a colour, a fill or a thickness changes the shape on the page at once,
+  and a quick row of colours to click saves opening the colour picker. Boxes have a handle on every corner.
+- **Draw freehand** with the new pen button (or press P): drag on a page as many times as you like, then Done.
+- **Underline or cross out words:** pick words with the mouse, then use the new buttons beside Highlight.
+- **Undo while you're placing something:** Ctrl+Z (⌘Z on a Mac) takes back the last move or change to the thing
+  you're placing, before it goes on the page. Undo and Redo at the top still take back whole changes.
+- **Keyboard shortcuts for the tools:** T words, H highlight, R box, O oval, L line, A arrow, P pen, E change what's
+  on a page. While something is picked: arrow keys nudge it (Shift for bigger steps), Delete removes it, Ctrl+D (⌘D)
+  copies it, Enter puts it on the page and Esc leaves it as it was. Clicking elsewhere on the page puts it on too.
+- **More fonts:** slanted (italic) Helvetica, Times and Courier, for words and watermarks.
+- Claude can fill in boxes and ovals and make shapes see-through too.
+
 ## v0.7.3 — What's new, in a window
 
 - **Version notes in a window.** Clicking the version (e.g. "v0.7.3") at the top now opens a window inside

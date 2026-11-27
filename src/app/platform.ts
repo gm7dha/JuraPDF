@@ -48,6 +48,8 @@ export function helpRows(p: Platform) {
     ["Move pages", "Drag them up or down the page list, or use the move buttons at the top"],
     ["Turn, delete or add pages", "The page buttons at the top work on the picked pages, or the page you're on if none are picked"],
     ["Select and copy words", `Drag across them, then ${k.mod} + C`],
+    ["Highlight, underline or cross out words", "Drag across them, then use the little bar that appears by them"],
+    ["Change something you added", "Click it (the pointer shows a hand over it): drag it, its round handles, or use its bar"],
     ["Open a PDF", "Drag it onto the window"],
   ];
   const keys: [string, string][] = [
@@ -66,6 +68,12 @@ export function helpRows(p: Platform) {
     [`${k.mod} + Z`, "Undo (e.g. take a watermark off again)"],
     [mac ? `${k.mod} + ${k.shift} + Z  or  ${k.mod} + Y` : `${k.mod} + Y  or  ${k.mod} + ${k.shift} + Z`, "Redo"],
     [`${k.mod} + P`, "Print (with an Uncontrolled Document watermark and your own words if you like)"],
+    ["T / H / R / O / L / A / P / E", "Add words / highlight / box / oval / line / arrow / draw with the pen / change what's on a page"],
+    ["Arrow keys", "Nudge what's picked (with Shift: further)"],
+    ["Delete", "Take what's picked off the page"],
+    [`${k.mod} + D`, "Copy what's picked"],
+    [`${k.mod} + Z (while placing)`, "Take back the last move or change to what's being placed"],
+    ["Enter / Esc", "Put what's picked on the page / leave it as it was"],
     ["?", "Show this help"],
   ];
   return { mouse, keys };
