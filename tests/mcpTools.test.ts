@@ -175,6 +175,7 @@ describe("reading and changing a PDF", () => {
     expect(await bad(s, "delete_note", { id: "1R" })).toMatch(/no note "1R"/);
     expect(await ok(s, "delete_note", { id })).toBe("Deleted the note on page 2.");
     expect(await ok(s, "read_notes")).toMatch(/no notes/);
+    expect(await ok(s, "tidy_pdf")).toMatch(/^Tidied it/);
     expect(await bad(s, "add_words", { page: 1, words: "Tick ✓" })).toMatch(/✓/);
     expect(await bad(s, "add_words", { page: 99, words: "x" })).toMatch(/page must be/);
     expect(await bad(s, "add_picture", { page: 1, picture: "missing.png" })).toMatch(/no file called/);

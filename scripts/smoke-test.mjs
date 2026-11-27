@@ -1061,6 +1061,37 @@ await step("notes: add a sticky note, read it in the Notes list, change it and d
   await page.waitForFunction((n) => window.jurapdfStore.getState().past.length === n, steps);
 });
 
+await step("making a PDF smaller shrinks a big photo", async () => {
+  const steps = await page.evaluate(() => window.jurapdfStore.getState().past.length);
+  // A big "photo" (made here), brought in as a page.
+  const jpg = await page.evaluate(() => {
+    const c = document.createElement("canvas");
+    c.width = 3000;
+    c.height = 2000;
+    const g = c.getContext("2d");
+    for (let i = 0; i < 400; i++) {
+      g.fillStyle = `hsl(${(i * 37) % 360} 70% ${30 + (i % 40)}%)`;
+      g.fillRect((i * 173) % 3000, (i * 97) % 2000, 300, 200);
+    }
+    return c.toDataURL("image/jpeg", 0.95).split(",")[1];
+  });
+  const [chooser] = await Promise.all([page.waitForEvent("filechooser"), page.getByRole("button", { name: "Bring in pages from another PDF or pictures" }).click()]);
+  await chooser.setFiles({ name: "Big photo.jpg", mimeType: "image/jpeg", buffer: Buffer.from(jpg, "base64") });
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "bring in Big photo.jpg as a page");
+  const before = await page.evaluate(() => window.jurapdfStore.getState().pdf.bytes.length);
+  await page.getByRole("button", { name: "Make smaller" }).click();
+  await page.getByText("Pictures bigger than the pages need").waitFor();
+  if (process.env.SMOKE_SCREENSHOT) await page.screenshot({ path: "smoke-compress.png" });
+  await page.locator(".modal").getByRole("button", { name: "Make smaller" }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "make the PDF smaller", null, { timeout: 60_000 });
+  const after = await page.evaluate(() => window.jurapdfStore.getState().pdf.bytes.length);
+  expect(after < before * 0.5, `the photo should be shrunk: ${before} → ${after} bytes`);
+  await page.getByText("Made smaller:").waitFor();
+  await page.waitForFunction(() => !document.querySelector(".modal"));
+  for (let i = 0; i < 2; i++) await page.keyboard.press("Control+z");
+  await page.waitForFunction((n) => window.jurapdfStore.getState().past.length === n, steps);
+});
+
 await step("Connect to Claude with no extension running says what to do", async () => {
   await page.getByRole("button", { name: "Connect to Claude" }).click();
   await page.locator('.modal:has-text("Not connected")').waitFor({ timeout: 60_000 });

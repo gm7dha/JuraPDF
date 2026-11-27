@@ -105,6 +105,12 @@
   (with replies and /Popup windows)): `noteActions.ts` (`notesIn` per version via `peekForReading`, `note` in the store is the
   open one, `placing` {kind: "note"}, key N), `NotesLayer.tsx` (icons, drag to move, `NoteWindow`; a click away saves via
   `whileOpen`), `NotesList.tsx` (side panel tab "notes"). Claude: read_notes, add_note, delete_note.
+- Make smaller (v0.15, `CompressDialog.tsx`, ViewBar "Make smaller"; `src/model/compress.ts` pure: `SQUEEZES` light/medium/strong
+  (dpi, JPG quality, `photosToJpg`), `shrunkSize`, `undoPredictor`, `toRgba`, `hasCameraNotes`; `src/pdf/compress.ts` `squeeze`):
+  `dropUnused` drops objects nothing reaches from the trailer; each image (not SMasks, ImageMasks, colour-key Masks, Decode,
+  CMYK, JPX/CCITT/JBIG2) is decoded (JPG as is; Flate etc. by pdf-lib's `decodePDFRawStream` + predictors, gray/RGB/ICC/Indexed)
+  and redrawn by a `Painter` (the browser's canvas in `compressActions.ts`; Node has none, so Claude's tidy_pdf only tidies),
+  kept only if under 90% of the old size; saved with object streams.
 - Changed words keep the PDF's own font (`src/pdf/fonts.ts` `pageFont`: simple fonts by ToUnicode or WinAnsi and their
   Widths, Type0 Identity-H by ToUnicode and W; `src/model/fontCodes.ts` pure), found by the name pdf.js gives
   (`RunFont` in `wordRuns`, via `page.commonObjs`); typed in the font pdf.js loaded into the browser (`own.screen`);
@@ -137,7 +143,7 @@
   (`name` on hello/doc/change); `MAX_MESSAGE_BYTES` 150 MB. The session holds a `PdfDoc` {name, bytes}, Claude's own
   undo list and a `label` per change ("turned page 2") that becomes the tab's undo step ("Claude: turned page 2",
   `describeChange`). `tools.ts`: format_guide, live_status, describe_pdf, read_words, list_pdfs, open_pdf, new_pdf,
-  save_pdf, add_watermark, add_words, add_picture, add_shape, add_form_box, read_form, fill_form, add_headers, read_notes, add_note, delete_note, turn_pages, delete_pages, move_pages, add_blank_pages, bring_in_pdf, save_pages_as_pdf, undo —
+  save_pdf, add_watermark, add_words, add_picture, add_shape, add_form_box, read_form, fill_form, add_headers, read_notes, add_note, delete_note, tidy_pdf, turn_pages, delete_pages, move_pages, add_blank_pages, bring_in_pdf, save_pages_as_pdf, undo —
   page numbers from 1 (`pagesOf`), changes through `src/pdf/pages.ts` and `watermark.ts`. `reading.ts` reads words with
   pdf.js's legacy build in Node (the worker imported into the bundle as `globalThis.pdfjsWorker`). `quietStdout.ts` is
   imported first by server.ts so nothing pdf.js prints reaches stdout. In the app: `LiveButton` in the TopBar (with a

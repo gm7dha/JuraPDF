@@ -95,6 +95,10 @@ export function HelpDialog() {
         <strong>Notes</strong> (N): click where a sticky note goes and type a comment. Click a note's icon to read or change it (its colour too), drag it to move it,
         or delete it. The <strong>Notes</strong> tab in the side panel lists every note, with any replies; Acrobat, Preview and other readers show them too.
       </p>
+      <p>
+        <strong>Make smaller</strong>: shrinks pictures that are bigger than the pages need and tidies away leftovers, for email or the web. Choose how small: “A little” keeps
+        pictures sharp for printing; “As small as possible” makes them softer. The words stay as sharp as ever, and Undo brings back the original.
+      </p>
       <p className="muted">Coming next: recent files, and keeping your work in the browser between visits.</p>
       <div className="platform-row">
         <span className="muted small">Shortcuts shown for</span>
