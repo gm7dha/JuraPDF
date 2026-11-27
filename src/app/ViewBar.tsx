@@ -281,6 +281,28 @@ export function ViewBar() {
         >
           <Icons.Form />
         </button>
+        {form && (
+          <>
+            <button
+              type="button"
+              className="icon-button"
+              onClick={() => void emptyForm()}
+              aria-label="Empty the form"
+              title="Empty the form: take out everything typed, ticked or picked in its boxes (Undo brings it back)"
+            >
+              <Icons.Eraser />
+            </button>
+            <button
+              type="button"
+              className="icon-button"
+              onClick={() => void fixAnswers()}
+              aria-label="Make the answers part of the pages"
+              title="Make the answers part of the pages: what's filled in stays where it is, but the form boxes go, so nobody can change the answers (Undo brings them back)"
+            >
+              <Icons.Lock />
+            </button>
+          </>
+        )}
         <button
           type="button"
           className="icon-button"
