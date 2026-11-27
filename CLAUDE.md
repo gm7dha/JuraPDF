@@ -62,7 +62,7 @@
   starts using `BASELINE` per font so the PDF words land where the screen font showed them; `src/pdf/additions.ts`
   writes them through `toPageSpace`, in front, wrapped like a watermark): `addActions.ts` runs placing (`placing` in
   the store: the next click on a page) and the `draft` (`DraftBox.tsx`, drawn inside the page at `cssScale`), Done
-  writes one undo step. Live with Claude is busy while either is open. Claude tools: add_words, add_picture, add_shape (with fill and see_through). Shapes (`ShapeItem`:
+  writes one undo step. Live with Claude is busy while either is open. Claude tools: add_words, add_picture, add_shape (with fill and see_through), add_form_box. Shapes (`ShapeItem`:
   highlight, box, oval, line, arrow from (x1,y1) to (x2,y2); `addShape`, a highlight see-through with Multiply) are drawn by
   dragging on the page (PageView's pointerdown while `placing` is a shape) and changed in `ShapeDraft.tsx` (an SVG over the page). Words picked with the mouse get `PickedWordsBar` (Highlight, Copy):
   `pickedWordBoxes` reads the selection's boxes from the words layers, `highlightsFor` joins them per line, `addShapes` writes them as one step.
@@ -75,6 +75,10 @@
   a draft), `nudgeDraft`, `duplicateDraft`, `deleteDraft`; a click away from a draft is Done; after a write the draft stays
   on show until the page is redrawn (`landed`). `arrange` doesn't wrap a page it already wrapped (per-PDF sets), so
   nesting stays shallow. Shapes have `fill` and `seeThrough`; `InkItem` is the pen (`InkDraft.tsx`, `thinStroke`).
+- Form boxes (v0.9, `FieldItem` kind "field": text / tick / choice; `FieldDraft.tsx`, `startField`/`fieldDragTo` in addActions.ts,
+  key F): written as real AcroForm fields by pdf-lib (`addField` in src/pdf/additions.ts, grey border, white inside), remembered
+  in `/JuraPDFItems` like other additions but found by field name, not by a marked span: `removeField` takes the widgets off
+  every page and then the field; `pageWithout` drops the widgets (`dropWidgets`). Filling forms in JuraPDF itself isn't done yet.
 - Changed words keep the PDF's own font (`src/pdf/fonts.ts` `pageFont`: simple fonts by ToUnicode or WinAnsi and their
   Widths, Type0 Identity-H by ToUnicode and W; `src/model/fontCodes.ts` pure), found by the name pdf.js gives
   (`RunFont` in `wordRuns`, via `page.commonObjs`); typed in the font pdf.js loaded into the browser (`own.screen`);
@@ -107,7 +111,7 @@
   (`name` on hello/doc/change); `MAX_MESSAGE_BYTES` 150 MB. The session holds a `PdfDoc` {name, bytes}, Claude's own
   undo list and a `label` per change ("turned page 2") that becomes the tab's undo step ("Claude: turned page 2",
   `describeChange`). `tools.ts`: format_guide, live_status, describe_pdf, read_words, list_pdfs, open_pdf, new_pdf,
-  save_pdf, add_watermark, add_words, add_picture, add_shape, turn_pages, delete_pages, move_pages, add_blank_pages, bring_in_pdf, save_pages_as_pdf, undo —
+  save_pdf, add_watermark, add_words, add_picture, add_shape, add_form_box, turn_pages, delete_pages, move_pages, add_blank_pages, bring_in_pdf, save_pages_as_pdf, undo —
   page numbers from 1 (`pagesOf`), changes through `src/pdf/pages.ts` and `watermark.ts`. `reading.ts` reads words with
   pdf.js's legacy build in Node (the worker imported into the bundle as `globalThis.pdfjsWorker`). `quietStdout.ts` is
   imported first by server.ts so nothing pdf.js prints reaches stdout. In the app: `LiveButton` in the TopBar (with a

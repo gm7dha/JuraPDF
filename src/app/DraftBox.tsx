@@ -16,6 +16,7 @@ import { drawPage, loadPdf, type PDFDocumentProxy } from "../pdf/pdfjs";
 import { cancelAdding, deleteExisting, finishAdding, markDraft, noteDragEnd, replaceExisting, updateDraft } from "./addActions";
 import { ColourButton, KeptButtons } from "./DraftControls";
 import { Icons } from "./icons";
+import { FieldDraft } from "./FieldDraft";
 import { InkDraft } from "./InkDraft";
 import { ShapeDraft } from "./ShapeDraft";
 import { detectPlatform } from "./platform";
@@ -63,6 +64,13 @@ export function DraftBox({ index, scale }: { index: number; scale: number }) {
       <>
         {under}
         <ShapeDraft draft={draft} scale={scale} pageW={pw} pageH={ph} />
+      </>
+    );
+  if (draft.kind === "field")
+    return (
+      <>
+        {under}
+        <FieldDraft draft={draft} scale={scale} pageW={pw} pageH={ph} />
       </>
     );
   if (draft.kind === "ink")

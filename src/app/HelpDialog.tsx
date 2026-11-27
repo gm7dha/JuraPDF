@@ -68,7 +68,11 @@ export function HelpDialog() {
         <strong>Read words in pictures</strong> (the button after the arrow): finds the words in a scanned page or a photo, so they can be picked, copied, highlighted and found
         with Find words. It runs on your computer; the first time it fetches its reader (about 7 MB), then it works offline.
       </p>
-      <p className="muted">Coming next: fillable forms (boxes that other PDF readers can type into or tick).</p>
+      <p>
+        <strong>Add a form box</strong> (F): drag on a page to add a text box, a tick box or a choice list that people can fill in with Acrobat, Preview or any other PDF
+        reader. Give each one a name so the answers are easy to tell apart.
+      </p>
+      <p className="muted">Coming next: recent files, and keeping your work in the browser between visits.</p>
       <div className="platform-row">
         <span className="muted small">Shortcuts shown for</span>
         <div className="segmented two" role="radiogroup" aria-label="Keyboard type">

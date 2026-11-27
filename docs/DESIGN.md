@@ -13,7 +13,7 @@ trade-off favours being easy to find your way round over professional depth.
 - Make changes that are saved into a normal PDF that opens anywhere.
 - Never upload anything: all the work happens in the browser. Works offline once installed.
 
-**Not goals (for now):** filling and designing forms, digital signatures, optical character recognition (reading words
+**Not goals (for now):** filling in forms inside JuraPDF itself, digital signatures, optical character recognition (reading words
 from scanned pages), real-time collaboration or cloud storage.
 
 ## Key decisions
@@ -84,6 +84,6 @@ tests          Vitest, pure code only;  scripts/smoke-test.mjs drives the built 
   stays changeable (marked in the page and remembered, see CLAUDE.md); fixed words keep the PDF's own font, size and
   colour; filled and see-through shapes; freehand pen; underline and cross out picked words; colour swatches; tool
   shortcuts; nudge, copy, delete; Ctrl+Z within what's being placed.
-- **Next** — **fillable forms** (asked for by the owner, as in Tungsten PDF): add text boxes, tick boxes and the like
-  that Acrobat and other readers can fill in.
+- **v0.9 (done)** — **fillable forms** (asked for by the owner, as in Tungsten PDF): add text boxes, tick boxes and
+  choice lists as real form fields that Acrobat and other readers can fill in; changeable like other additions.
 - **Later** — recent files, keeping work in the browser between visits, comments and highlights, compressing large PDFs.

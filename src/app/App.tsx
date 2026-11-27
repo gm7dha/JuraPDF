@@ -4,7 +4,7 @@ import { hasUnsavedChanges, useStore } from "../model/store";
 import { zoomIn, zoomOut } from "../model/zoom";
 import { openFile, openFromFile, saveToFile } from "./fileActions";
 import { HelpDialog } from "./HelpDialog";
-import { cancelAdding, deleteDraft, duplicateDraft, finishAdding, nudgeDraft, startChanging, startInk, startShape, startWords, undoDraft } from "./addActions";
+import { cancelAdding, startField, deleteDraft, duplicateDraft, finishAdding, nudgeDraft, startChanging, startInk, startShape, startWords, undoDraft } from "./addActions";
 import type { ShapeKind } from "../model/additions";
 import { deleteChosen } from "./pageActions";
 import { Icons } from "./icons";
@@ -203,9 +203,9 @@ function useShortcuts() {
           void startShape(shapes[key]);
           return;
         }
-        if (key === "t" || key === "p" || key === "e") {
+        if (key === "t" || key === "p" || key === "e" || key === "f") {
           e.preventDefault();
-          void (key === "t" ? startWords() : key === "p" ? startInk() : startChanging());
+          void (key === "t" ? startWords() : key === "p" ? startInk() : key === "f" ? startField() : startChanging());
           return;
         }
       }

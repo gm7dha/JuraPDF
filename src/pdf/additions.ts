@@ -28,7 +28,7 @@ import {
   type PDFPage,
 } from "pdf-lib";
 
-import { canFill, inkBox, lineStarts, opacityOf, shapeBox, shapeInPage, linesOf, strokePath, wordsHeight, type AddItem, type InkItem, type PictureItem, type Rect, type ShapeItem, type WordsItem } from "../model/additions";
+import { canFill, freshFieldName, inkBox, lineStarts, opacityOf, shapeBox, shapeInPage, linesOf, strokePath, wordsHeight, type AddItem, type FieldItem, type InkItem, type PictureItem, type Rect, type ShapeItem, type WordsItem } from "../model/additions";
 import { encodeWith } from "../model/fontCodes";
 import type { HiddenWord } from "../model/ocr";
 import { hexToRgb, toPageSpace, type FontChoice } from "../model/watermark";
@@ -142,7 +142,7 @@ export async function changeItem(bytes: Uint8Array, index: number, id: number, n
   const was = kept.find((k) => k.id === id);
   if (!was) throw new AddProblem("That isn't on the page any more.");
   const rest = kept.filter((k) => k.id !== id);
-  if (!removeMarked(page, id)) {
+  if (was.item.kind === "field" ? !removeField(doc, was.item.name) : !removeMarked(page, id)) {
     setKept(page, rest);
     throw new AddProblem("That was changed by another program, so it can't be picked here any more.");
   }
@@ -160,6 +160,7 @@ export async function changeItem(bytes: Uint8Array, index: number, id: number, n
 function check(item: AddItem): void {
   if (item.kind === "words" && !linesOf(item.text).length && !item.cover) throw new AddProblem("Type some words first.");
   if (item.kind === "ink" && !item.strokes.some((s) => s.length)) throw new AddProblem("Draw something first.");
+  if (item.kind === "field" && item.field === "choice" && !item.choices?.length) throw new AddProblem("Type the choices for the list first, one to a line.");
 }
 
 /** Draw one addition between its markers; gives it as remembered (without its id) and the box it covers. */
@@ -176,6 +177,8 @@ async function drawItem(doc: PDFDocument, page: PDFPage, item: AddItem, id: numb
     }
     clean.image = page.node.newXObject("Image", image.ref).decodeText();
   }
+  // A form box isn't drawn into the page: it's a box of the PDF's form, laid over the page.
+  if (clean.kind === "field") return addField(doc, page, frame, clean);
   // Words need their font ready before anything is drawn (and may be turned away).
   const words = clean.kind === "words" ? await wordsInk(doc, page, clean) : null;
   startMark(page, id);
@@ -199,6 +202,51 @@ async function drawItem(doc: PDFDocument, page: PDFPage, item: AddItem, id: numb
   endMark(page);
   if (clean.kind === "words" && clean.own) clean.own = { base: clean.own.base, label: clean.own.label };
   return { item: clean, box };
+}
+
+const GREY = rgb(0.45, 0.5, 0.56);
+
+/** Put a form box on the page (named so no other box has its name). */
+function addField(doc: PDFDocument, page: PDFPage, frame: ReturnType<typeof frameOf>, item: FieldItem): { item: AddItem; box: Rect } {
+  const form = doc.getForm();
+  const taken = form.getFields().map((f) => f.getName());
+  // (A dot would make it part of another box's name, in a form.)
+  const wanted = item.name.replace(/\./g, " ").trim();
+  const name = wanted && !taken.includes(wanted) ? wanted : freshFieldName(item.field, taken);
+  const shownH = frame.rotation % 180 ? frame.width : frame.height;
+  // Form boxes are turned about their bottom-left corner, like pictures.
+  const at = toPageSpace(frame, item.x, shownH - (item.y + item.height), 0);
+  const place = { x: at.x, y: at.y, width: item.width, height: item.height, rotate: degrees(at.angle), borderColor: GREY, borderWidth: 1, backgroundColor: rgb(1, 1, 1) };
+  if (item.field === "text") {
+    const field = form.createTextField(name);
+    if (item.multiline) field.enableMultiline();
+    field.addToPage(page, place);
+    if (item.size) field.setFontSize(item.size);
+  } else if (item.field === "tick") {
+    form.createCheckBox(name).addToPage(page, place);
+  } else {
+    const field = form.createDropdown(name);
+    const choices = item.choices?.length ? item.choices : ["Yes", "No"];
+    field.setOptions(choices);
+    field.addToPage(page, place);
+    field.setFontSize(0);
+  }
+  return { item: { ...item, name, id: undefined }, box: { x: item.x, y: item.y, width: item.width, height: item.height } };
+}
+
+/** Take a form box (by name) out of the form and off its page; false when there's none of that name. */
+function removeField(doc: PDFDocument, name: string): boolean {
+  const field = doc.getForm().getFieldMaybe(name);
+  if (!field) return false;
+  // Its drawings on the pages go first (pdf-lib doesn't always find them).
+  const widgets = new Set(field.acroField.getWidgets().map((w) => w.dict));
+  for (const page of doc.getPages()) {
+    const annots = page.node.Annots();
+    if (!annots) continue;
+    for (let i = annots.size() - 1; i >= 0; i--) if (widgets.has(annots.lookup(i) as never)) annots.remove(i);
+  }
+  doc.getForm().removeField(field);
+  return true;
 }
 
 /** How words will be written: in the PDF's own font when it has every letter, or else a built-in one. */

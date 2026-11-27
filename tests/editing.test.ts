@@ -160,3 +160,38 @@ describe("additions stay changeable in the PDF", () => {
     expect(more.keys().length).toBe(font.keys().length + 1);
   });
 });
+
+describe("form boxes", () => {
+  it("text boxes, tick boxes and choice lists become real form boxes that can be moved, renamed and deleted", async () => {
+    const { fieldBox, freshFieldName, choicesOf } = await import("../src/model/additions");
+    expect(fieldBox("text", 100, 100, 101, 101)).toEqual({ x: 100, y: 100, width: 180, height: 22 });
+    expect(fieldBox("tick", 100, 100, 130, 110)).toEqual({ x: 100, y: 100, width: 30, height: 30 });
+    expect(freshFieldName("text", ["Text 1", "Text 2"])).toBe("Text 3");
+    expect(choicesOf("Red\nGreen, Blue\n\nRed")).toEqual(["Red", "Green", "Blue"]);
+
+    let bytes: Uint8Array = await helloPdf();
+    bytes = await addItems(bytes, [
+      { kind: "field", field: "text", page: 0, x: 72, y: 200, width: 200, height: 22, name: "Work order", multiline: false },
+      { kind: "field", field: "tick", page: 0, x: 72, y: 240, width: 14, height: 14, name: "Work order" },
+      { kind: "field", field: "choice", page: 0, x: 72, y: 270, width: 150, height: 22, name: "Shift", choices: ["Day", "Night"] },
+    ]);
+    const names = async (b: Uint8Array) => (await PDFDocument.load(b)).getForm().getFields().map((f) => f.getName()).sort();
+    expect(await names(bytes)).toEqual(["Shift", "Tick 1", "Work order"]);
+    const kept = (await keptIn(bytes))[0];
+    expect(kept.map((k) => (k.item.kind === "field" ? k.item.name : ""))).toEqual(["Work order", "Tick 1", "Shift"]);
+
+    const text = kept[0];
+    bytes = await changeItem(bytes, 0, text.id, { ...moveItem(text.item, 10, 30), name: "Order number" } as typeof text.item);
+    expect(await names(bytes)).toEqual(["Order number", "Shift", "Tick 1"]);
+    const doc = await PDFDocument.load(bytes);
+    expect(doc.getPage(0).node.Annots()?.size()).toBe(3);
+
+    bytes = await changeItem(bytes, 0, kept[1].id, null);
+    expect(await names(bytes)).toEqual(["Order number", "Shift"]);
+    // pdf.js sees them as form boxes to fill in.
+    const pdf = await getDocument({ data: bytes.slice(), isEvalSupported: false, useSystemFonts: false, standardFontDataUrl: STANDARD_FONTS, verbosity: 0 }).promise;
+    const annots = await (await pdf.getPage(1)).getAnnotations();
+    expect(annots.map((a) => a.fieldName).sort()).toEqual(["Order number", "Shift"]);
+    await pdf.destroy();
+  });
+});

@@ -6,7 +6,7 @@ import { useStore } from "../model/store";
 import { paperName, sizeLabel } from "../model/pdfFile";
 import { parsePageNumber, parseZoom, zoomIn, zoomLabel, zoomOut } from "../model/zoom";
 import { SHAPE_NAMES, type ShapeKind } from "../model/additions";
-import { cancelAdding, startChanging, startInk, startPicture, startShape, startWords } from "./addActions";
+import { cancelAdding, startChanging, startField, startInk, startPicture, startShape, startWords } from "./addActions";
 import { Icons } from "./icons";
 import { savePagesAsPictures, saveWordsAsText } from "./exportActions";
 import { readWordsInPictures } from "./ocrActions";
@@ -34,6 +34,7 @@ export function ViewBar() {
   const draftShape = useStore((s) => (s.draft?.kind === "shape" ? s.draft.shape : null));
   const reading = useStore((s) => s.reading);
   const changing = useStore((s) => s.placing?.kind === "change" || s.draft?.kind === "existing" || (s.draft?.kind === "words" && !!s.draft.cover) || (!!s.draft && "id" in s.draft && s.draft.id !== undefined));
+  const fielding = useStore((s) => s.placing?.kind === "field" || (s.draft?.kind === "field" && s.draft.id === undefined));
   const inking = useStore((s) => s.placing?.kind === "ink" || (s.draft?.kind === "ink" && s.draft.id === undefined));
   const selected = useStore((s) => s.selected);
   const onePage = useStore((s) => s.onePage);
@@ -259,6 +260,15 @@ export function ViewBar() {
           title="Draw freehand, like a pen: drag on a page, as many strokes as you like, then Done (P)"
         >
           <Icons.Pen />
+        </button>
+        <button
+          type="button"
+          className={`icon-button${fielding ? " active" : ""}`}
+          onClick={() => (fielding ? cancelAdding() : void startField())}
+          aria-label="Add a form box"
+          title="Add a form box: a box to type in, a tick box or a list to choose from, that Acrobat, Preview and other readers can fill in (F)"
+        >
+          <Icons.Form />
         </button>
         <button
           type="button"

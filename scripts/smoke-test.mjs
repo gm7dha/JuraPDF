@@ -177,7 +177,9 @@ await step("finding words: highlights, a count, next and previous, then close", 
   await page.keyboard.press("Control+f");
   const box = page.getByLabel("Words to find");
   await box.waitFor({ timeout: 5000 });
-  expect(await box.evaluate((el) => el === document.activeElement), "Ctrl+F should put the typing spot in the search box");
+  // The typing spot goes in once the bar is on the page (the next frame).
+  const focused = await page.waitForFunction(() => document.activeElement?.getAttribute("aria-label") === "Words to find", null, { timeout: 3000 }).then(() => true, () => false);
+  expect(focused, "Ctrl+F should put the typing spot in the search box");
   await box.fill("smoke PAGE");
   await countIs("1 of 3");
   // The place found is coloured in right over its words.
@@ -911,6 +913,28 @@ await step("filling a box, picking it again later to move and delete it, and dra
   for (let i = 0; i < 4; i++) await page.keyboard.press("Control+z");
   await page.waitForFunction((n) => window.jurapdfStore.getState().past.length === n, steps);
   expect((await label()) !== "draw on page 1", "Undo takes it all back");
+});
+
+await step("adding a form box others can fill in", async () => {
+  const steps = await page.evaluate(() => window.jurapdfStore.getState().past.length);
+  await page.keyboard.press("Home");
+  const p1 = await page.locator('.page[data-page="1"]').boundingBox();
+  // F, drag a box, name it, Done: a real text box in the PDF.
+  await page.keyboard.press("f");
+  await page.mouse.move(p1.x + p1.width * 0.15, p1.y + p1.height * 0.2);
+  await page.mouse.down();
+  await page.mouse.move(p1.x + p1.width * 0.45, p1.y + p1.height * 0.24, { steps: 4 });
+  await page.mouse.up();
+  await page.locator(".field-box").waitFor();
+  await page.getByRole("textbox", { name: "Name", exact: true }).fill("Work order");
+  await page.getByRole("button", { name: "Done" }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "add a text box to page 1");
+  await page.locator(".draft").waitFor({ state: "detached" });
+  const bytes = Buffer.from(await page.evaluate(() => Array.from(window.jurapdfStore.getState().pdf.bytes)));
+  const names = (await PDFDocument.load(bytes)).getForm().getFields().map((f) => f.getName());
+  expect(names.includes("Work order"), `the PDF should have a "Work order" box to fill: ${names}`);
+  await page.keyboard.press("Control+z");
+  await page.waitForFunction((n) => window.jurapdfStore.getState().past.length === n, steps);
 });
 
 await step("Connect to Claude with no extension running says what to do", async () => {
