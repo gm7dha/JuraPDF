@@ -96,6 +96,9 @@
   (`wordsOutside`, letter by letter) go back invisibly (`writeHiddenWords`); annotations under a mark go, and form fields with
   them. Marks come from dragging, `markPicked` (picked words) or `markFound` (search hits → `pageTextBoxes` → `lettersBox`).
   Browser only (needs a canvas), so Claude has no black-out tool yet.
+- Signatures (v0.13, `SignDialog.tsx`, key S, ViewBar "Sign"; `src/model/signature.ts` pure: `inkBounds`, `clearPaper`, `placingSize`,
+  kept list in localStorage `jurapdf.signatures` as PNG data links): the PNG (cut to its ink) is placed through `placePicture`
+  (addActions) as a ChosenPicture named "Signature"; the PictureItem gets `signature: true` (Undo label "sign page N").
 - Changed words keep the PDF's own font (`src/pdf/fonts.ts` `pageFont`: simple fonts by ToUnicode or WinAnsi and their
   Widths, Type0 Identity-H by ToUnicode and W; `src/model/fontCodes.ts` pure), found by the name pdf.js gives
   (`RunFont` in `wordRuns`, via `page.commonObjs`); typed in the font pdf.js loaded into the browser (`own.screen`);

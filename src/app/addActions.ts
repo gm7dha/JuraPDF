@@ -30,6 +30,7 @@ import {
   type Draft,
   type ShapeKind,
 } from "../model/additions";
+import type { ChosenPicture } from "../model/additions";
 import { fontLabel } from "../model/fontCodes";
 import { useStore } from "../model/store";
 import { nearestFont, type FontChoice } from "../model/watermark";
@@ -248,6 +249,17 @@ export async function startPicture(): Promise<void> {
   s.setDraft(null);
   s.setPlacing({ kind: "picture", picture: { bytes, type, name: file.name, url, pixelsWide: size.w, pixelsHigh: size.h } });
   say("Click on a page where the picture should go. Esc stops.");
+}
+
+/** Get ready to put this picture (a signature) on a page with the next click. */
+export async function placePicture(picture: ChosenPicture, hint: string): Promise<void> {
+  await settle();
+  const s = useStore.getState();
+  if (!s.pdf) return;
+  dropPicture();
+  s.setDraft(null);
+  s.setPlacing({ kind: "picture", picture });
+  say(hint);
 }
 
 /** A click on page `page` at (x, y) points from its top-left: put the words or picture there. */
@@ -721,9 +733,9 @@ export async function finishAdding(keepTool = false): Promise<void> {
     const old = canvasOf(draft.page);
     const bytes =
       draft.kind === "picture"
-        ? await addItems(s.pdf.bytes, [{ kind: "picture", page: draft.page, x: draft.x, y: draft.y, width: draft.width, height: draft.height }], draft.picture)
+        ? await addItems(s.pdf.bytes, [{ kind: "picture", page: draft.page, x: draft.x, y: draft.y, width: draft.width, height: draft.height, signature: draft.picture?.name === "Signature" || undefined }], draft.picture)
         : await addItems(s.pdf.bytes, [draft]);
-    await applyChange(bytes, additionLabel(draft));
+    await applyChange(bytes, additionLabel(draft.kind === "picture" && draft.picture?.name === "Signature" ? { ...draft, signature: true } : draft));
     if (keepTool) useStore.getState().setPlacing({ kind: "ink" });
     await landed(draft.page, old, draft);
   } catch (e) {

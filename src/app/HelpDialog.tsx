@@ -87,6 +87,10 @@ export function HelpDialog() {
         <strong>Black out for good</strong>: then what's under the black is removed from the PDF, so nobody can copy, find or uncover it. The page becomes a picture, but its
         other words can still be picked and found.
       </p>
+      <p>
+        <strong>Sign</strong> (S): draw your signature, type it in a handwriting style, or bring in a photo of it (the white paper is made see-through), then click
+        where it goes. Signatures are kept on this computer to use again with one click.
+      </p>
       <p className="muted">Coming next: recent files, and keeping your work in the browser between visits.</p>
       <div className="platform-row">
         <span className="muted small">Shortcuts shown for</span>

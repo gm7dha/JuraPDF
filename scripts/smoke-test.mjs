@@ -998,6 +998,33 @@ await step("blacking out words for good, then Undo", async () => {
   await page.waitForFunction((n) => window.jurapdfStore.getState().past.length === n, steps);
 });
 
+await step("signing: draw a signature, put it on a page, and use it again", async () => {
+  const steps = await page.evaluate(() => window.jurapdfStore.getState().past.length);
+  await page.keyboard.press("Home");
+  await page.keyboard.press("s");
+  const pad = page.getByLabel("Sign here");
+  await pad.waitFor();
+  const b = await pad.boundingBox();
+  await page.mouse.move(b.x + b.width * 0.2, b.y + b.height * 0.6);
+  await page.mouse.down();
+  for (const [x, y] of [[0.3, 0.3], [0.4, 0.7], [0.5, 0.35], [0.6, 0.65], [0.75, 0.4]]) await page.mouse.move(b.x + b.width * x, b.y + b.height * y, { steps: 5 });
+  await page.mouse.up();
+  await page.getByRole("button", { name: "Put it on a page" }).click();
+  await page.getByText("Click on a page where the signature should go").waitFor();
+  const p1 = await page.locator('.page[data-page="1"]').boundingBox();
+  await page.mouse.click(p1.x + p1.width * 0.6, p1.y + Math.min(p1.height * 0.5, 500));
+  await page.locator(".draft-picture").waitFor();
+  await page.getByRole("button", { name: "Done" }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "sign page 1");
+  if (process.env.SMOKE_SCREENSHOT) await page.screenshot({ path: "smoke-sign.png" });
+  // Kept for next time.
+  await page.getByRole("button", { name: "Sign", exact: true }).click();
+  await page.getByRole("button", { name: "Use this signature" }).first().waitFor();
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Control+z");
+  await page.waitForFunction((n) => window.jurapdfStore.getState().past.length === n, steps);
+});
+
 await step("Connect to Claude with no extension running says what to do", async () => {
   await page.getByRole("button", { name: "Connect to Claude" }).click();
   await page.locator('.modal:has-text("Not connected")').waitFor({ timeout: 60_000 });
