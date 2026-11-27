@@ -53,6 +53,8 @@ export interface PictureItem {
   image?: string;
   /** A signature (from the Sign window): named so in Undo. */
   signature?: boolean;
+  /** A stamp (from the Stamp window, e.g. "APPROVED"): named so in Undo. */
+  stamp?: string;
   id?: number;
 }
 
@@ -327,7 +329,7 @@ function styleOf(item: AddItem): string {
 /** What a change is called in the Undo list. */
 export function additionLabel(item: AddItem): string {
   if (item.kind === "shape") return `add ${itemName(item)} to page ${item.page + 1}`;
-  if (item.kind === "picture") return item.signature ? `sign page ${item.page + 1}` : `add a picture to page ${item.page + 1}`;
+  if (item.kind === "picture") return item.signature ? `sign page ${item.page + 1}` : item.stamp ? `stamp “${item.stamp}” on page ${item.page + 1}` : `add a picture to page ${item.page + 1}`;
   if (item.kind === "ink") return `draw on page ${item.page + 1}`;
   if (item.kind === "field") return `add ${itemName(item)} to page ${item.page + 1}`;
   const first = linesOf(item.text)[0] ?? "";
@@ -344,6 +346,8 @@ export interface ChosenPicture {
   url: string;
   pixelsWide: number;
   pixelsHigh: number;
+  /** For a stamp: its words (named so in Undo). */
+  stamp?: string;
 }
 
 /** Waiting for a click on a page to put words or a chosen picture there (or, for "ink", drags to draw with). */

@@ -43,6 +43,7 @@ const host: LiveHost = {
     if (s.dialog === "watermark") return "The user has the Watermark window open in JuraPDF.";
     if (s.dialog === "sign") return "The user has the Sign window open in JuraPDF.";
     if (s.dialog === "headers") return "The user has the Headers and page numbers window open in JuraPDF.";
+    if (s.dialog === "stamp") return "The user has the Stamp window open in JuraPDF.";
     if (s.dialog === "compress") return "The user has the Make smaller window open in JuraPDF.";
     if (s.dialog === "print") return "The user has the Print window open in JuraPDF.";
     if (s.dialog === "password") return "JuraPDF is asking the user for a password.";

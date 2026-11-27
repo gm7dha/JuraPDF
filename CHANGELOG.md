@@ -5,6 +5,16 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.16 — Stamps
+
+- **Stamp pages** with the new Stamp button (or press K). There are twelve ready-made stamps, such as APPROVED,
+  NOT APPROVED, RECEIVED, REVIEWED, CONFIDENTIAL, DRAFT, VOID and AS BUILT, or you can type your own words.
+- **Pick a colour** (green, blue, red or black) and add **your name and today's date** under the words if you want.
+  The window shows how it will look.
+- **Click where it goes,** then move it or make it bigger or smaller, like a picture. It stays changeable
+  afterwards, and Undo shows it as "stamp “APPROVED” on page 2".
+- Your last stamp is remembered for next time.
+
 ## v0.15 — Make smaller
 
 - **Make PDFs smaller** with the new Make smaller button, for emailing or putting on the web. Pictures that are

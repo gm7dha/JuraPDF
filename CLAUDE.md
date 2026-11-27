@@ -105,6 +105,10 @@
   (with replies and /Popup windows)): `noteActions.ts` (`notesIn` per version via `peekForReading`, `note` in the store is the
   open one, `placing` {kind: "note"}, key N), `NotesLayer.tsx` (icons, drag to move, `NoteWindow`; a click away saves via
   `whileOpen`), `NotesList.tsx` (side panel tab "notes"). Claude: read_notes, add_note, delete_note.
+- Stamps (v0.16, `StampDialog.tsx`, key K, ViewBar "Stamp"; `src/model/stamps.ts` pure: `STAMPS`, `STAMP_COLOURS`, `stampLines`,
+  `cleanStamp` (localStorage `jurapdf.stamp`), `stampPlacingSize`): `drawStamp` draws it on a canvas (PNG, see-through) and it's
+  placed like a signature through `placePicture`, the ChosenPicture carrying `stamp` (its words) → PictureItem `stamp` (Undo label
+  "stamp “APPROVED” on page N"). Browser only, so Claude has no stamp tool (add_words and add_shape do the same job).
 - Make smaller (v0.15, `CompressDialog.tsx`, ViewBar "Make smaller"; `src/model/compress.ts` pure: `SQUEEZES` light/medium/strong
   (dpi, JPG quality, `photosToJpg`), `shrunkSize`, `undoPredictor`, `toRgba`, `hasCameraNotes`; `src/pdf/compress.ts` `squeeze`):
   `dropUnused` drops objects nothing reaches from the trailer; each image (not SMasks, ImageMasks, colour-key Masks, Decode,

@@ -1025,6 +1025,26 @@ await step("signing: draw a signature, put it on a page, and use it again", asyn
   await page.waitForFunction((n) => window.jurapdfStore.getState().past.length === n, steps);
 });
 
+await step("stamping: a RECEIVED stamp with a name and the date, put on a page", async () => {
+  const steps = await page.evaluate(() => window.jurapdfStore.getState().past.length);
+  await page.keyboard.press("Home");
+  await page.keyboard.press("k");
+  await page.getByRole("listitem").filter({ hasText: "RECEIVED" }).click();
+  await page.getByLabel("Name on the stamp").fill("Smoke");
+  await page.locator(".stamp-preview img").waitFor();
+  if (process.env.SMOKE_SCREENSHOT) await page.screenshot({ path: "smoke-stamp-window.png" });
+  await page.getByRole("button", { name: "Put it on a page" }).click();
+  await page.getByText("Click on a page where the stamp should go").waitFor();
+  const p1 = await page.locator('.page[data-page="1"]').boundingBox();
+  await page.mouse.click(p1.x + p1.width * 0.7, p1.y + 200);
+  await page.locator(".draft-picture").waitFor();
+  await page.getByRole("button", { name: "Done" }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "stamp “RECEIVED” on page 1");
+  if (process.env.SMOKE_SCREENSHOT) await page.screenshot({ path: "smoke-stamp.png" });
+  await page.keyboard.press("Control+z");
+  await page.waitForFunction((n) => window.jurapdfStore.getState().past.length === n, steps);
+});
+
 await step("notes: add a sticky note, read it in the Notes list, change it and delete it", async () => {
   const steps = await page.evaluate(() => window.jurapdfStore.getState().past.length);
   await page.keyboard.press("Home");
