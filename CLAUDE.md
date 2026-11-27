@@ -104,4 +104,6 @@
 - App icons: edit `public/favicon.svg`, then `npm run icons` (set `CHROMIUM_PATH` if Playwright's own browser isn't
   installed).
 - Versions: `package.json` holds the version (shown as e.g. "v0.1" in the top bar); add each version's notes to the top
-  of `CHANGELOG.md` in plain English.
+  of `CHANGELOG.md` in plain English (`## vX.Y — title` then `- ` lines). Clicking the version opens `WhatsNewDialog.tsx`
+  (JuraCAD's), which reads CHANGELOG.md into the app (`?raw`, parsed by `src/model/changelog.ts`); a dot shows until
+  this version's notes are seen (localStorage `jurapdf.seenVersion`). `tests/changelog.test.ts` checks this version has notes.

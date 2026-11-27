@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 
 import { useStore } from "../model/store";
+import { APP_VERSION, SHORT_VERSION } from "../version";
 import { eggClick } from "./easterEgg";
 import { Modal } from "./Modal";
 import { detectPlatform, helpRows, type Platform } from "./platform";
@@ -133,7 +134,11 @@ export function HelpDialog() {
         <li>The link stays on this computer: only the JuraPDF website can use it, and Claude only reads and saves files in your JuraPDF folder.</li>
       </ul>
       <p className="muted small">
-        JuraPDF is free and open source (MIT):{" "}
+        JuraPDF {SHORT_VERSION} ({APP_VERSION}):{" "}
+        <button type="button" className="text-button inline-link" onClick={() => openDialog("whatsNew")}>
+          what's new
+        </button>
+        . JuraPDF is free and open source (MIT):{" "}
         <a href="https://github.com/gm7dha/JuraPDF" target="_blank" rel="noreferrer">
           github.com/gm7dha/JuraPDF
         </a>
