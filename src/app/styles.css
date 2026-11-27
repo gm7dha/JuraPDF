@@ -2606,3 +2606,41 @@ textarea.form-box {
   font-size: 12.5px;
   line-height: 1.5;
 }
+
+/* Make smaller: the three choices. */
+.squeeze-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.squeeze-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.squeeze-choice.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.squeeze-choice input {
+  margin-top: 3px;
+}
+
+.squeeze-choice > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.squeeze-progress {
+  width: 100%;
+  margin-top: 12px;
+}

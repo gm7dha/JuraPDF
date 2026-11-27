@@ -98,5 +98,8 @@ tests          Vitest, pure code only;  scripts/smoke-test.mjs drives the built 
 - **v0.14 (done)** — **sticky notes**: PDF Text notes (any reader's, with replies) shown as icons; add with a click,
   read, change (words, colour, name), drag to move, delete; a Notes tab in the side panel; Claude's read_notes,
   add_note, delete_note.
-- **Next (Tungsten-style)** — compressing, more form box kinds.
-- **Later** — recent files, keeping work in the browser between visits, replying to notes, compressing large PDFs.
+- **v0.15 (done)** — **make smaller**: pictures over what the largest page needs at 200/150/96 dpi are redrawn smaller
+  in the browser (JPGs saved again; others kept lossless unless "as small as possible"), unused objects dropped,
+  object streams; Claude's tidy_pdf (tidying only).
+- **Next (Tungsten-style)** — more form box kinds.
+- **Later** — recent files, keeping work in the browser between visits, replying to notes.

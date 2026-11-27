@@ -20,6 +20,7 @@ import { DEFAULT_HEADERS, dateText, hasWords, headersLabel, type HeaderSettings 
 import { addHeaders, HeaderProblem, removeHeaders } from "../pdf/headers";
 import { inReadingOrder, NOTE_COLOURS, NOTE_SIZE, readPdfDate } from "../model/notes";
 import { addNote, listNotes, NoteProblem, removeNote } from "../pdf/notes";
+import { squeeze } from "../pdf/compress";
 import { AddProblem, addItems, addPicture, addShape, addWords, pictureType } from "../pdf/additions";
 import { moveTo, sameOrder } from "../model/pages";
 import { InputError, bool, noExtras, num, object, oneOf, text } from "./args";
@@ -35,7 +36,7 @@ export const FORMAT_GUIDE = `How JuraPDF works with PDFs:
 - Pages are numbered from 1, as the user sees them. "pages" takes a number, a list of numbers, or text like "1-3, 5", "4-" (4 to the end), "all", "odd", "even" or "last".
 - Sizes are paper names (A4, Letter…) or millimetres; "landscape" means wider than tall. A page's "turn" is how it has been rotated to show (0, 90, 180 or 270 degrees clockwise).
 - describe_pdf gives the pages and a taste of their words; read_words gives the words of chosen pages (scanned pages, being pictures, have none).
-- Changes: add_watermark (words or a PNG/JPG picture from the folder, saved into the pages), add_words and add_picture (writing or a PNG/JPG picture such as a signature on one page, placed in points from its top-left corner as it shows; describe_pdf gives the page sizes), add_shape (a see-through highlight over words, or a box, oval, line or arrow to point something out, a box or oval filled in if wanted; read_words gives where words are), add_form_box (a text box, tick box or choice list that whoever opens the PDF can fill in, e.g. to make a printed form fillable), fill_form (fill in the PDF's form boxes; read_form lists them with what's in them), add_headers (page numbers, Bates numbers or words along the top and bottom of pages), add_note (a sticky note, a comment pinned to a page; read_notes lists the notes and their replies, delete_note takes one off), turn_pages, delete_pages (one page must stay), move_pages, add_blank_pages, bring_in_pdf (all the pages of another PDF from the folder: this is how to join PDFs), save_pages_as_pdf (some pages as a new PDF in the folder: this is how to split one). undo takes back your last change.
+- Changes: add_watermark (words or a PNG/JPG picture from the folder, saved into the pages), add_words and add_picture (writing or a PNG/JPG picture such as a signature on one page, placed in points from its top-left corner as it shows; describe_pdf gives the page sizes), add_shape (a see-through highlight over words, or a box, oval, line or arrow to point something out, a box or oval filled in if wanted; read_words gives where words are), add_form_box (a text box, tick box or choice list that whoever opens the PDF can fill in, e.g. to make a printed form fillable), fill_form (fill in the PDF's form boxes; read_form lists them with what's in them), add_headers (page numbers, Bates numbers or words along the top and bottom of pages), add_note (a sticky note, a comment pinned to a page; read_notes lists the notes and their replies, delete_note takes one off), tidy_pdf (a little smaller, looking the same), turn_pages, delete_pages (one page must stay), move_pages, add_blank_pages, bring_in_pdf (all the pages of another PDF from the folder: this is how to join PDFs), save_pages_as_pdf (some pages as a new PDF in the folder: this is how to split one). undo takes back your last change.
 - Locked PDFs (with a password or protected against changes) can be read but not changed.
 - Talk to the user in plain words: "pages", "words", "picture", "see-through" — not PDF jargon.`;
 
@@ -460,6 +461,23 @@ export const TOOLS: ToolDef[] = [
       if (!note) throw new InputError(notes.length ? `There's no note ${JSON.stringify(id)}. read_notes lists them: ${notes.map((n) => n.id).join(", ")}.` : "This PDF has no notes.");
       await change(s, (bytes) => removeNote(bytes, id), `deleted the note on page ${note.page + 1}`);
       return say(`Deleted the note on page ${note.page + 1}${note.replies.length ? ` and its ${plural(note.replies.length, "reply", "replies")}` : ""}.`);
+    },
+  },
+  {
+    name: "tidy_pdf",
+    title: "Tidy the PDF to make it smaller",
+    description:
+      "Make the PDF a little smaller without changing how it looks: drops parts left over from earlier changes that nothing uses any more and packs the rest together. Shrinking its pictures (usually the big saving) needs the JuraPDF app: the user can click \"Make smaller\" there.",
+    inputSchema: { type: "object", properties: {} },
+    async run(s, a) {
+      noExtras(a, [], "tidy_pdf");
+      const before = needDoc(s).bytes.length;
+      const after = await change(s, async (bytes) => (await squeeze(bytes, "medium")).bytes, "tidied the PDF");
+      const saved = before - after.bytes.length;
+      return say(
+        saved > 0 ? `Tidied it: ${sizeLabel(before)} → ${sizeLabel(after.bytes.length)}.` : `Tidied it, but it was already tidy (${sizeLabel(after.bytes.length)}).`,
+        "For a much smaller file, the user can click \"Make smaller\" in JuraPDF, which also shrinks big pictures.",
+      );
     },
   },
   {

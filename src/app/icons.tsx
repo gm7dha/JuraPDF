@@ -389,6 +389,14 @@ export const Icons = {
       <path d="M8 9h8M8 12.5h5" />
     </Svg>
   ),
+  /** Make smaller: a page with arrows pressing in from top and bottom. */
+  Squeeze: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M12 2v6M9 5l3 3 3-3" />
+      <path d="M12 22v-6M9 19l3-3 3 3" />
+      <path d="M5 11h14M5 13h14" />
+    </Svg>
+  ),
   /** Pick things on a page: an arrow pointer. */
   Pointer: (p: IconProps) => (
     <Svg {...p}>

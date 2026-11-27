@@ -14,6 +14,7 @@ import { PrintDialog } from "./PrintDialog";
 import { WatermarkDialog } from "./WatermarkDialog";
 import { HeadersDialog } from "./HeadersDialog";
 import { SignDialog } from "./SignDialog";
+import { CompressDialog } from "./CompressDialog";
 import { WhatsNewDialog } from "./WhatsNewDialog";
 import { inPopup, inTextBox } from "./popupGuard";
 import { PickedWordsBar } from "./PickedWordsBar";
@@ -65,6 +66,7 @@ export function App() {
       {dialog === "watermark" && <WatermarkDialog />}
       {dialog === "headers" && <HeadersDialog />}
       {dialog === "sign" && <SignDialog />}
+      {dialog === "compress" && <CompressDialog />}
       {dialog === "whatsNew" && <WhatsNewDialog />}
       <Toasts />
     </div>

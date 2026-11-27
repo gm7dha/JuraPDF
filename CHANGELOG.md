@@ -5,6 +5,17 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.15 — Make smaller
+
+- **Make PDFs smaller** with the new Make smaller button, for emailing or putting on the web. Pictures that are
+  bigger than the pages need (photos and scans, usually) are brought down to size, and parts left over from earlier
+  changes are tidied away. The words stay as sharp as ever.
+- **Choose how small:** "A little" keeps pictures sharp for printing, "Medium" is good on screen and fine to print,
+  and "As small as possible" makes pictures softer for the smallest file. The window shows the size before, and a
+  message says how much smaller it got.
+- It's one step in Undo, so the original is one click away. Save to keep the smaller file.
+- Claude can tidy a PDF too (tidy_pdf). Shrinking pictures needs the app's Make smaller button.
+
 ## v0.14 — Sticky notes
 
 - **Add sticky notes** to pages with the new Note button (or press N): click where the note goes and type a comment.

@@ -321,6 +321,15 @@ export function ViewBar() {
         >
           <Icons.PageNumbers />
         </button>
+        <button
+          type="button"
+          className="icon-button"
+          onClick={() => s().openDialog("compress")}
+          aria-label="Make smaller"
+          title="Make smaller: shrink the PDF's big pictures and tidy it, for email or the web"
+        >
+          <Icons.Squeeze />
+        </button>
         {form && (
           <>
             <button
