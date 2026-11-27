@@ -77,6 +77,11 @@ export function HelpDialog() {
         answer is one step you can undo. When a PDF has a form, two more buttons show: <strong>Empty the form</strong> (the eraser) and <strong>Make the answers part of the
         pages</strong> (the padlock), which keeps what's filled in but takes the boxes away so nobody can change the answers.
       </p>
+      <p>
+        <strong>Headers and footers</strong> (the numbered page button): page numbers, Bates numbers or words along the top and bottom of the pages. Type{" "}
+        {"{page}"} for the page number, {"{pages}"} for the number of pages, {"{date}"} for today's date and {"{file}"} for the file's name, or use the buttons. Open it
+        again to change them or take them off.
+      </p>
       <p className="muted">Coming next: recent files, and keeping your work in the browser between visits.</p>
       <div className="platform-row">
         <span className="muted small">Shortcuts shown for</span>

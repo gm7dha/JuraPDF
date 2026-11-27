@@ -25,7 +25,7 @@ export interface OpenPdf {
 
 export type SidePane = "pages" | "bookmarks";
 
-export type DialogName = "help" | "password" | "print" | "watermark" | "whatsNew" | null;
+export type DialogName = "help" | "headers" | "password" | "print" | "watermark" | "whatsNew" | null;
 
 /** A version of the PDF to go back or forward to, and what changed it (for "Undo add watermark"). */
 export interface Snapshot {

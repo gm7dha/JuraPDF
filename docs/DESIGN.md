@@ -89,4 +89,7 @@ tests          Vitest, pure code only;  scripts/smoke-test.mjs drives the built 
 - **v0.10 (done)** — **filling in forms** (asked for by the owner, as in Tungsten PDF): any PDF's form boxes (text, tick,
   round buttons, drop-down lists, lists) filled in on the page, each answer an undo step; empty the form; make the answers
   part of the pages (flatten); Claude's read_form and fill_form.
+- **v0.11 (done)** — **headers, footers and page numbers** (Tungsten-style): six spots, {page}/{pages}/{date}/{file},
+  start number, Bates numbers, page range, preview; replaceable and removable; Claude's add_headers.
+- **Next (Tungsten-style)** — redaction, signatures, sticky-note comments, compressing, more form box kinds.
 - **Later** — recent files, keeping work in the browser between visits, comments and highlights, compressing large PDFs.

@@ -360,6 +360,13 @@ export const Icons = {
       <path d="M8 11V8a4 4 0 0 1 8 0v3M12 14.5v2" />
     </Svg>
   ),
+  /** Headers, footers and page numbers: a page with lines at its top and a number at its foot. */
+  PageNumbers: (p: IconProps) => (
+    <Svg {...p}>
+      <rect x="5" y="3" width="14" height="18" rx="1.5" />
+      <path d="M8 6.5h8M10.5 17.5h1.2v-2.5l-1 .6M13.5 15h1.5l-1.5 2.5h1.7" />
+    </Svg>
+  ),
   /** Pick things on a page: an arrow pointer. */
   Pointer: (p: IconProps) => (
     <Svg {...p}>

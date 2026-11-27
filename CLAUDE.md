@@ -85,6 +85,10 @@
   → `fillIn` (`src/app/formActions.ts`, one at a time) → `fillForm` (`src/pdf/forms.ts`, pdf-lib; round buttons may be given by their
   "on" name as pdf.js knows them; several-line boxes get a size that fits, `fitLines`; if pdf-lib can't draw a box, NeedAppearances).
   `clearForm` / `flattenForm` (ViewBar eraser and padlock, shown when `hasForm`). Claude: read_form, fill_form (`answerFor`).
+- Headers, footers and page numbers (v0.11, `HeadersDialog.tsx`, ViewBar button "Headers and footers"; `src/model/headers.ts`
+  pure: six `SLOTS`, codes {page} {pages} {date} {file}, `startAt`, `digits` for Bates numbers, `linesFor`; `src/pdf/headers.ts`):
+  drawn between `/JuraPDFHeaders BMC … EMC` (taken off with `removeMarked(page, tag)` before writing again, or by
+  `removeHeaders`), settings remembered as JSON in the catalog's `/JuraPDFHeaders` (`headersIn`). Claude: add_headers.
 - Changed words keep the PDF's own font (`src/pdf/fonts.ts` `pageFont`: simple fonts by ToUnicode or WinAnsi and their
   Widths, Type0 Identity-H by ToUnicode and W; `src/model/fontCodes.ts` pure), found by the name pdf.js gives
   (`RunFont` in `wordRuns`, via `page.commonObjs`); typed in the font pdf.js loaded into the browser (`own.screen`);
@@ -117,7 +121,7 @@
   (`name` on hello/doc/change); `MAX_MESSAGE_BYTES` 150 MB. The session holds a `PdfDoc` {name, bytes}, Claude's own
   undo list and a `label` per change ("turned page 2") that becomes the tab's undo step ("Claude: turned page 2",
   `describeChange`). `tools.ts`: format_guide, live_status, describe_pdf, read_words, list_pdfs, open_pdf, new_pdf,
-  save_pdf, add_watermark, add_words, add_picture, add_shape, add_form_box, read_form, fill_form, turn_pages, delete_pages, move_pages, add_blank_pages, bring_in_pdf, save_pages_as_pdf, undo —
+  save_pdf, add_watermark, add_words, add_picture, add_shape, add_form_box, read_form, fill_form, add_headers, turn_pages, delete_pages, move_pages, add_blank_pages, bring_in_pdf, save_pages_as_pdf, undo —
   page numbers from 1 (`pagesOf`), changes through `src/pdf/pages.ts` and `watermark.ts`. `reading.ts` reads words with
   pdf.js's legacy build in Node (the worker imported into the bundle as `globalThis.pdfjsWorker`). `quietStdout.ts` is
   imported first by server.ts so nothing pdf.js prints reaches stdout. In the app: `LiveButton` in the TopBar (with a

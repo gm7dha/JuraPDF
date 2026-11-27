@@ -157,6 +157,13 @@ describe("reading and changing a PDF", () => {
     expect(form).toMatch(/drop-down list on page 1, "No"; choices "Yes", "No"/);
     expect(await bad(s, "fill_form", { answers: { Agree: "perhaps" } })).toMatch(/tick box/);
     expect(await bad(s, "fill_form", { answers: { Nope: "x" } })).toMatch(/no form box called "Nope"/);
+    // Page numbers and headers.
+    expect(await ok(s, "add_headers", { bottom_middle: "Page {page} of {pages}" })).toMatch(/^Added page numbers to every page\.$/);
+    expect((await words(s))[0]).toContain("Page 1 of");
+    expect(await ok(s, "add_headers", { top_right: "ACME{page}", digits: 6, pages: "2-" })).toMatch(/^Added a header to /);
+    expect((await words(s))[0]).not.toContain("Page 1 of");
+    expect(await ok(s, "add_headers", { take_off: true })).toBe("Took off the headers and footers.");
+    expect(await bad(s, "add_headers", {})).toMatch(/at least one spot/);
     expect(await bad(s, "add_words", { page: 1, words: "Tick ✓" })).toMatch(/✓/);
     expect(await bad(s, "add_words", { page: 99, words: "x" })).toMatch(/page must be/);
     expect(await bad(s, "add_picture", { page: 1, picture: "missing.png" })).toMatch(/no file called/);
