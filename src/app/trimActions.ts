@@ -29,6 +29,7 @@ export function stopTrimming(): void {
   const s = useStore.getState();
   if (s.placing?.kind === "trim") s.setPlacing(null);
   s.setTrimBox(null);
+  for (const t of s.toasts) if (t.text.startsWith("Drag a box round")) s.dismissToast(t.id);
 }
 
 let from: { page: number; x: number; y: number } | null = null;
@@ -83,7 +84,6 @@ export async function trimChosen(which: TrimWhich): Promise<void> {
       return;
     }
     stopTrimming();
-    for (const t of useStore.getState().toasts) if (t.text.startsWith("Drag a box round")) useStore.getState().dismissToast(t.id);
     await applyChange(out.bytes, `trim ${pagesLabel(out.trimmed)}`);
     const skipped = out.skipped.length ? ` ${out.skipped.length === 1 ? "Page" : "Pages"} ${out.skipped.map((p) => p + 1).join(", ")} ${out.skipped.length === 1 ? "is" : "are"} too small, so left as ${out.skipped.length === 1 ? "it was" : "they were"}.` : "";
     say(`Trimmed ${pagesLabel(out.trimmed)}: ${marginsLabel(margins)}.${skipped} Nothing's thrown away: “Show whole pages” in the Trim tool (C) brings the edges back.`, "success");
