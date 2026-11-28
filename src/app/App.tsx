@@ -20,6 +20,8 @@ import { WhatsNewDialog } from "./WhatsNewDialog";
 import { inPopup, inTextBox } from "./popupGuard";
 import { PickedWordsBar } from "./PickedWordsBar";
 import { RedactBar } from "./RedactBar";
+import { TrimBar } from "./TrimBar";
+import { startTrimming } from "./trimActions";
 import { startNoting } from "./noteActions";
 import { startMarking } from "./redactActions";
 import { SearchBar } from "./SearchBar";
@@ -50,6 +52,7 @@ export function App() {
           <SearchBar />
           <PickedWordsBar />
           <RedactBar />
+          <TrimBar />
         </main>
       ) : (
         <Welcome />
@@ -230,6 +233,11 @@ function useShortcuts() {
         if (key === "b") {
           e.preventDefault();
           startMarking();
+          return;
+        }
+        if (key === "c") {
+          e.preventDefault();
+          startTrimming();
           return;
         }
         if (key === "k") {

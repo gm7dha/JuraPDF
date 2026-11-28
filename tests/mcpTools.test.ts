@@ -95,6 +95,17 @@ describe("reading and changing a PDF", () => {
     expect(await ok(s, "read_words", { pages: "2-3" })).toBe("--- Page 2 ---\nReport page 2\n--- Page 3 ---\nReport page 3");
   });
 
+  it("trims pages and shows them whole again", async () => {
+    const { s } = await session({ "Report.pdf": await pdfOf("Report", 3) });
+    await ok(s, "open_pdf", { filename: "Report" });
+    expect(await ok(s, "trim_pages", { pages: "1-2", left: 72, bottom: 36 })).toBe("Trimmed pages 1 and 2: 2.5 cm off the left, 1.3 cm off the bottom.");
+    expect(await ok(s, "describe_pdf")).toMatch(/Pages 1-2: 185 × 284 mm/);
+    expect(await bad(s, "trim_pages", { pages: 3 })).toMatch(/at least one edge/);
+    expect(await bad(s, "trim_pages", { pages: 3, left: 590 })).toMatch(/too little of page 3/);
+    expect(await bad(s, "trim_pages", { pages: 3, whole_pages: true })).toMatch(/Page 3 isn't trimmed/);
+    expect(await ok(s, "trim_pages", { pages: "all", whole_pages: true })).toBe("Pages 1 and 2 show all of the paper again.");
+  });
+
   it("compares with another PDF in the folder", async () => {
     const { s } = await session({ "Report.pdf": await pdfOf("Report", 3), "Old.pdf": await pdfOf("Report", 2), "Same.pdf": await pdfOf("Report", 3) });
     await ok(s, "open_pdf", { filename: "Report" });

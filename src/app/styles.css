@@ -2826,3 +2826,36 @@ textarea.form-box {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
+
+/* Trimming pages: the part kept, with the edges to go greyed out. One row where there's room. */
+.trim-bar {
+  width: max-content;
+}
+
+.trim-bar .trim-which {
+  margin: 0;
+  min-width: 180px;
+}
+
+.trim-bar .trim-which.three {
+  min-width: 300px;
+}
+
+.trim-bar .trim-which button {
+  padding: 4px 8px;
+}
+
+.trim-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.trim-box {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1.5px dashed var(--accent);
+  box-shadow: 0 0 0 100000px rgba(31, 42, 55, 0.45);
+}

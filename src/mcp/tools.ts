@@ -11,7 +11,8 @@ import { pagesLabel } from "../model/pages";
 import { looksLikePdf, paperName, PDF_EXTENSION, sizeLabel } from "../model/pdfFile";
 import { parsePageRange } from "../model/printMark";
 import { DEFAULT_WATERMARK, FONT_NAMES, PLACEMENT_NAMES, type FontChoice, type Placement, type WatermarkSettings } from "../model/watermark";
-import { addBlankPage, deletePages, extractPages, insertPdf, PageProblem, reorderPages, turnPages } from "../pdf/pages";
+import { addBlankPage, deletePages, extractPages, insertPdf, PageProblem, reorderPages, trimPages, turnPages, untrimPages } from "../pdf/pages";
+import { marginsLabel, trims } from "../model/trim";
 import { addWatermark, LockedPdf, WatermarkProblem, type WatermarkPicture } from "../pdf/watermark";
 import { additionLabel, choicesOf, FIELD_SIZE, cleanSize, DEFAULT_WORDS, linesOf, SHAPE_NAMES, SHAPE_STYLE, startingPictureSize, type ShapeKind } from "../model/additions";
 import { answerFor, answerLabel, FORM_KIND_NAMES, type Answer, type FormBoxKind, type FormValue } from "../model/forms";
@@ -37,7 +38,7 @@ export const FORMAT_GUIDE = `How JuraPDF works with PDFs:
 - Pages are numbered from 1, as the user sees them. "pages" takes a number, a list of numbers, or text like "1-3, 5", "4-" (4 to the end), "all", "odd", "even" or "last".
 - Sizes are paper names (A4, Letter…) or millimetres; "landscape" means wider than tall. A page's "turn" is how it has been rotated to show (0, 90, 180 or 270 degrees clockwise).
 - describe_pdf gives the pages and a taste of their words; read_words gives the words of chosen pages (scanned pages, being pictures, have none); compare_pdfs lists the words that differ from another PDF in the folder (an older version, say).
-- Changes: add_watermark (words or a PNG/JPG picture from the folder, saved into the pages), add_words and add_picture (writing or a PNG/JPG picture such as a signature on one page, placed in points from its top-left corner as it shows; describe_pdf gives the page sizes), add_shape (a see-through highlight over words, or a box, oval, line or arrow to point something out, a box or oval filled in if wanted; read_words gives where words are), add_form_box (a text box, tick box or choice list that whoever opens the PDF can fill in, e.g. to make a printed form fillable), fill_form (fill in the PDF's form boxes; read_form lists them with what's in them), add_headers (page numbers, Bates numbers or words along the top and bottom of pages), add_note (a sticky note, a comment pinned to a page; read_notes lists the notes and their replies, delete_note takes one off), tidy_pdf (a little smaller, looking the same), turn_pages, delete_pages (one page must stay), move_pages, add_blank_pages, bring_in_pdf (all the pages of another PDF from the folder: this is how to join PDFs), save_pages_as_pdf (some pages as a new PDF in the folder: this is how to split one). undo takes back your last change.
+- Changes: add_watermark (words or a PNG/JPG picture from the folder, saved into the pages), add_words and add_picture (writing or a PNG/JPG picture such as a signature on one page, placed in points from its top-left corner as it shows; describe_pdf gives the page sizes), add_shape (a see-through highlight over words, or a box, oval, line or arrow to point something out, a box or oval filled in if wanted; read_words gives where words are), add_form_box (a text box, tick box or choice list that whoever opens the PDF can fill in, e.g. to make a printed form fillable), fill_form (fill in the PDF's form boxes; read_form lists them with what's in them), add_headers (page numbers, Bates numbers or words along the top and bottom of pages), add_note (a sticky note, a comment pinned to a page; read_notes lists the notes and their replies, delete_note takes one off), tidy_pdf (a little smaller, looking the same), turn_pages, trim_pages (crop the edges off pages; whole_pages brings them back), delete_pages (one page must stay), move_pages, add_blank_pages, bring_in_pdf (all the pages of another PDF from the folder: this is how to join PDFs), save_pages_as_pdf (some pages as a new PDF in the folder: this is how to split one). undo takes back your last change.
 - Locked PDFs (with a password or protected against changes) can be read but not changed.
 - Talk to the user in plain words: "pages", "words", "picture", "see-through" — not PDF jargon.`;
 
@@ -820,6 +821,52 @@ export const TOOLS: ToolDef[] = [
       const words = direction === "half" ? "upside down" : `a quarter turn ${direction === "right" ? "clockwise" : "anticlockwise"}`;
       await change(s, (bytes) => turnPages(bytes, pages, by), `turned ${pagesLabel(pages)}`);
       return say(`Turned ${pagesLabel(pages)} ${words}.`);
+    },
+  },
+  {
+    name: "trim_pages",
+    title: "Trim (crop) pages",
+    description:
+      "Trim the edges off pages, as they show: points (72 to the inch) off the left, top, right and bottom (describe_pdf gives the page sizes). Nothing is thrown away: whole_pages: true shows all of the paper again.",
+    inputSchema: {
+      type: "object",
+      properties: { pages: PAGES, left: { type: "number" }, top: { type: "number" }, right: { type: "number" }, bottom: { type: "number" }, whole_pages: { type: "boolean", description: "Show all of the paper again (undo earlier trims)." } },
+      required: ["pages"],
+    },
+    async run(s, a) {
+      noExtras(a, ["pages", "left", "top", "right", "bottom", "whole_pages"], "trim_pages");
+      const doc = needDoc(s);
+      const pages = pagesOf(a.pages, (await pageFacts(doc.bytes)).length, "pages");
+      if (bool(a.whole_pages, "whole_pages", false)) {
+        let done: number[] = [];
+        await change(
+          s,
+          async (bytes) => {
+            const out = await untrimPages(bytes, pages);
+            if (!out.untrimmed.length) throw new PageProblem(pages.length === 1 ? `${pagesLabel(pages).replace(/^p/, "P")} isn't trimmed: it already shows all of its paper.` : "None of those pages is trimmed: they already show all of their paper.");
+            done = out.untrimmed;
+            return out.bytes;
+          },
+          `showed all of ${pagesLabel(pages)}`,
+        );
+        return say(`${pagesLabel(done).replace(/^p/, "P")} show${done.length === 1 ? "s" : ""} all of the paper again.`);
+      }
+      const m = { left: num(a.left, "left", { min: 0, fallback: 0 }), top: num(a.top, "top", { min: 0, fallback: 0 }), right: num(a.right, "right", { min: 0, fallback: 0 }), bottom: num(a.bottom, "bottom", { min: 0, fallback: 0 }) };
+      if (!trims(m)) throw new InputError("Give how much to trim off at least one edge: left, top, right or bottom, in points.");
+      let skipped: number[] = [];
+      let trimmed: number[] = [];
+      await change(
+        s,
+        async (bytes) => {
+          const out = await trimPages(bytes, pages, m);
+          if (!out.trimmed.length) throw new PageProblem(`That would leave too little of ${pagesLabel(pages)} (at least half an inch each way must stay), so nothing was trimmed.`);
+          skipped = out.skipped;
+          trimmed = out.trimmed;
+          return out.bytes;
+        },
+        `trimmed ${pagesLabel(pages)}`,
+      );
+      return say(`Trimmed ${pagesLabel(trimmed)}: ${marginsLabel(m)}.${skipped.length ? ` Left ${pagesLabel(skipped)} as ${skipped.length === 1 ? "it was" : "they were"}: too small to trim that much.` : ""}`);
     },
   },
   {

@@ -104,6 +104,10 @@ export function HelpDialog() {
         pictures sharp for printing; “As small as possible” makes them softer. The words stay as sharp as ever, and Undo brings back the original.
       </p>
       <p>
+        <strong>Trim pages</strong> (C): drag a box round the part of a page to keep, choose this page or all of them, and click <strong>Trim</strong>. The edges
+        outside are hidden, not thrown away: <strong>Show whole pages</strong> brings them back. Things you added stay where they were.
+      </p>
+      <p>
         <strong>Compare</strong> (two pages with arrows): pick another PDF, an older version say, and every word that differs is found. The <strong>Changes</strong> tab
         lists them; click one (or press F4 and Shift+F4) to see it on its page: new words in green, changed ones in amber, a red bar where words were taken out.{" "}
         <strong>Mark them on this PDF</strong> highlights them for good, with a red sticky note saying what was taken out or what it used to say.

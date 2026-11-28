@@ -111,6 +111,11 @@
   `cleanStamp` (localStorage `jurapdf.stamp`), `stampPlacingSize`): `drawStamp` draws it on a canvas (PNG, see-through) and it's
   placed like a signature through `placePicture`, the ChosenPicture carrying `stamp` (its words) → PictureItem `stamp` (Undo label
   "stamp “APPROVED” on page N"). Browser only, so Claude has no stamp tool (add_words and add_shape do the same job).
+- Trim pages (v0.18, `TrimBar.tsx` with `TrimLayer`, `src/app/trimActions.ts`, key C, `placing` {kind: "trim"}, `trimBox` in the store;
+  `src/model/trim.ts` pure: `marginsFor`, `keptBox` (at least `LEAST_LEFT` 36 pt stays), `ownBox`, `marginsLabel`): `trimPages` /
+  `untrimPages` in src/pdf/pages.ts set the crop box (`reframe`, which also moves `/JuraPDFItems` positions by the shift of the
+  shown top-left, so kept additions don't jump). Sizes as shown come from the crop box within the media box (pdf.js, `keptSizes`,
+  and `pageFacts` in reading.ts). Claude: trim_pages (whole_pages: true to untrim).
 - Compare two PDFs (v0.17, ViewBar "Compare with another PDF", `src/app/compareActions.ts`, `ChangesList.tsx` (side panel tab
   "changes", shown only while `compare` is set in the store, not remembered), `CompareLayer.tsx`; `src/model/compare.ts` pure:
   `wordsIn` (words from pdf.js bits, with where each sits), `compareLists` (Myers, gives up past `MOST_DIFFERENCES`),
@@ -156,7 +161,7 @@
   (`name` on hello/doc/change); `MAX_MESSAGE_BYTES` 150 MB. The session holds a `PdfDoc` {name, bytes}, Claude's own
   undo list and a `label` per change ("turned page 2") that becomes the tab's undo step ("Claude: turned page 2",
   `describeChange`). `tools.ts`: format_guide, live_status, describe_pdf, read_words, list_pdfs, open_pdf, new_pdf,
-  save_pdf, add_watermark, add_words, add_picture, add_shape, add_form_box, read_form, fill_form, add_headers, read_notes, add_note, delete_note, tidy_pdf, compare_pdfs, turn_pages, delete_pages, move_pages, add_blank_pages, bring_in_pdf, save_pages_as_pdf, undo —
+  save_pdf, add_watermark, add_words, add_picture, add_shape, add_form_box, read_form, fill_form, add_headers, read_notes, add_note, delete_note, tidy_pdf, compare_pdfs, turn_pages, trim_pages, delete_pages, move_pages, add_blank_pages, bring_in_pdf, save_pages_as_pdf, undo —
   page numbers from 1 (`pagesOf`), changes through `src/pdf/pages.ts` and `watermark.ts`. `reading.ts` reads words with
   pdf.js's legacy build in Node (the worker imported into the bundle as `globalThis.pdfjsWorker`). `quietStdout.ts` is
   imported first by server.ts so nothing pdf.js prints reaches stdout. In the app: `LiveButton` in the TopBar (with a

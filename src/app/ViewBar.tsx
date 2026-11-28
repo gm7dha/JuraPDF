@@ -12,6 +12,7 @@ import { savePagesAsPictures, saveWordsAsText } from "./exportActions";
 import { readWordsInPictures } from "./ocrActions";
 import { emptyForm, fixAnswers, hasForm } from "./formActions";
 import { startComparing } from "./compareActions";
+import { startTrimming, stopTrimming } from "./trimActions";
 import { startNoting } from "./noteActions";
 import { startMarking, stopMarking } from "./redactActions";
 import { addBlank, deleteChosen, insertFromFile, moveChosen, saveChosenAsNew, turnChosen } from "./pageActions";
@@ -41,6 +42,7 @@ export function ViewBar() {
   const fielding = useStore((s) => s.placing?.kind === "field" || (s.draft?.kind === "field" && s.draft.id === undefined));
   const marking = useStore((s) => s.placing?.kind === "redact");
   const comparing = useStore((s) => !!s.compare);
+  const trimming = useStore((s) => s.placing?.kind === "trim");
   const noting = useStore((s) => s.placing?.kind === "note");
   const inking = useStore((s) => s.placing?.kind === "ink" || (s.draft?.kind === "ink" && s.draft.id === undefined));
   const selected = useStore((s) => s.selected);
@@ -331,6 +333,15 @@ export function ViewBar() {
           title="Headers, footers and page numbers: words or numbers along the top and bottom of the pages (Bates numbers too)"
         >
           <Icons.PageNumbers />
+        </button>
+        <button
+          type="button"
+          className={`icon-button${trimming ? " active" : ""}`}
+          onClick={() => (trimming ? stopTrimming() : startTrimming())}
+          aria-label="Trim pages"
+          title="Trim (crop) pages: drag a box round the part to keep, and the edges outside it are trimmed off this page or all of them (C)"
+        >
+          <Icons.Trim />
         </button>
         <button
           type="button"
