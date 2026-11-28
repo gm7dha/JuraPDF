@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import { PDFDocument, degrees } from "pdf-lib";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 
-import { answerFor, answerLabel, fieldLabel, fitFontSize, formBoxesFrom, sameValue, tabOrder, type FormFieldInfo } from "../src/model/forms";
+import type { FieldItem } from "../src/model/additions";
+import { answerFor, answerLabel, DATE_FORMATS, dateForBox, dateFormatIn, fieldLabel, fitFontSize, formBoxesFrom, readDate, sameValue, tabOrder, writeDate, type FormFieldInfo } from "../src/model/forms";
+import { addItems, changeItem } from "../src/pdf/additions";
+import { keptIn } from "../src/pdf/items";
 import { clearForm, fillForm, flattenForm, formFields, FormProblem } from "../src/pdf/forms";
 
 const STANDARD_FONTS = new URL("../node_modules/pdfjs-dist/standard_fonts/", import.meta.url).pathname;
@@ -193,4 +196,100 @@ describe("answers in words", () => {
     expect(fitFontSize({ height: 20 })).toBe(12);
     expect(fitFontSize({ height: 60, multiline: true })).toBe(10);
   });
+});
+
+describe("dates", () => {
+  it("reads the way a box writes dates from its instructions", () => {
+    expect(dateFormatIn('AFDate_FormatEx("dd/mm/yyyy");')).toBe("dd/mm/yyyy");
+    expect(dateFormatIn("AFDate_KeystrokeEx('mmm d, yyyy')")).toBe("mmm d, yyyy");
+    expect(dateFormatIn("AFDate_FormatEx (\"yyyy-mm-dd\")")).toBe("yyyy-mm-dd");
+    expect(dateFormatIn("AFDate_Format(2)")).toBe("mm/dd/yy");
+    expect(dateFormatIn('AFNumber_Format(2, 0, 0, 0, "", true);')).toBeUndefined();
+    expect(dateFormatIn(undefined)).toBeUndefined();
+  });
+
+  it("writes and reads dates in each way", () => {
+    expect(writeDate(2026, 3, 7, "dd/mm/yyyy")).toBe("07/03/2026");
+    expect(writeDate(2026, 3, 7, "mm/dd/yyyy")).toBe("03/07/2026");
+    expect(writeDate(2026, 3, 7, "d mmmm yyyy")).toBe("7 March 2026");
+    expect(writeDate(2026, 3, 7, "mmmm d, yyyy")).toBe("March 7, 2026");
+    expect(writeDate(2026, 3, 7, "dd-mmm-yy")).toBe("07-Mar-26");
+    for (const f of DATE_FORMATS) expect(readDate(writeDate(2026, 11, 28, f), f)).toEqual([2026, 11, 28]);
+    expect(readDate("2026-02-30", "dd/mm/yyyy")).toBeNull();
+    expect(readDate("31/04/2026", "dd/mm/yyyy")).toBeNull();
+    expect(readDate("soon", "dd/mm/yyyy")).toBeNull();
+    expect(dateForBox("2026-11-28", "d mmmm yyyy")).toBe("28 November 2026");
+    expect(dateForBox("28 nov 2026", "d mmmm yyyy")).toBe("28 November 2026");
+    expect(dateForBox("", "dd/mm/yyyy")).toBe("");
+  });
+
+  it("takes dates in a date box from Claude, written the box's way", () => {
+    const field: FormFieldInfo = { name: "When", kind: "text", value: "", pages: [0], dateFormat: "dd/mm/yyyy" };
+    expect(answerFor(field, "2026-11-28")).toEqual({ value: "28/11/2026" });
+    expect(answerFor(field, "tomorrow")).toHaveProperty("problem");
+  });
+});
+
+describe("adding round buttons and date boxes", () => {
+  const round = (option: string, y: number, name = "Size"): FieldItem => ({ kind: "field", field: "round", page: 0, x: 50, y, width: 14, height: 14, name, option });
+  it("makes a set of round buttons to pick one from, and a date box Acrobat knows", async () => {
+    const doc = await PDFDocument.create();
+    doc.addPage([400, 400]);
+    let bytes: Uint8Array = await doc.save();
+    bytes = await addItems(bytes, [round("Small", 50)]);
+    bytes = await addItems(bytes, [round("Large", 80)]);
+    bytes = await addItems(bytes, [round("Small", 110)]);
+    bytes = await addItems(bytes, [{ kind: "field", field: "date", page: 0, x: 100, y: 50, width: 120, height: 22, name: "When", dateFormat: "d mmmm yyyy" }]);
+    const fields = await formFields(bytes);
+    expect(fields.map((f) => [f.name, f.kind, f.options, f.dateFormat])).toEqual([
+      ["Size", "radio", ["Small", "Large", "Option 1"], undefined],
+      ["When", "text", undefined, "d mmmm yyyy"],
+    ]);
+    const kept = (await keptIn(bytes))[0];
+    expect(kept.map((k) => (k.item as FieldItem).option ?? (k.item as FieldItem).dateFormat)).toEqual(["Small", "Large", "Option 1", "d mmmm yyyy"]);
+    const boxes = await boxesOn(bytes, 1);
+    expect(boxes.filter((b) => b.kind === "radio")).toHaveLength(3);
+    expect(boxes.find((b) => b.name === "When")?.dateFormat).toBe("d mmmm yyyy");
+
+    // Picking one, then moving another: the set keeps all three buttons.
+    bytes = await fillForm(bytes, [{ name: "Size", value: "Large" }]);
+    const large = kept.find((k) => (k.item as FieldItem).option === "Large")!;
+    bytes = await changeItem(bytes, 0, large.id, { ...(large.item as FieldItem), y: 200 });
+    const size = async () => (await formFields(bytes)).find((f) => f.name === "Size");
+    expect((await size())?.options?.sort()).toEqual(["Large", "Option 1", "Small"]);
+    const radios = (await boxesOn(bytes, 1)).filter((b) => b.kind === "radio");
+    expect(radios.map((b) => Math.round(b.y)).sort((a, b) => a - b)).toEqual([50, 110, 200]);
+    // Taking one off leaves the other two.
+    const third = (await keptIn(bytes))[0].find((k) => (k.item as FieldItem).option === "Option 1")!;
+    bytes = await changeItem(bytes, 0, third.id, null);
+    expect((await size())?.options?.sort()).toEqual(["Large", "Small"]);
+    expect((await boxesOn(bytes, 1)).filter((b) => b.kind === "radio")).toHaveLength(2);
+  });
+});
+
+describe("dates typed loosely", () => {
+  it("takes numbers in the format's order of day and month", () => {
+    expect(dateForBox("3/4/2026", "d mmmm yyyy")).toBe("3 April 2026");
+    expect(dateForBox("3.4.26", "dd/mm/yyyy")).toBe("03/04/2026");
+    expect(dateForBox("3/4/2026", "mmmm d, yyyy")).toBe("March 4, 2026");
+    expect(dateForBox("3 4 2026", "yyyy-mm-dd")).toBe("2026-03-04");
+  });
+});
+
+describe("new form boxes on turned pages", () => {
+  for (const turn of [90, 180, 270]) {
+    it(`lands round buttons and date boxes where they were put, turned ${turn}`, async () => {
+      const doc = await PDFDocument.create();
+      doc.addPage([400, 600]).setRotation(degrees(turn));
+      let bytes: Uint8Array = await doc.save();
+      bytes = await addItems(bytes, [{ kind: "field", field: "round", page: 0, x: 50, y: 60, width: 14, height: 14, name: "Pick", option: "A" }]);
+      bytes = await addItems(bytes, [{ kind: "field", field: "date", page: 0, x: 100, y: 120, width: 120, height: 22, name: "When", dateFormat: "dd/mm/yyyy" }]);
+      const boxes = await boxesOn(bytes, 1);
+      const at = (name: string) => boxes.find((b) => b.name === name)!;
+      // (Within a point: pdf-lib rounds a round button's box a little.)
+      const near = (b: { x: number; y: number; width: number; height: number }, want: number[]) => [b.x, b.y, b.width, b.height].forEach((v, i) => expect(Math.abs(v - want[i])).toBeLessThan(1.01));
+      near(at("Pick"), [50, 60, 14, 14]);
+      near(at("When"), [100, 120, 120, 22]);
+    });
+  }
 });

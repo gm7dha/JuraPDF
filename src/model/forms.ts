@@ -45,6 +45,8 @@ export interface FormBox {
   several?: boolean;
   /** A secret (password) box: dots shown. */
   secret?: boolean;
+  /** A date box: how its dates are written (from the form's own instructions, e.g. "dd/mm/yyyy"). */
+  dateFormat?: string;
 }
 
 /** An answer to put in a form: words, ticked or not, or the choice(s) picked. */
@@ -66,6 +68,8 @@ export interface FormFieldInfo {
   readOnly?: boolean;
   /** Pages it's on, from 0. */
   pages: number[];
+  /** A date box: how its dates are written. */
+  dateFormat?: string;
 }
 
 export const FORM_KIND_NAMES: Record<FormFieldInfo["kind"], string> = {
@@ -143,6 +147,11 @@ export function answerFor(field: FormFieldInfo, given: unknown): { value: FormVa
     if (["no", "off", "false", "unticked", "untick", "unchecked", "", "0"].includes(t)) return { value: false };
     return { problem: `${label} is a tick box: give true (ticked) or false.` };
   }
+  if (field.kind === "text" && field.dateFormat && typeof given === "string") {
+    const date = dateForBox(given, field.dateFormat);
+    if (date === null) return { problem: `${label} is a date box: give a date as ${field.dateFormat} or yyyy-mm-dd.` };
+    return { value: date };
+  }
   if (field.kind === "text") {
     if (typeof given === "string") return { value: given };
     if (typeof given === "number" || typeof given === "boolean") return { value: String(given) };
@@ -195,6 +204,7 @@ interface WidgetData {
   textAlignment?: number;
   defaultAppearanceData?: { fontSize?: number };
   password?: boolean;
+  actions?: Record<string, string[]> | null;
 }
 
 const asText = (v: unknown): string => (typeof v === "string" ? v : v === undefined || v === null ? "" : Array.isArray(v) ? v.map(asText).join(", ") : String(v));
@@ -224,6 +234,7 @@ export function formBoxesFrom(annotations: readonly unknown[], toShown: (rect: n
         fontSize: a.defaultAppearanceData?.fontSize || 0,
         align: a.textAlignment === 1 || a.textAlignment === 2 ? a.textAlignment : 0,
         secret: a.password || undefined,
+        dateFormat: dateFormatIn(a.actions?.Format?.join("\n")),
       });
     } else if (a.fieldType === "Btn" && a.checkBox) {
       const on = a.exportValue ?? "Yes";
@@ -238,6 +249,103 @@ export function formBoxesFrom(annotations: readonly unknown[], toShown: (rect: n
     }
   }
   return boxes;
+}
+
+/** Ways of writing dates offered for date boxes (as Acrobat writes them: d day, m month, y year). */
+export const DATE_FORMATS = ["dd/mm/yyyy", "mm/dd/yyyy", "yyyy-mm-dd", "d mmmm yyyy", "mmmm d, yyyy", "dd-mmm-yyyy"];
+
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+/** The date format a box's own instructions give (Acrobat's AFDate_FormatEx("…") or AFDate_Format(n)), if any. */
+export function dateFormatIn(script: string | undefined): string | undefined {
+  if (!script) return undefined;
+  const ex = /AFDate_(?:Format|Keystroke)Ex\s*\(\s*["']([^"']+)["']/.exec(script);
+  if (ex) return ex[1];
+  // The old numbered ones (Acrobat's list).
+  const old = /AFDate_(?:Format|Keystroke)\s*\(\s*(\d+)\s*\)/.exec(script);
+  const OLD = ["m/d", "m/d/yy", "mm/dd/yy", "mm/yy", "d-mmm", "d-mmm-yy", "dd-mmm-yy", "yy-mm-dd", "mmm-yy", "mmmm-yy", "mmm d, yyyy", "mmmm d, yyyy", "m/d/yy h:MM tt", "m/d/yy HH:MM"];
+  return old ? OLD[Number(old[1])] : undefined;
+}
+
+/** The parts of a format: d, dd, m, mm, mmm, mmmm, yy, yyyy, and anything else as it is. */
+function formatParts(format: string): string[] {
+  return format.match(/d+|m+|y+|[^dmy]+/g) ?? [];
+}
+
+/** A date written in a format, e.g. (2026, 11, 28) as "dd/mm/yyyy" → "28/11/2026". */
+export function writeDate(year: number, month: number, day: number, format: string): string {
+  return formatParts(format)
+    .map((p) => {
+      if (p === "d") return String(day);
+      if (p === "dd") return String(day).padStart(2, "0");
+      if (p === "m") return String(month);
+      if (p === "mm") return String(month).padStart(2, "0");
+      if (p === "mmm") return MONTHS[month - 1].slice(0, 3);
+      if (/^m{4,}$/.test(p)) return MONTHS[month - 1];
+      if (p === "yy") return String(year % 100).padStart(2, "0");
+      if (/^y{3,}$/.test(p)) return String(year);
+      return p;
+    })
+    .join("");
+}
+
+/** A real day? */
+function realDay(y: number, m: number, d: number): boolean {
+  if (m < 1 || m > 12 || d < 1) return false;
+  return d <= new Date(Date.UTC(y, m, 0)).getUTCDate();
+}
+
+/**
+ * Read a date written in a format, giving [year, month, day]; null when it
+ * isn't one. Also takes yyyy-mm-dd, and numbers only (3/4/2026) in the
+ * format's order of day and month, whatever the format.
+ */
+export function readDate(text: string, format: string): [number, number, number] | null {
+  const exact = readDateAs(text, format);
+  if (exact) return exact;
+  const dayFirst = format.search(/d/) < format.search(/m/);
+  return readDateAs(text.replace(/[\s.,-]+/g, "/"), dayFirst ? "d/m/yyyy" : "m/d/yyyy");
+}
+
+function readDateAs(text: string, format: string): [number, number, number] | null {
+  const t = text.trim();
+  const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(t);
+  if (iso) {
+    const [y, m, d] = iso.slice(1).map(Number);
+    return realDay(y, m, d) ? [y, m, d] : null;
+  }
+  let y = NaN;
+  let m = NaN;
+  let d = NaN;
+  let rest = t;
+  for (const p of formatParts(format)) {
+    if (/^[dmy]/.test(p)) {
+      const named = /^m{3,}$/.test(p);
+      const got = named ? /^[A-Za-z]+/.exec(rest) : /^\d+/.exec(rest);
+      if (!got) return null;
+      rest = rest.slice(got[0].length);
+      if (named) {
+        const i = MONTHS.findIndex((n) => n.toLowerCase().startsWith(got[0].toLowerCase().slice(0, 3)));
+        if (i < 0) return null;
+        m = i + 1;
+      } else if (p[0] === "d") d = Number(got[0]);
+      else if (p[0] === "m") m = Number(got[0]);
+      else y = got[0].length <= 2 ? 2000 + Number(got[0]) : Number(got[0]);
+    } else {
+      // Separators: any spaces, commas, slashes or dashes will do.
+      const sep = /^[\s,./-]*/.exec(rest)![0];
+      rest = rest.slice(sep.length);
+    }
+  }
+  if (rest.trim() || !realDay(y, m, d)) return null;
+  return [y, m, d];
+}
+
+/** A date for a box with this format: written the box's way, from either its own way or yyyy-mm-dd; null when it isn't a date. */
+export function dateForBox(text: string, format: string): string | null {
+  if (!text.trim()) return "";
+  const got = readDate(text, format);
+  return got ? writeDate(got[0], got[1], got[2], format) : null;
 }
 
 /** A list's choice as pdf-lib knows it (by what's shown), from what's written in the form (or shown). */

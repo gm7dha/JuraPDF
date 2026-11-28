@@ -177,6 +177,15 @@ describe("reading and changing a PDF", () => {
     expect(form).toMatch(/drop-down list on page 1, "No"; choices "Yes", "No"/);
     expect(await bad(s, "fill_form", { answers: { Agree: "perhaps" } })).toMatch(/tick box/);
     expect(await bad(s, "fill_form", { answers: { Nope: "x" } })).toMatch(/no form box called "Nope"/);
+    // Round buttons in a set, and a date box.
+    expect(await ok(s, "add_form_box", { page: 1, kind: "round", x: 300, y: 100, name: "Shift", option: "Day" })).toBe("Added a round button to page 1.");
+    await ok(s, "add_form_box", { page: 1, kind: "round", x: 340, y: 100, name: "Shift", option: "Night" });
+    expect(await ok(s, "add_form_box", { page: 1, kind: "date", x: 300, y: 140, name: "Done on", date_format: "d mmmm yyyy" })).toBe("Added a date box to page 1.");
+    expect(await ok(s, "fill_form", { answers: { Shift: "night", "Done on": "2026-11-28" } })).toBe("Filled in 2 form boxes.");
+    const more = await ok(s, "read_form");
+    expect(more).toMatch(/"Shift": set of round buttons on page 1, "Night"; choices "Day", "Night"/);
+    expect(more).toMatch(/"Done on": date box \(dates written d mmmm yyyy\) on page 1, "28 November 2026"/);
+    expect(await bad(s, "fill_form", { answers: { "Done on": "someday" } })).toMatch(/date box/);
     // Page numbers and headers.
     expect(await ok(s, "add_headers", { bottom_middle: "Page {page} of {pages}" })).toMatch(/^Added page numbers to every page\.$/);
     expect((await words(s))[0]).toContain("Page 1 of");

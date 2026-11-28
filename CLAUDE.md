@@ -75,7 +75,10 @@
   a draft), `nudgeDraft`, `duplicateDraft`, `deleteDraft`; a click away from a draft is Done; after a write the draft stays
   on show until the page is redrawn (`landed`). `arrange` doesn't wrap a page it already wrapped (per-PDF sets), so
   nesting stays shallow. Shapes have `fill` and `seeThrough`; `InkItem` is the pen (`InkDraft.tsx`, `thinStroke`).
-- Form boxes (v0.9, `FieldItem` kind "field": text / tick / choice; `FieldDraft.tsx`, `startField`/`fieldDragTo` in addActions.ts,
+- Form boxes (v0.9, `FieldItem` kind "field": text / tick / choice, and (v0.19) round (`option`; a set of round buttons shares
+  `name`, a radio group with `/Opt`; `changeItem` takes the whole set off and puts its other remembered buttons back; `dropWidgets`
+  takes just one by `optionOf`) / date (`dateFormat`, a text field with Acrobat's AFDate_FormatEx/KeystrokeEx actions; `dateFormatIn`,
+  `writeDate`, `readDate`, `dateForBox` in src/model/forms.ts; FormLayer adds a calendar and writes typed dates the box's way); `FieldDraft.tsx`, `startField`/`fieldDragTo` in addActions.ts,
   key F): written as real AcroForm fields by pdf-lib (`addField` in src/pdf/additions.ts, grey border, white inside), remembered
   in `/JuraPDFItems` like other additions but found by field name, not by a marked span: `removeField` takes the widgets off
   every page and then the field; `pageWithout` drops the widgets (`dropWidgets`). A plain click on one fills it in; the pencil changes it.

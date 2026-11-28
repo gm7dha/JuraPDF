@@ -92,7 +92,10 @@ export interface InkItem {
 }
 
 /** The kinds of form box: a box to type in, a tick box, or a list to choose from. */
-export type FieldKind = "text" | "tick" | "choice";
+export type FieldKind = "text" | "tick" | "choice" | "round" | "date";
+
+/** Square kinds (a tick box, a round button): dragged or sized, they stay square. */
+export const squareField = (kind: FieldKind) => kind === "tick" || kind === "round";
 
 /**
  * A form box (a "fillable field"): Acrobat, Preview and other PDF readers let
@@ -115,16 +118,25 @@ export interface FieldItem {
   size?: number;
   /** A choice list: what can be chosen. */
   choices?: string[];
+  /** A round button: what picking it means (its name among the round buttons of its set, which share `name`). */
+  option?: string;
+  /** A date box: how dates are written, e.g. "dd/mm/yyyy" (see DATE_FORMATS). */
+  dateFormat?: string;
   id?: number;
 }
 
-export const FIELD_NAMES: Record<FieldKind, string> = { text: "Text box", tick: "Tick box", choice: "Choice list" };
+export const FIELD_NAMES: Record<FieldKind, string> = { text: "Text box", tick: "Tick box", choice: "Choice list", round: "Round button", date: "Date box" };
+
+/** How a new box of each kind is named ("Text 1"); round buttons are named by their set. */
+export const FIELD_BASE: Record<FieldKind, string> = { text: "Text", tick: "Tick", choice: "Choice", round: "Set", date: "Date" };
 
 /** A form box's size when it's put on with a click rather than dragged. */
 export const FIELD_SIZE: Record<FieldKind, { width: number; height: number }> = {
   text: { width: 180, height: 22 },
   tick: { width: 14, height: 14 },
   choice: { width: 150, height: 22 },
+  round: { width: 14, height: 14 },
+  date: { width: 120, height: 22 },
 };
 
 /** A form box dragged out from (x1, y1) to (x2, y2); a click (or a tiny drag) gets the usual size. Tick boxes stay square. */
@@ -132,7 +144,7 @@ export function fieldBox(kind: FieldKind, x1: number, y1: number, x2: number, y2
   const w = Math.abs(x2 - x1);
   const h = Math.abs(y2 - y1);
   if (Math.max(w, h) < 6) return { x: x1, y: y1, ...FIELD_SIZE[kind] };
-  if (kind === "tick") {
+  if (squareField(kind)) {
     const side = Math.max(8, Math.min(Math.max(w, h), 72));
     return { x: x2 < x1 ? x1 - side : x1, y: y2 < y1 ? y1 - side : y1, width: side, height: side };
   }
@@ -142,8 +154,14 @@ export function fieldBox(kind: FieldKind, x1: number, y1: number, x2: number, y2
 /** A name for a new form box that no other has ("Text 3"), given the names in use. */
 export function freshFieldName(kind: FieldKind, taken: Iterable<string>): string {
   const used = new Set(taken);
-  const base = { text: "Text", tick: "Tick", choice: "Choice" }[kind];
+  const base = FIELD_BASE[kind];
   for (let n = 1; ; n++) if (!used.has(`${base} ${n}`)) return `${base} ${n}`;
+}
+
+/** A name for a new round button in a set that no other button in it has ("Option 3"), given the ones in use. */
+export function freshOption(taken: Iterable<string>): string {
+  const used = new Set(taken);
+  for (let n = 1; ; n++) if (!used.has(`Option ${n}`)) return `Option ${n}`;
 }
 
 /** Choices typed one to a line (or with commas), tidied: no blanks, no repeats. */

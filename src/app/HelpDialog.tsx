@@ -69,8 +69,10 @@ export function HelpDialog() {
         with Find words. It runs on your computer; the first time it fetches its reader (about 7 MB), then it works offline.
       </p>
       <p>
-        <strong>Add a form box</strong> (F): drag on a page to add a text box, a tick box or a choice list that people can fill in with Acrobat, Preview or any other PDF
-        reader. Give each one a name so the answers are easy to tell apart. To move or change one later, use the pencil.
+        <strong>Add a form box</strong> (F): drag on a page to add a text box, a tick box, a choice list, a round button or a date box that people can fill in with Acrobat,
+        Preview or any other PDF reader. Give each one a name so the answers are easy to tell apart. Round buttons with the same set name go
+        together (only one can be picked), and each new one joins the last set. A date box writes dates your chosen way and has a calendar. To
+        move or change one later, use the pencil.
       </p>
       <p>
         <strong>Fill in a form</strong>: the boxes of any PDF form are tinted blue. Click one to type in it, tick it or pick a choice; Tab goes to the next one, and each

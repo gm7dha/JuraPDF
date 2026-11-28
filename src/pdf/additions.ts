@@ -9,6 +9,8 @@ import {
   PDFFont,
   PDFHexString,
   PDFName,
+  PDFRadioGroup,
+  PDFString,
   drawImage,
   setFillingRgbColor,
   LineCapStyle,
@@ -28,8 +30,9 @@ import {
   type PDFPage,
 } from "pdf-lib";
 
-import { canFill, freshFieldName, inkBox, lineStarts, opacityOf, shapeBox, shapeInPage, linesOf, strokePath, wordsHeight, type AddItem, type FieldItem, type InkItem, type PictureItem, type Rect, type ShapeItem, type WordsItem } from "../model/additions";
+import { canFill, freshFieldName, freshOption, inkBox, lineStarts, opacityOf, shapeBox, shapeInPage, linesOf, strokePath, wordsHeight, type AddItem, type FieldItem, type InkItem, type PictureItem, type Rect, type ShapeItem, type WordsItem } from "../model/additions";
 import { encodeWith } from "../model/fontCodes";
+import { DATE_FORMATS } from "../model/forms";
 import type { HiddenWord } from "../model/ocr";
 import { hexToRgb, toPageSpace, type FontChoice } from "../model/watermark";
 import { pageFont, type PageFont } from "./fonts";
@@ -146,6 +149,13 @@ export async function changeItem(bytes: Uint8Array, index: number, id: number, n
     setKept(page, rest);
     throw new AddProblem("That was changed by another program, so it can't be picked here any more.");
   }
+  // A round button can't be taken out of its set on its own: the set is taken off, and its other buttons put back.
+  if (was.item.kind === "field" && was.item.field === "round") {
+    const name = was.item.name;
+    doc.getPages().forEach((p, i) => {
+      for (const k of i === index ? rest : keptOn(p, i)) if (k.item.kind === "field" && k.item.field === "round" && k.item.name === name) addField(doc, p, frameOf(p), { ...k.item, page: i });
+    });
+  }
   if (next) {
     const before = existingContents(page);
     const written = await drawItem(doc, page, { ...next, page: index } as AddItem, id);
@@ -212,16 +222,33 @@ function addField(doc: PDFDocument, page: PDFPage, frame: ReturnType<typeof fram
   const taken = form.getFields().map((f) => f.getName());
   // (A dot would make it part of another box's name, in a form.)
   const wanted = item.name.replace(/\./g, " ").trim();
-  const name = wanted && !taken.includes(wanted) ? wanted : freshFieldName(item.field, taken);
   const shownH = frame.rotation % 180 ? frame.width : frame.height;
   // Form boxes are turned about their bottom-left corner, like pictures.
   const at = toPageSpace(frame, item.x, shownH - (item.y + item.height), 0);
   const place = { x: at.x, y: at.y, width: item.width, height: item.height, rotate: degrees(at.angle), borderColor: GREY, borderWidth: 1, backgroundColor: rgb(1, 1, 1) };
-  if (item.field === "text") {
+  const box = { x: item.x, y: item.y, width: item.width, height: item.height };
+  if (item.field === "round") {
+    // Round buttons with the same name are one set: picking one unpicks the others.
+    const existing = wanted ? form.getFieldMaybe(wanted) : undefined;
+    const set = existing instanceof PDFRadioGroup ? existing : form.createRadioGroup(wanted && !existing ? wanted : freshFieldName("round", taken));
+    const options = set.getOptions();
+    const option = item.option?.trim() && !options.includes(item.option.trim()) ? item.option.trim() : freshOption(options);
+    set.addOptionToPage(option, page, place);
+    return { item: { ...item, name: set.getName(), option, id: undefined }, box };
+  }
+  const name = wanted && !taken.includes(wanted) ? wanted : freshFieldName(item.field, taken);
+  if (item.field === "text" || item.field === "date") {
     const field = form.createTextField(name);
-    if (item.multiline) field.enableMultiline();
+    if (item.multiline && item.field === "text") field.enableMultiline();
     field.addToPage(page, place);
-    if (item.size) field.setFontSize(item.size);
+    // (A date box's letters stay a usual size, rather than filling a tall box and running off its end.)
+    if (item.size || item.field === "date") field.setFontSize(item.size || 10);
+    if (item.field === "date") {
+      // Acrobat's own date instructions: it then offers a calendar and checks what's typed; JuraPDF reads them too.
+      const format = (item.dateFormat ?? DATE_FORMATS[0]).replace(/["\\]/g, "");
+      const js = (code: string) => doc.context.obj({ S: "JavaScript", JS: PDFString.of(code) });
+      field.acroField.dict.set(PDFName.of("AA"), doc.context.obj({ F: js(`AFDate_FormatEx("${format}");`), K: js(`AFDate_KeystrokeEx("${format}");`) }));
+    }
   } else if (item.field === "tick") {
     form.createCheckBox(name).addToPage(page, place);
   } else {
@@ -231,7 +258,7 @@ function addField(doc: PDFDocument, page: PDFPage, frame: ReturnType<typeof fram
     field.addToPage(page, place);
     field.setFontSize(0);
   }
-  return { item: { ...item, name, id: undefined }, box: { x: item.x, y: item.y, width: item.width, height: item.height } };
+  return { item: { ...item, name, id: undefined }, box };
 }
 
 /** Take a form box (by name) out of the form and off its page; false when there's none of that name. */

@@ -1,12 +1,14 @@
 /**
- * A form box (a box to type in, a tick box or a list to choose from) on a page
+ * A form box (a box to type in, a tick box, a list to choose from, a round
+ * button of a set to pick one from, or a date box) on a page
  * before it's written into the PDF's form: drag it to move it, its corner to
  * size it, name it, then Done. Whoever opens the PDF in Acrobat, Preview or
  * another reader can then fill it in.
  */
 import { useState, type PointerEvent as ReactPointerEvent } from "react";
 
-import { choicesOf, FIELD_NAMES, keepOnPage, type FieldItem, type FieldKind } from "../model/additions";
+import { choicesOf, FIELD_NAMES, keepOnPage, squareField, type FieldItem, type FieldKind } from "../model/additions";
+import { DATE_FORMATS, writeDate } from "../model/forms";
 import { cancelAdding, finishAdding, markDraft, setFieldKind, updateDraft } from "./addActions";
 import { dragFrom } from "./DraftBox";
 import { KeptButtons } from "./DraftControls";
@@ -25,7 +27,7 @@ export function FieldDraft({ draft, scale, pageW, pageH }: { draft: FieldItem; s
   const startSize = (e: ReactPointerEvent) => {
     const { width, height } = draft;
     dragFrom(e, scale, (dx, dy) => {
-      if (draft.field === "tick") {
+      if (squareField(draft.field)) {
         const side = Math.max(8, Math.min(72, width + Math.max(dx, dy)));
         updateDraft({ width: side, height: side });
       } else updateDraft({ width: Math.max(12, Math.min(pageW, width + dx)), height: Math.max(10, Math.min(pageH, height + dy)) });
@@ -45,12 +47,35 @@ export function FieldDraft({ draft, scale, pageW, pageH }: { draft: FieldItem; s
         </select>
         <input
           className="field-name"
-          aria-label="Name"
-          title="Its name in the form (some readers show it to whoever fills it in)"
+          aria-label={draft.field === "round" ? "Set" : "Name"}
+          title={
+            draft.field === "round"
+              ? "The set it belongs to: round buttons with the same set name go together, and only one of them can be picked"
+              : "Its name in the form (some readers show it to whoever fills it in)"
+          }
           value={draft.name}
           onFocus={markDraft}
           onChange={(e) => updateDraft({ name: e.target.value })}
         />
+        {draft.field === "round" && (
+          <input
+            className="field-name"
+            aria-label="Means"
+            title="What picking this button means, e.g. “Yes” or “Large” (each button in a set means something different)"
+            value={draft.option ?? ""}
+            onFocus={markDraft}
+            onChange={(e) => updateDraft({ option: e.target.value })}
+          />
+        )}
+        {draft.field === "date" && (
+          <select aria-label="How dates are written" title="How the date is written in the box" value={draft.dateFormat ?? DATE_FORMATS[0]} onChange={(e) => updateDraft({ dateFormat: e.target.value }, true)}>
+            {DATE_FORMATS.map((f) => (
+              <option key={f} value={f}>
+                {writeDate(2026, 11, 28, f)}
+              </option>
+            ))}
+          </select>
+        )}
         {draft.field === "text" && (
           <>
             <label className="field-check" title="Let several lines be typed in it">
@@ -74,7 +99,11 @@ export function FieldDraft({ draft, scale, pageW, pageH }: { draft: FieldItem; s
         </button>
       </div>
       <div className={`field-box ${draft.field}`} style={{ width: s(draft.width), height: s(draft.height), fontSize: Math.max(8, Math.min(s(draft.height) * 0.6, 16)) }} onPointerDown={startMove} title="Drag to move it">
-        {draft.field === "tick" ? <Icons.Tick size={Math.max(8, s(draft.height) * 0.8)} /> : <span>{draft.field === "choice" ? `${draft.choices?.[0] ?? ""} ▾` : draft.name}</span>}
+        {draft.field === "tick" ? (
+          <Icons.Tick size={Math.max(8, s(draft.height) * 0.8)} />
+        ) : draft.field === "round" ? null : (
+          <span>{draft.field === "choice" ? `${draft.choices?.[0] ?? ""} ▾` : draft.field === "date" ? (draft.dateFormat ?? DATE_FORMATS[0]) : draft.name}</span>
+        )}
         <span className="draft-size" role="presentation" title="Drag to make it bigger or smaller" onPointerDown={startSize} />
       </div>
       {draft.field === "choice" && (

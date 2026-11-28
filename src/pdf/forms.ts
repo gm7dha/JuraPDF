@@ -4,9 +4,9 @@
  * of the page ("flattening", so they can't be changed any more). Works in the
  * browser and in Node (Claude's tools).
  */
-import { PDFCheckBox, PDFDict, PDFDocument, PDFDropdown, PDFName, PDFOptionList, PDFRadioGroup, PDFSignature, PDFTextField, PDFBool, type PDFField } from "pdf-lib";
+import { PDFCheckBox, PDFDict, PDFDocument, PDFDropdown, PDFHexString, PDFName, PDFOptionList, PDFRadioGroup, PDFRawStream, PDFSignature, PDFString, PDFTextField, PDFBool, decodePDFRawStream, type PDFField } from "pdf-lib";
 
-import { fieldLabel, type Answer, type FormFieldInfo } from "../model/forms";
+import { dateFormatIn, fieldLabel, type Answer, type FormFieldInfo } from "../model/forms";
 import { keptOn, setKept } from "./items";
 import { loadForEditing, peekForReading, saveEdited } from "./watermark";
 
@@ -33,13 +33,25 @@ function describe(field: PDFField, pageOf: Map<PDFDict, number>): FormFieldInfo 
   const name = field.getName();
   const pages = [...new Set(field.acroField.getWidgets().map((w) => pageOf.get(w.dict)).filter((p): p is number => p !== undefined))].sort((a, b) => a - b);
   const readOnly = field.isReadOnly() || undefined;
-  if (field instanceof PDFTextField) return { name, kind: "text", value: field.getText() ?? "", multiline: field.isMultiline() || undefined, readOnly, pages };
+  if (field instanceof PDFTextField) return { name, kind: "text", value: field.getText() ?? "", multiline: field.isMultiline() || undefined, readOnly, pages, dateFormat: dateFormatOf(field) };
   if (field instanceof PDFCheckBox) return { name, kind: "tick", value: field.isChecked(), readOnly, pages };
   if (field instanceof PDFRadioGroup) return { name, kind: "radio", value: field.getSelected() ?? "", options: field.getOptions(), readOnly, pages };
   if (field instanceof PDFDropdown) return { name, kind: "choice", value: field.getSelected()[0] ?? "", options: field.getOptions(), readOnly, pages };
   if (field instanceof PDFOptionList) return { name, kind: "list", value: field.getSelected(), options: field.getOptions(), readOnly, pages };
   if (field instanceof PDFSignature) return { name, kind: "signature", value: "", readOnly, pages };
   return { name, kind: "button", value: "", readOnly, pages };
+}
+
+/** A date box's way of writing dates, from its own instructions (Acrobat's), if it has them. */
+function dateFormatOf(field: PDFTextField): string | undefined {
+  const actions = field.acroField.dict.lookupMaybe(PDFName.of("AA"), PDFDict);
+  const script = (key: string) => {
+    const js = actions?.lookupMaybe(PDFName.of(key), PDFDict)?.lookup(PDFName.of("JS"));
+    if (js instanceof PDFString || js instanceof PDFHexString) return js.decodeText();
+    if (js instanceof PDFRawStream) return new TextDecoder("latin1").decode(decodePDFRawStream(js).decode());
+    return undefined;
+  };
+  return dateFormatIn(script("F") ?? script("K"));
 }
 
 /** Every field in the PDF's form, in the form's own order (none when it has no form or can't be read). */

@@ -6,7 +6,7 @@
  */
 import { memo, useEffect, useState, type CSSProperties, type KeyboardEvent } from "react";
 
-import { fitFontSize, optionLabel, sameValue, tabOrder, type FormBox } from "../model/forms";
+import { dateForBox, fitFontSize, optionLabel, readDate, sameValue, tabOrder, writeDate, type FormBox } from "../model/forms";
 import { useStore } from "../model/store";
 import type { PDFDocumentProxy } from "../pdf/pdfjs";
 import { fillIn, formBoxesOn } from "./formActions";
@@ -64,7 +64,18 @@ function TextBox({ box, place, scale, tip }: { box: FormBox; place: CSSPropertie
     if (!focused && typed !== null && typed === saved) setTyped(null);
   }, [saved, typed, focused]);
 
-  const commit = (words: string) => {
+  const commit = (typedWords: string) => {
+    let words = typedWords;
+    if (box.dateFormat) {
+      // A date box: whatever date is typed is written the box's way; anything else is turned away.
+      const date = dateForBox(words, box.dateFormat);
+      if (date === null) {
+        useStore.getState().showToast(`That isn't a date. Type one like ${writeDate(2026, 11, 28, box.dateFormat)}, or pick one from the calendar.`, "error");
+        setTyped(null);
+        return;
+      }
+      words = date;
+    }
     if (words === saved) {
       setTyped(null);
       return;
@@ -102,7 +113,32 @@ function TextBox({ box, place, scale, tip }: { box: FormBox; place: CSSPropertie
       } else if (e.key === "Enter" && !box.multiline) e.currentTarget.blur();
     },
   };
-  return box.multiline ? <textarea {...props} /> : <input type={box.secret ? "password" : "text"} {...props} />;
+  if (box.multiline) return <textarea {...props} />;
+  const dated = !!box.dateFormat && !box.readOnly;
+  const side = Math.min(box.height * scale, 22);
+  const input = <input type={box.secret ? "password" : "text"} {...props} style={dated ? { ...style, paddingRight: side } : style} />;
+  if (!dated || !box.dateFormat) return input;
+  // A date box: a calendar to pick from as well.
+  const day = readDate(typed ?? saved, box.dateFormat);
+  const iso = day ? `${day[0]}-${String(day[1]).padStart(2, "0")}-${String(day[2]).padStart(2, "0")}` : "";
+  return (
+    <>
+      {input}
+      <span className="form-date-pick" style={{ left: `calc(${place.left}px + ${place.width}px - ${side}px)`, top: place.top, width: side, height: place.height }} title="Pick a date">
+        📅
+        <input
+          type="date"
+          aria-label={`${tip}: pick a date`}
+          value={iso}
+          onKeyDown={(e) => e.stopPropagation()}
+          onChange={(e) => {
+            const got = readDate(e.currentTarget.value, "yyyy-mm-dd");
+            if (got) commit(writeDate(got[0], got[1], got[2], box.dateFormat!));
+          }}
+        />
+      </span>
+    </>
+  );
 }
 
 function TickBox({ box, place, scale, tip }: { box: FormBox; place: CSSProperties; scale: number; tip: string }) {

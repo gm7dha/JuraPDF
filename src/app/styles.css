@@ -2003,8 +2003,17 @@ span.bookmark-fold {
 }
 
 .field-box.text,
-.field-box.choice {
+.field-box.choice,
+.field-box.date {
   justify-content: flex-start;
+}
+
+.field-box.round {
+  border-radius: 50%;
+}
+
+.field-box.date span:first-child {
+  color: var(--ink-3);
 }
 
 .field-box span:first-child {
@@ -2858,4 +2867,36 @@ textarea.form-box {
   box-sizing: border-box;
   border: 1.5px dashed var(--accent);
   box-shadow: 0 0 0 100000px rgba(31, 42, 55, 0.45);
+}
+
+/* A date box's calendar: a small button at its right end (the real date picker is see-through on top of it). */
+.form-date-pick {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  opacity: 0.75;
+  cursor: pointer;
+}
+
+.form-date-pick:hover {
+  opacity: 1;
+}
+
+.form-date-pick input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.form-date-pick input::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
 }
