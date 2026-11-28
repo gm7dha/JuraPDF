@@ -95,6 +95,15 @@ describe("reading and changing a PDF", () => {
     expect(await ok(s, "read_words", { pages: "2-3" })).toBe("--- Page 2 ---\nReport page 2\n--- Page 3 ---\nReport page 3");
   });
 
+  it("compares with another PDF in the folder", async () => {
+    const { s } = await session({ "Report.pdf": await pdfOf("Report", 3), "Old.pdf": await pdfOf("Report", 2), "Same.pdf": await pdfOf("Report", 3) });
+    await ok(s, "open_pdf", { filename: "Report" });
+    const got = await ok(s, "compare_pdfs", { filename: "Old" });
+    expect(got).toBe("Comparing Report.pdf (this PDF) with Old.pdf.\n1 difference from Old.pdf: 1 put in.\n- Page 3 (page 2 in Old.pdf): Put in: “Report page 3”");
+    expect(await ok(s, "compare_pdfs", { filename: "Same" })).toMatch(/are the same/);
+    expect(await bad(s, "compare_pdfs", { filename: "Missing" })).toMatch(/no file called/);
+  });
+
   it("turns, moves, deletes and adds pages, joins another PDF, and undoes", async () => {
     const { s } = await session({ "Report.pdf": await pdfOf("Report", 3), "Extra.pdf": await pdfOf("Extra", 2) });
     await ok(s, "open_pdf", { filename: "Report.pdf" });

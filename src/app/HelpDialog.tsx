@@ -103,6 +103,11 @@ export function HelpDialog() {
         <strong>Make smaller</strong>: shrinks pictures that are bigger than the pages need and tidies away leftovers, for email or the web. Choose how small: “A little” keeps
         pictures sharp for printing; “As small as possible” makes them softer. The words stay as sharp as ever, and Undo brings back the original.
       </p>
+      <p>
+        <strong>Compare</strong> (two pages with arrows): pick another PDF, an older version say, and every word that differs is found. The <strong>Changes</strong> tab
+        lists them; click one (or press F4 and Shift+F4) to see it on its page: new words in green, changed ones in amber, a red bar where words were taken out.{" "}
+        <strong>Mark them on this PDF</strong> highlights them for good, with a red sticky note saying what was taken out or what it used to say.
+      </p>
       <p className="muted">Coming next: recent files, and keeping your work in the browser between visits.</p>
       <div className="platform-row">
         <span className="muted small">Shortcuts shown for</span>

@@ -4,7 +4,7 @@ import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 
 import { colourCss, colourFrom, inReadingOrder, notePlace, noteSummary, notesCount, pdfDate, readPdfDate, whenLabel, withReplies, type Note } from "../src/model/notes";
 import { fromPageSpace, toPageSpace } from "../src/model/watermark";
-import { addNote, changeNote, listNotes, NoteProblem, removeNote } from "../src/pdf/notes";
+import { addNote, addNotes, changeNote, listNotes, NoteProblem, removeNote } from "../src/pdf/notes";
 
 async function blank(turn = 0, pages = 2): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
@@ -92,6 +92,19 @@ describe("notes in the PDF", () => {
     expect(annots[0]).toMatchObject({ subtype: "Text", contentsObj: { str: "Check this figure — €5" }, titleObj: { str: "Kevin" } });
     // 600 high: 50 down from the top is 550 up; the icon hangs from there.
     expect(Array.from(annots[0].rect as number[])).toEqual([100, 528, 122, 550]);
+  });
+
+  it("adds several notes in one go", async () => {
+    const bytes = await addNotes(await blank(), [
+      { page: 0, x: 10, y: 10, text: "One" },
+      { page: 1, x: 20, y: 30, text: "Two", author: "Compare" },
+    ]);
+    const notes = await read(bytes);
+    expect(notes.map((n) => [n.page, n.x, n.y, n.text, n.author])).toEqual([
+      [0, 10, 10, "One", ""],
+      [1, 20, 30, "Two", "Compare"],
+    ]);
+    await expect(addNotes(bytes, [{ page: 9, x: 0, y: 0, text: "Nowhere" }])).rejects.toThrow(/no page 10/);
   });
 
   it("keeps a note's place on turned pages", async () => {

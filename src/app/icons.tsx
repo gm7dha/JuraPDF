@@ -405,6 +405,13 @@ export const Icons = {
       <path d="M4 20h16" />
     </Svg>
   ),
+  /** Compare two PDFs: two pages side by side with arrows between them. */
+  Compare: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M3 4h6v16H3zM15 4h6v16h-6z" />
+      <path d="M10.5 9h3M12 7.5 13.5 9 12 10.5M13.5 15h-3M12 13.5 10.5 15 12 16.5" />
+    </Svg>
+  ),
   /** Pick things on a page: an arrow pointer. */
   Pointer: (p: IconProps) => (
     <Svg {...p}>

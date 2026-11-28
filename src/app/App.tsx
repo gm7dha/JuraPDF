@@ -24,6 +24,7 @@ import { startNoting } from "./noteActions";
 import { startMarking } from "./redactActions";
 import { SearchBar } from "./SearchBar";
 import { closeSearch, openSearch, step } from "./searchActions";
+import { stepChange } from "./compareActions";
 import { SidePanel } from "./SidePanel";
 import { TopBar } from "./TopBar";
 import { ViewBar } from "./ViewBar";
@@ -175,6 +176,12 @@ function useShortcuts() {
         if (document.querySelector('[aria-modal="true"]')) return;
         e.preventDefault();
         step(e.shiftKey ? -1 : 1);
+        return;
+      }
+      if (s.compare && e.key === "F4" && !mod && !e.altKey) {
+        if (document.querySelector('[aria-modal="true"]')) return;
+        e.preventDefault();
+        stepChange(e.shiftKey ? -1 : 1);
         return;
       }
       if (inPopup(e.target, document) || inTextBox(e.target)) return;

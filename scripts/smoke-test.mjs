@@ -61,7 +61,7 @@ await new Promise((r) => server.listen(4174, "127.0.0.1", r));
  * A small PDF made here: three pages (A4, A4, then A4 landscape), each with
  * a big black box and the words "Smoke page N" in Helvetica.
  */
-function testPdf() {
+function testPdf(words = (i) => `Smoke page ${i + 1}`) {
   const sizes = [
     [595, 842],
     [595, 842],
@@ -73,7 +73,7 @@ function testPdf() {
   const pagesId = objects.length + 1 + sizes.length * 2;
   const kids = [];
   for (const [i, [w, h]] of sizes.entries()) {
-    const stream = `0 0 0 rg 60 ${h - 300} 200 160 re f\nBT /F1 28 Tf 60 ${h - 100} Td (Smoke page ${i + 1}) Tj ET`;
+    const stream = `0 0 0 rg 60 ${h - 300} 200 160 re f\nBT /F1 28 Tf 60 ${h - 100} Td (${words(i)}) Tj ET`;
     const content = add(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
     kids.push(add(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${w} ${h}] /Resources << /Font << /F1 ${font} 0 R >> >> /Contents ${content} 0 R >>`));
   }
@@ -114,6 +114,8 @@ const step = async (name, fn) => {
     console.log(`✓ ${name}`);
   } catch (e) {
     failed = true;
+    if (process.env.SMOKE_SCREENSHOT) await page.screenshot({ path: `smoke-failed-${name.replace(/[^a-z]+/gi, "-").slice(0, 40)}.png` }).catch(() => {});
+    if (process.env.SMOKE_DEBUG) console.log(await page.evaluate(() => JSON.stringify({ compare: window.jurapdfStore.getState().compare, toasts: window.jurapdfStore.getState().toasts }, (k, v) => (k === "forDoc" ? !!v : k === "other" ? v.length : v))).catch(() => ""));
     annotate("error", `Smoke test: ${name}`, e instanceof Error ? `${e.message}${process.env.SMOKE_DEBUG ? `\n${e.stack}` : ""}` : String(e));
   }
 };
@@ -1078,6 +1080,31 @@ await step("notes: add a sticky note, read it in the Notes list, change it and d
   await page.getByText("No notes in this PDF yet.").waitFor();
   await page.getByRole("tab", { name: "Pages" }).click();
   for (let i = 0; i < 3; i++) await page.keyboard.press("Control+z");
+  await page.waitForFunction((n) => window.jurapdfStore.getState().past.length === n, steps);
+});
+
+await step("comparing with another PDF: the differences listed, shown and marked", async () => {
+  const steps = await page.evaluate(() => window.jurapdfStore.getState().past.length);
+  const older = testPdf((i) => (i === 1 ? "Smoke sheet 2" : `Smoke page ${i + 1}`));
+  const [chooser] = await Promise.all([page.waitForEvent("filechooser"), page.getByRole("button", { name: "Compare with another PDF" }).click()]);
+  await chooser.setFiles({ name: "Older.pdf", mimeType: "application/pdf", buffer: older });
+  // (The pages also have the watermark added earlier, which Older.pdf hasn't: those words are put in.)
+  await page.locator(".changes-summary").getByText(/differences from Older\.pdf: .*1 changed\./).waitFor();
+  await page.getByRole("tab", { name: "Changes" }).waitFor();
+  await page.locator(".changes-list").getByText("“sheet” → “page”").click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().currentPage === 1);
+  await page.locator('.page[data-page="2"] .compare-mark.changed.current').waitFor();
+  if (process.env.SMOKE_SCREENSHOT) await page.screenshot({ path: "smoke-compare.png" });
+  await page.getByRole("button", { name: "Mark them on this PDF" }).click();
+  await page.waitForFunction(() => /^mark \d+ differences from Older\.pdf$/.test(window.jurapdfStore.getState().past.at(-1)?.label));
+  await page.getByRole("button", { name: /^Note: Compare: Changed\. In Older\.pdf this was: “sheet”/ }).waitFor();
+  // Still one difference after marking it (the words are the same).
+  await page.locator(".changes-list").getByText("“sheet” → “page”").waitFor();
+  await page.getByRole("button", { name: "Stop comparing" }).click();
+  await page.getByRole("tab", { name: "Changes" }).waitFor({ state: "detached" });
+  expect((await page.locator(".compare-mark").count()) === 0, "the colours should go when comparing stops");
+  await page.getByRole("tab", { name: "Pages" }).click();
+  await page.keyboard.press("Control+z");
   await page.waitForFunction((n) => window.jurapdfStore.getState().past.length === n, steps);
 });
 

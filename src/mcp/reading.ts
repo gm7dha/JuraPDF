@@ -46,6 +46,28 @@ export async function isLocked(bytes: Uint8Array): Promise<boolean> {
   }
 }
 
+/** Every page's bits of words as pdf.js gives them (for comparing two PDFs). */
+export async function pageBits(bytes: Uint8Array): Promise<{ str: string; hasEOL: boolean }[][]> {
+  let doc: PDFDocumentProxy | null = null;
+  try {
+    doc = await getDocument({ data: new Uint8Array(bytes), isEvalSupported: false, useSystemFonts: false, verbosity: 0 }).promise;
+    const out: { str: string; hasEOL: boolean }[][] = [];
+    for (let i = 0; i < doc.numPages; i++) {
+      const page = await doc.getPage(i + 1);
+      const bits: { str: string; hasEOL: boolean }[] = [];
+      for (const item of (await page.getTextContent()).items) if ("str" in item) bits.push({ str: item.str, hasEOL: item.hasEOL });
+      out.push(bits);
+      page.cleanup();
+    }
+    return out;
+  } catch (e) {
+    if (e instanceof Error && /password/i.test(e.name + e.message)) throw new LockedPdf();
+    throw e;
+  } finally {
+    void doc?.destroy();
+  }
+}
+
 /** The words on the chosen pages (0 = first), as text a page at a time; pages with none give "". */
 export async function pageWords(bytes: Uint8Array, pages: number[]): Promise<string[]> {
   let doc: PDFDocumentProxy | null = null;

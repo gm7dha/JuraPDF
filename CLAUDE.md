@@ -103,7 +103,7 @@
   (addActions) as a ChosenPicture named "Signature"; the PictureItem gets `signature: true` (Undo label "sign page N").
 - Sticky notes (v0.14, `src/model/notes.ts` pure: `withReplies` joins IRT replies onto the top note, `readPdfDate`/`pdfDate`,
   `NOTE_SIZE` 22 as pdf.js draws them; `src/pdf/notes.ts` pdf-lib: `listNotes` (any reader's /Text notes, id = object number
-  "12R", place from the Rect's top-left via `fromPageSpace`, the icon stays upright), `addNote`, `changeNote`, `removeNote`
+  "12R", place from the Rect's top-left via `fromPageSpace`, the icon stays upright), `addNote`/`addNotes`, `changeNote`, `removeNote`
   (with replies and /Popup windows)): `noteActions.ts` (`notesIn` per version via `peekForReading`, `note` in the store is the
   open one, `placing` {kind: "note"}, key N), `NotesLayer.tsx` (icons, drag to move, `NoteWindow`; a click away saves via
   `whileOpen`), `NotesList.tsx` (side panel tab "notes"). Claude: read_notes, add_note, delete_note.
@@ -111,6 +111,13 @@
   `cleanStamp` (localStorage `jurapdf.stamp`), `stampPlacingSize`): `drawStamp` draws it on a canvas (PNG, see-through) and it's
   placed like a signature through `placePicture`, the ChosenPicture carrying `stamp` (its words) → PictureItem `stamp` (Undo label
   "stamp “APPROVED” on page N"). Browser only, so Claude has no stamp tool (add_words and add_shape do the same job).
+- Compare two PDFs (v0.17, ViewBar "Compare with another PDF", `src/app/compareActions.ts`, `ChangesList.tsx` (side panel tab
+  "changes", shown only while `compare` is set in the store, not remembered), `CompareLayer.tsx`; `src/model/compare.ts` pure:
+  `wordsIn` (words from pdf.js bits, with where each sits), `compareLists` (Myers, gives up past `MOST_DIFFERENCES`),
+  `changesBetween` (other → this: added / removed / changed), `changesText`): `pageTextBoxes` gives both files' bits (with
+  `hasEOL`); boxes use measured letter widths (`shareAt`) and turned words get a turned box (`PlaceBox.turn`). Worked out again
+  after every change (WeakMap of words per pdf.js document). `markChanges`: `highlightsFor` (green) + `addNotes` (red, "Compare"),
+  one undo step. F4 / Shift+F4 step through. Claude: compare_pdfs (`pageBits` in reading.ts).
 - Make smaller (v0.15, `CompressDialog.tsx`, ViewBar "Make smaller"; `src/model/compress.ts` pure: `SQUEEZES` light/medium/strong
   (dpi, JPG quality, `photosToJpg`), `shrunkSize`, `undoPredictor`, `toRgba`, `hasCameraNotes`; `src/pdf/compress.ts` `squeeze`):
   `dropUnused` drops objects nothing reaches from the trailer; each image (not SMasks, ImageMasks, colour-key Masks, Decode,
@@ -149,7 +156,7 @@
   (`name` on hello/doc/change); `MAX_MESSAGE_BYTES` 150 MB. The session holds a `PdfDoc` {name, bytes}, Claude's own
   undo list and a `label` per change ("turned page 2") that becomes the tab's undo step ("Claude: turned page 2",
   `describeChange`). `tools.ts`: format_guide, live_status, describe_pdf, read_words, list_pdfs, open_pdf, new_pdf,
-  save_pdf, add_watermark, add_words, add_picture, add_shape, add_form_box, read_form, fill_form, add_headers, read_notes, add_note, delete_note, tidy_pdf, turn_pages, delete_pages, move_pages, add_blank_pages, bring_in_pdf, save_pages_as_pdf, undo —
+  save_pdf, add_watermark, add_words, add_picture, add_shape, add_form_box, read_form, fill_form, add_headers, read_notes, add_note, delete_note, tidy_pdf, compare_pdfs, turn_pages, delete_pages, move_pages, add_blank_pages, bring_in_pdf, save_pages_as_pdf, undo —
   page numbers from 1 (`pagesOf`), changes through `src/pdf/pages.ts` and `watermark.ts`. `reading.ts` reads words with
   pdf.js's legacy build in Node (the worker imported into the bundle as `globalThis.pdfjsWorker`). `quietStdout.ts` is
   imported first by server.ts so nothing pdf.js prints reaches stdout. In the app: `LiveButton` in the TopBar (with a
