@@ -368,10 +368,11 @@ export async function writeHiddenWords(doc: PDFDocument, p: PDFPage, words: Hidd
     const text = [...w.text].filter((ch) => !unwritable("Helvetica", ch)).join("");
     if (!text) continue;
     // Letters about as tall as the word's box; the baseline a fifth of the way up from its bottom.
-    const size = Math.max(1, w.height * 0.95);
+    const size = Math.max(1, w.along ? w.along.size * 0.95 : w.height * 0.95);
     const natural = font.widthOfTextAtSize(text, size);
-    const squeeze = natural > 0 ? Math.max(1, Math.min(1000, (w.width / natural) * 100)) : 100;
-    const at = toPageSpace(frame, w.x, shownH - (w.y + w.height * 0.8), 0);
+    const squeeze = natural > 0 ? Math.max(1, Math.min(1000, ((w.along ? w.along.length : w.width) / natural) * 100)) : 100;
+    // Words that aren't level start where their baseline does, turned as they show (clockwise as shown is the other way in the PDF).
+    const at = w.along ? toPageSpace(frame, w.along.x, shownH - w.along.y, -w.along.turn) : toPageSpace(frame, w.x, shownH - (w.y + w.height * 0.8), 0);
     ops.push(setFontAndSize(key, size), setCharacterSqueeze(squeeze), rotateAndSkewTextDegreesAndTranslate(at.angle, 0, 0, at.x, at.y), showText(font.encodeText(text)));
   }
   ops.push(endText(), popGraphicsState());

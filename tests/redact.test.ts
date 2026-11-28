@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { PDFDocument, StandardFonts, degrees } from "pdf-lib";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 
-import { lettersBox, markFrom, marksByPage, marksLabel, overlaps, wordsOutside } from "../src/model/redact";
+import { lettersBox, markFrom, marksByPage, marksLabel, onRun, overlaps, quarterTurned, runBox, textBoxFrom, wordsOutside } from "../src/model/redact";
+import { Util } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { blackOut, RedactProblem } from "../src/pdf/redact";
 
 const STANDARD_FONTS = new URL("../node_modules/pdfjs-dist/standard_fonts/", import.meta.url).pathname;
@@ -65,6 +66,57 @@ describe("marking places to black out", () => {
     expect(marksLabel(marks)).toBe("3 places on 2 pages");
     expect(marksLabel(marks.slice(0, 1))).toBe("1 place on page 3");
   });
+});
+
+/** Each bit of words on a page as the app sees it (as shown, points from the top-left). */
+async function boxesOn(bytes: Uint8Array, n: number) {
+  const doc = await getDocument({ data: bytes.slice(), isEvalSupported: false, standardFontDataUrl: STANDARD_FONTS }).promise;
+  const page = await doc.getPage(n);
+  const unit = page.getViewport({ scale: 1 });
+  const items = (await page.getTextContent()).items.flatMap((i) => ("str" in i && i.str.trim() ? [i] : []));
+  await doc.destroy();
+  return items.map((i) => textBoxFrom(i.str, Util.transform(unit.transform, i.transform), i.width, i.height)!);
+}
+
+describe("words that aren't level (turned pages)", () => {
+  it("boxes sideways and upside-down runs", () => {
+    // Reading down the page (turned 90° clockwise as shown, tops of the letters to the right), from (100, 50), 60 long, letters 10 tall.
+    expect(runBox({ x: 100, y: 50, turn: 90, length: 60, size: 10 }, 0, 60)).toEqual({ x: 98, y: 50, width: 12, height: 60 });
+    const upside = runBox({ x: 100, y: 50, turn: 180, length: 60, size: 10 }, 0, 30);
+    expect(upside.x).toBeCloseTo(70);
+    expect(upside.y).toBeCloseTo(48);
+    expect(upside.width).toBeCloseTo(30);
+    expect(upside.height).toBeCloseTo(12);
+    // On the letters themselves, not just in the box round them.
+    const slant = { x: 0, y: 100, turn: -45, length: 100, size: 10 };
+    expect(onRun(slant, 35, 65)).toBe(true);
+    expect(onRun(slant, 60, 90)).toBe(false);
+    expect(quarterTurned(slant)).toBe(false);
+    expect([90, 180, -90, 270, 88].map((turn) => quarterTurned({ ...slant, turn }))).toEqual([true, true, true, true, true]);
+    // Mirrored words are marked as not usable.
+    expect(textBoxFrom("x", [10, 0, 0, 10, 0, 0], 5, 10)?.usable).toBe(false);
+    expect(textBoxFrom("x", [10, 0, 0, -10, 0, 0], 5, 10)?.usable).toBe(true);
+  });
+
+  for (const turn of [90, 180, 270]) {
+    it(`finds and blacks out the right letters on a page turned ${turn}°, keeping the rest`, async () => {
+      const before = await testPdf(turn);
+      const [bit] = await boxesOn(before, 2);
+      expect(bit.str).toBe("Secret 2");
+      expect(bit.along).toBeTruthy();
+      // "Secret" (letters 0–6): its box is where pdf.js shows those letters.
+      const mark = lettersBox(bit, 0, 6, 1);
+      const kept = wordsOutside([bit], [mark]);
+      expect(kept.map((k) => k.text.trim())).toEqual(["2"]);
+      const out = await blackOut(before, [{ page: 1, picture: JPG, marks: [mark], words: kept }]);
+      const [after] = await boxesOn(out, 2);
+      expect(after.str.trim()).toBe("2");
+      // Written back where it was, turned the same way.
+      expect(after.along!.turn).toBeCloseTo(bit.along!.turn, 0);
+      const was = kept[0].along!;
+      expect(Math.hypot(after.along!.x - was.x, after.along!.y - was.y)).toBeLessThan(1.5);
+    });
+  }
 });
 
 describe("blacking out for good", () => {
