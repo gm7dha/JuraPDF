@@ -37,7 +37,8 @@ import { nearestFont, type FontChoice } from "../model/watermark";
 import { AddProblem, addItems, addShapes, changeItem, pictureType } from "../pdf/additions";
 import { keptIn, keptKnown } from "../pdf/items";
 import { changePicture, picturesOn } from "../pdf/pictures";
-import { screenFontFor, wordRuns } from "../pdf/pdfjs";
+import { pageTextBoxes, screenFontFor, wordRuns } from "../pdf/pdfjs";
+import { onRun, quarterTurned } from "../model/redact";
 import { LockedPdf } from "../pdf/watermark";
 import { applyChange } from "./editing";
 
@@ -446,13 +447,15 @@ let settling: Draft | null = null;
 async function landed(page: number, old: HTMLCanvasElement | null, d: Draft | null): Promise<void> {
   settling = d;
   busy = false;
+  const placingThen = useStore.getState().placing;
   await redrawn(page, old);
   if (settling === d) settling = null;
   const s = useStore.getState();
   if (d && s.draft === d) {
     dropPicture();
     s.setDraft(null);
-    if (s.placing?.kind !== "ink") s.setPlacing(null);
+    // A tool picked meanwhile (e.g. a key pressed straight after Done) stays picked.
+    if (s.placing === placingThen && s.placing?.kind !== "ink") s.setPlacing(null);
   }
 }
 
@@ -531,7 +534,13 @@ async function pickToChange(page: number, x: number, y: number): Promise<void> {
   const hit = lineAt(spots.map((p) => ({ ...p.box, spot: p })), x, y)?.spot;
   if (useStore.getState().placing?.kind !== "change") return;
   if (!hit) {
-    say("There's no picture or words just there to change. Click right on one, or press Esc to stop.");
+    // Words that run sideways or upside down (often on turned pages) can't be changed here yet: say so rather than "nothing there".
+    const turned = (await pageTextBoxes(pdf.doc, page).catch(() => [])).some((b) => b.along && b.str.trim() && quarterTurned(b.along) && onRun(b.along, x, y));
+    say(
+      turned
+        ? "Words that run sideways or upside down can't be changed yet. You can cover them with a white box and add new words on top."
+        : "There's no picture or words just there to change. Click right on one, or press Esc to stop.",
+    );
     return;
   }
   const { box } = hit;

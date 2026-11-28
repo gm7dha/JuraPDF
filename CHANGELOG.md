@@ -5,6 +5,18 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.16.1 — Fixes from testing
+
+- **Black out on turned pages is fixed.** On a page turned sideways or upside down, "Black out everything found"
+  put the black boxes in the wrong place, so the words could still be read. The boxes now cover exactly the words
+  found, however the page is turned.
+- **Sideways words stay findable after blacking out.** Words running sideways or upside down on a blacked-out
+  page used to drop out of Find words and picking. They are kept now, like level words.
+- Picking a tool straight after clicking Done (for example pressing N for a note just after placing a stamp) no
+  longer gets switched off a moment later.
+- Clicking sideways or upside-down words with the change pencil now explains that they can't be changed yet, instead
+  of saying there's nothing there.
+
 ## v0.16 — Stamps
 
 - **Stamp pages** with the new Stamp button (or press K). There are twelve ready-made stamps, such as APPROVED,

@@ -108,7 +108,7 @@ export async function blackOutMarked(): Promise<void> {
   try {
     const pages: BlackedOutPage[] = [];
     for (const [page, onPage] of marksByPage(marks)) {
-      const bits = (await pageTextBoxes(pdf.doc, page)).filter((b) => b.level);
+      const bits = (await pageTextBoxes(pdf.doc, page)).filter((b) => b.usable);
       pages.push({ page, marks: onPage, picture: await pageBlackedOut(pdf.doc, page, DPI, onPage), words: wordsOutside(bits, onPage) });
     }
     const bytes = await blackOut(pdf.bytes, pages);

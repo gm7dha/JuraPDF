@@ -16,6 +16,8 @@ export interface FoundWord {
 /** A word to write onto the page (invisibly), in points. */
 export interface HiddenWord extends Rect {
   text: string;
+  /** For words that aren't level (sideways or upside down as shown): where the baseline starts, its turn and size. */
+  along?: { x: number; y: number; turn: number; length: number; size: number };
 }
 
 /** Words the reader is less sure of than this are left out (they'd mostly be specks and smudges). */

@@ -9,7 +9,7 @@ import workerUrl from "virtual:pdfjs-worker-url";
 
 import type { Size } from "../model/zoom";
 import { formBoxesFrom, type FormBox } from "../model/forms";
-import type { TextBox } from "../model/redact";
+import { textBoxFrom, type TextBox } from "../model/redact";
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
@@ -263,17 +263,14 @@ export async function formBoxes(page: PDFPageProxy): Promise<FormBox[]> {
  * as shown, in points from the top-left; `level` is false for words that
  * don't run across the page (their box is only rough).
  */
-export async function pageTextBoxes(doc: PDFDocumentProxy, index: number): Promise<(TextBox & { level: boolean })[]> {
+export async function pageTextBoxes(doc: PDFDocumentProxy, index: number): Promise<(TextBox & { usable: boolean })[]> {
   const page = await doc.getPage(index + 1);
   const unit = page.getViewport({ scale: 1 });
-  const out: (TextBox & { level: boolean })[] = [];
+  const out: (TextBox & { usable: boolean })[] = [];
   for (const item of (await page.getTextContent()).items) {
     if (!("str" in item)) continue;
-    const [a, b, , , e, f] = pdfjs.Util.transform(unit.transform, item.transform);
-    const height = Math.hypot(a, b) || item.height;
-    const level = Math.abs(b) <= Math.abs(a) * 0.05 && a > 0;
-    // A little below the baseline too, for the tails of letters.
-    out.push({ str: item.str, x: e, y: f - height, width: item.width, height: height * 1.2, level });
+    const box = textBoxFrom(item.str, pdfjs.Util.transform(unit.transform, item.transform), item.width, item.height);
+    if (box) out.push(box);
   }
   return out;
 }

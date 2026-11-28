@@ -92,9 +92,11 @@
 - Black out / redaction (v0.12, `src/app/redactActions.ts`, `MarksLayer.tsx`, `RedactBar.tsx`, key B, `placing` {kind: "redact"},
   `marks`/`markDraft` in the store, cleared by every change; `src/model/redact.ts` pure; `src/pdf/redact.ts` `blackOut`): each
   marked page is drawn by pdf.js at 200 dpi without annotations (`pageBlackedOut`), black boxes painted on, and the page's
-  Resources and Contents replaced by that JPG (placed via `toPageSpace`, turn kept); its level words outside the marks
+  Resources and Contents replaced by that JPG (placed via `toPageSpace`, turn kept); its words outside the marks
   (`wordsOutside`, letter by letter) go back invisibly (`writeHiddenWords`); annotations under a mark go, and form fields with
-  them. Marks come from dragging, `markPicked` (picked words) or `markFound` (search hits → `pageTextBoxes` → `lettersBox`).
+  them. Marks come from dragging, `markPicked` (picked words) or `markFound` (search hits → `pageTextBoxes` → `lettersBox`). Words that
+  aren't level (turned pages) carry `along` (baseline start, turn, length, size; `textBoxFrom`/`runBox` in redact.ts), so their
+  letters are boxed where they show and they're written back turned; mirrored words (`usable` false) are left out.
   Browser only (needs a canvas), so Claude has no black-out tool yet.
 - Signatures (v0.13, `SignDialog.tsx`, key S, ViewBar "Sign"; `src/model/signature.ts` pure: `inkBounds`, `clearPaper`, `placingSize`,
   kept list in localStorage `jurapdf.signatures` as PNG data links): the PNG (cut to its ink) is placed through `placePicture`
