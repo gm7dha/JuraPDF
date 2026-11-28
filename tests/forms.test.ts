@@ -4,6 +4,7 @@ import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 
 import type { FieldItem } from "../src/model/additions";
 import { answerFor, answerLabel, DATE_FORMATS, dateForBox, dateFormatIn, fieldLabel, fitFontSize, formBoxesFrom, readDate, sameValue, tabOrder, writeDate, type FormFieldInfo } from "../src/model/forms";
+import { fitInBox } from "../src/model/signature";
 import { addItems, changeItem } from "../src/pdf/additions";
 import { keptIn } from "../src/pdf/items";
 import { clearForm, fillForm, flattenForm, formFields, FormProblem } from "../src/pdf/forms";
@@ -302,6 +303,38 @@ describe("adding list boxes and boxes that must be filled in", () => {
     const doc = await PDFDocument.create();
     doc.addPage([400, 400]);
     await expect(addItems(await doc.save(), [{ kind: "field", field: "list", page: 0, x: 50, y: 50, width: 150, height: 60, name: "Empty", choices: [] }])).rejects.toThrow(/choices/);
+  });
+});
+
+describe("signature boxes", () => {
+  it("makes a box to sign in that readers know, see-through inside, and takes it off again", async () => {
+    for (const turn of [0, 90]) {
+      const doc = await PDFDocument.create();
+      const p = doc.addPage([400, 500]);
+      if (turn) p.setRotation(degrees(turn));
+      let bytes: Uint8Array = await doc.save();
+      bytes = await addItems(bytes, [{ kind: "field", field: "signature", page: 0, x: 60, y: 80, width: 180, height: 40, name: "Signed by", required: true }]);
+      const fields = await formFields(bytes);
+      expect(fields).toMatchObject([{ name: "Signed by", kind: "signature", required: true, pages: [0] }]);
+      const [box] = await boxesOn(bytes, 1);
+      expect(box).toMatchObject({ kind: "signature", name: "Signed by", required: true });
+      expect(Math.abs(box.x - 60)).toBeLessThanOrEqual(1);
+      expect(Math.abs(box.y - 80)).toBeLessThanOrEqual(1);
+      expect(Math.abs(box.width - 180)).toBeLessThanOrEqual(1);
+      // Nothing white inside, so a signature put in it shows.
+      const loaded = await PDFDocument.load(bytes);
+      const widget = loaded.getForm().getFields()[0].acroField.getWidgets()[0];
+      expect(widget.getAppearanceCharacteristics()?.getBackgroundColor()).toBeUndefined();
+      // Taken off again.
+      const [kept] = (await keptIn(bytes))[0];
+      bytes = await changeItem(bytes, 0, kept.id, null);
+      expect(await formFields(bytes)).toEqual([]);
+      expect(await boxesOn(bytes, 1)).toEqual([]);
+    }
+  });
+
+  it("puts a signature in a box as large as fits, in the middle", () => {
+    expect(fitInBox(400, 100, { x: 10, y: 20, width: 180, height: 40 })).toEqual({ x: 28, y: 22, width: 144, height: 36 });
   });
 });
 

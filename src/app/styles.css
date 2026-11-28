@@ -2004,7 +2004,8 @@ span.bookmark-fold {
 
 .field-box.text,
 .field-box.choice,
-.field-box.date {
+.field-box.date,
+.field-box.signature {
   justify-content: flex-start;
 }
 
@@ -2026,7 +2027,8 @@ span.bookmark-fold {
   line-height: 1.2;
 }
 
-.field-box.date span:first-child {
+.field-box.date span:first-child,
+.field-box.signature span:first-child {
   color: var(--ink-3);
 }
 
@@ -2230,6 +2232,21 @@ textarea.form-box {
 .form-tick:focus:not(.typing) {
   background: rgba(31, 111, 209, 0.16);
   color: transparent;
+}
+
+/* A box to sign in: "Sign here" shows when it's pointed at (not over a signature already in it). */
+.form-sign {
+  display: flex;
+  align-items: flex-end;
+  padding: 0 4px 2px;
+  color: transparent;
+  font-style: italic;
+  cursor: pointer;
+}
+
+.form-sign:hover,
+.form-sign:focus-visible {
+  color: #1f6fd1;
 }
 
 .form-list {

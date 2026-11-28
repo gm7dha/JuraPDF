@@ -98,3 +98,15 @@ export function dataUrlBytes(url: string): Uint8Array<ArrayBuffer> {
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
 }
+
+/**
+ * A picture `w` × `h` (any units) put in a box (a form's signature box): as large as fits with a little room
+ * around it, in the middle, keeping its shape.
+ */
+export function fitInBox(w: number, h: number, box: { x: number; y: number; width: number; height: number }): { x: number; y: number; width: number; height: number } {
+  const room = Math.min(2, box.width / 10, box.height / 10);
+  const fit = Math.min((box.width - room * 2) / Math.max(1, w), (box.height - room * 2) / Math.max(1, h));
+  const width = Math.max(1, w * fit);
+  const height = Math.max(1, h * fit);
+  return { x: box.x + (box.width - width) / 2, y: box.y + (box.height - height) / 2, width, height };
+}

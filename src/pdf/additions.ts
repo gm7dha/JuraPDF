@@ -9,6 +9,7 @@ import {
   PDFFont,
   PDFHexString,
   PDFName,
+  PDFNumber,
   PDFRadioGroup,
   PDFString,
   drawImage,
@@ -238,7 +239,15 @@ function addField(doc: PDFDocument, page: PDFPage, frame: ReturnType<typeof fram
     return { item: { ...item, name: set.getName(), option, id: undefined }, box };
   }
   const name = wanted && !taken.includes(wanted) ? wanted : freshFieldName(item.field, taken);
-  if (item.field === "text" || item.field === "date") {
+  if (item.field === "signature") {
+    // A box to sign in: made as a text box (pdf-lib can't make one, but places a text box well, turned pages too), then
+    // made a signature box. It's see-through inside, so a signature put in it shows (form boxes are drawn over the page).
+    const field = form.createTextField(name);
+    field.addToPage(page, { ...place, backgroundColor: undefined });
+    field.acroField.dict.set(PDFName.of("FT"), PDFName.of("Sig"));
+    field.acroField.dict.delete(PDFName.of("DA"));
+    if (item.required) field.acroField.dict.set(PDFName.of("Ff"), PDFNumber.of(2));
+  } else if (item.field === "text" || item.field === "date") {
     const field = form.createTextField(name);
     if (item.multiline && item.field === "text") field.enableMultiline();
     field.addToPage(page, place);

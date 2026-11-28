@@ -39,6 +39,7 @@ import type { ChosenPicture } from "../model/additions";
 import { fontLabel } from "../model/fontCodes";
 import { DATE_FORMATS } from "../model/forms";
 import { useStore } from "../model/store";
+import { fitInBox } from "../model/signature";
 import { nearestFont, type FontChoice } from "../model/watermark";
 import { AddProblem, addItems, addShapes, changeItem, pictureType } from "../pdf/additions";
 import { keptIn, keptKnown } from "../pdf/items";
@@ -281,6 +282,22 @@ export async function startPicture(): Promise<void> {
   s.setDraft(null);
   s.setPlacing({ kind: "picture", picture: { bytes, type, name: file.name, url, pixelsWide: size.w, pixelsHigh: size.h } });
   say("Click on a page where the picture should go. Esc stops.");
+}
+
+/** Sign in a form's signature box: the Sign window opens, and the signature chosen is put in the box (to move or size, then Done). */
+export function signInto(box: { page: number } & Rect): void {
+  useStore.setState({ signBox: box });
+  useStore.getState().openDialog("sign");
+}
+
+/** Put a chosen signature in a signature box, as large as fits, in the middle, as a draft to move or size. */
+export async function signInBox(picture: ChosenPicture, box: { page: number } & Rect): Promise<void> {
+  await settle();
+  const s = useStore.getState();
+  if (!s.pdf) return;
+  dropPicture();
+  s.setPlacing(null);
+  s.setDraft({ kind: "picture", page: box.page, ...fitInBox(picture.pixelsWide, picture.pixelsHigh, box), picture });
 }
 
 /** Get ready to put this picture (a signature) on a page with the next click. */

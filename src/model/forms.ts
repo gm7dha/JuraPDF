@@ -4,7 +4,7 @@
  */
 
 /** The kinds of form box: words, a tick box, one of a set of round buttons, a drop-down list, a list to pick from. */
-export type FormBoxKind = "text" | "tick" | "radio" | "choice" | "list";
+export type FormBoxKind = "text" | "tick" | "radio" | "choice" | "list" | "signature";
 
 /** One choice in a list: what's written into the form, and what's shown. */
 export interface FormOption {
@@ -62,7 +62,7 @@ export interface Answer {
 /** One field of the form as a whole (for Claude and for summaries): its name, kind, answer and choices. */
 export interface FormFieldInfo {
   name: string;
-  kind: FormBoxKind | "button" | "signature";
+  kind: FormBoxKind | "button";
   value: FormValue;
   /** The choices (lists), or the round buttons' values. */
   options?: string[];
@@ -217,7 +217,7 @@ const asText = (v: unknown): string => (typeof v === "string" ? v : v === undefi
 /**
  * The form boxes on a page that can be filled in, from pdf.js's list of the
  * page's annotations. `toShown` turns a PDF rectangle into [x1, y1, x2, y2] as
- * shown (from the top-left, in points). Buttons, signatures, hidden and
+ * shown (from the top-left, in points). Buttons, signed signature boxes, hidden and
  * nameless boxes are left out.
  */
 export function formBoxesFrom(annotations: readonly unknown[], toShown: (rect: number[]) => number[]): FormBox[] {
@@ -251,6 +251,9 @@ export function formBoxesFrom(annotations: readonly unknown[], toShown: (rect: n
       const options = (a.options ?? []).map((o) => ({ value: asText(o.exportValue), label: asText(o.displayValue ?? o.exportValue) }));
       const picked = (Array.isArray(a.fieldValue) ? a.fieldValue : a.fieldValue === undefined || a.fieldValue === null ? [] : [a.fieldValue]).map(asText);
       boxes.push({ ...common, kind: a.combo ? "choice" : "list", value: picked, options, several: (!a.combo && a.multiSelect) || undefined, editable: undefined });
+    } else if (a.fieldType === "Sig" && !a.fieldValue) {
+      // A box to sign in, not yet signed digitally: JuraPDF puts a signature picture in it.
+      boxes.push({ ...common, kind: "signature", value: "" });
     }
   }
   return boxes;

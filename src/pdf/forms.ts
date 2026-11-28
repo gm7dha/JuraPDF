@@ -39,7 +39,7 @@ function describe(field: PDFField, pageOf: Map<PDFDict, number>): FormFieldInfo 
   if (field instanceof PDFRadioGroup) return { name, kind: "radio", value: field.getSelected() ?? "", options: field.getOptions(), readOnly, required, pages };
   if (field instanceof PDFDropdown) return { name, kind: "choice", value: field.getSelected()[0] ?? "", options: field.getOptions(), readOnly, required, pages };
   if (field instanceof PDFOptionList) return { name, kind: "list", value: field.getSelected(), options: field.getOptions(), readOnly, required, pages };
-  if (field instanceof PDFSignature) return { name, kind: "signature", value: "", readOnly, pages };
+  if (field instanceof PDFSignature) return { name, kind: "signature", value: "", readOnly, required, pages };
   return { name, kind: "button", value: "", readOnly, pages };
 }
 

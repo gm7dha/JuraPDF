@@ -5,6 +5,15 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.21 — Signature boxes
+
+- A new kind of form box, the **signature box** (form box tool, F, then "Signature box"): a place on a form for
+  someone to sign.
+- Click a signature box (it says "Sign here" when you point at it) and the Sign window opens. The signature you pick
+  or draw goes straight into the box, as big as fits, ready to nudge and then Done.
+- Acrobat and other readers know it as a signature box too, and offer their own way of signing in it. Claude can add
+  signature boxes as well.
+
 ## v0.20 — List boxes, and boxes that must be filled in
 
 - A new kind of form box, the **list box**: every choice shows at once, one to a line. Tick **Pick several** and

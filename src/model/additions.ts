@@ -91,8 +91,8 @@ export interface InkItem {
   id?: number;
 }
 
-/** The kinds of form box: a box to type in, a tick box, a drop-down list, a round button, a date box or a list showing every choice. */
-export type FieldKind = "text" | "tick" | "choice" | "round" | "date" | "list";
+/** The kinds of form box: a box to type in, a tick box, a drop-down list, a round button, a date box, a list showing every choice or a box to sign in. */
+export type FieldKind = "text" | "tick" | "choice" | "round" | "date" | "list" | "signature";
 
 /** Square kinds (a tick box, a round button): dragged or sized, they stay square. */
 export const squareField = (kind: FieldKind) => kind === "tick" || kind === "round";
@@ -129,10 +129,10 @@ export interface FieldItem {
   id?: number;
 }
 
-export const FIELD_NAMES: Record<FieldKind, string> = { text: "Text box", tick: "Tick box", choice: "Choice list", round: "Round button", date: "Date box", list: "List box" };
+export const FIELD_NAMES: Record<FieldKind, string> = { text: "Text box", tick: "Tick box", choice: "Choice list", round: "Round button", date: "Date box", list: "List box", signature: "Signature box" };
 
 /** How a new box of each kind is named ("Text 1"); round buttons are named by their set. */
-export const FIELD_BASE: Record<FieldKind, string> = { text: "Text", tick: "Tick", choice: "Choice", round: "Set", date: "Date", list: "List" };
+export const FIELD_BASE: Record<FieldKind, string> = { text: "Text", tick: "Tick", choice: "Choice", round: "Set", date: "Date", list: "List", signature: "Signature" };
 
 /** A form box's size when it's put on with a click rather than dragged. */
 export const FIELD_SIZE: Record<FieldKind, { width: number; height: number }> = {
@@ -142,6 +142,7 @@ export const FIELD_SIZE: Record<FieldKind, { width: number; height: number }> = 
   round: { width: 14, height: 14 },
   date: { width: 120, height: 22 },
   list: { width: 150, height: 60 },
+  signature: { width: 180, height: 40 },
 };
 
 /** Kinds that have choices to type (a drop-down list, a list box). */

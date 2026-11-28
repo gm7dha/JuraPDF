@@ -100,6 +100,8 @@ interface State {
   note: OpenNote | null;
   /** Trimming pages: the part of a page to keep, dragged out (points from its top-left as shown), or null. */
   trimBox: Mark | null;
+  /** A form's signature box being signed (the Sign window is open for it): page, and points from its top-left as shown. */
+  signBox: { page: number; x: number; y: number; width: number; height: number } | null;
   /** Comparing with another PDF: its words and the differences found, or null when not comparing. Ends when another file is opened. */
   compare: CompareState | null;
 
@@ -201,6 +203,7 @@ export const useStore = create<State>((set, get) => ({
   note: null,
   compare: null,
   trimBox: null,
+  signBox: null,
 
   setNote: (note) => set({ note }),
   setTrimBox: (trimBox) => set({ trimBox }),
@@ -282,7 +285,7 @@ export const useStore = create<State>((set, get) => ({
     }
     set({ onePage, zoom: onePage ? "page" : "width", goTo: get().pdf ? { page: get().currentPage, n: (get().goTo?.n ?? 0) + 1 } : get().goTo });
   },
-  openDialog: (dialog) => set({ dialog }),
+  openDialog: (dialog) => set({ dialog, signBox: dialog === "sign" ? get().signBox : null }),
   askPassword: (passwordFor) => set({ passwordFor, dialog: passwordFor ? "password" : null }),
   showToast(text, kind = "info") {
     const id = ++toastId;

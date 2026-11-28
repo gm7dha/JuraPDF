@@ -115,5 +115,8 @@ tests          Vitest, pure code only;  scripts/smoke-test.mjs drives the built 
 - **v0.20 (done)** — **list boxes and needed boxes**: list boxes are pdf-lib option lists (multi-select when "Pick
   several"); any form box can carry the Required flag (`required`, read by pdf.js and pdf-lib), shown in the fill-in
   layer with a red edge while empty.
-- **Next (Tungsten-style)** — signature boxes, a form's tab order and tidying (align / same size).
+- **v0.21 (done)** — **signature boxes**: an unsigned `/FT /Sig` field (made as a pdf-lib text field, then retyped, so
+  turned pages place it right; no background, so a signature drawn on the page shows through). In the fill-in layer a
+  click opens the Sign window for that box (`signBox` in the store) and the signature lands fitted in it (`fitInBox`).
+- **Next (Tungsten-style)** — a form's tab order and tidying form boxes (align / same size).
 - **Later** — recent files, keeping work in the browser between visits, replying to notes.
