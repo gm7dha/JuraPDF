@@ -5,6 +5,15 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.18 — Trim pages
+
+- **Trim pages** (the button with two crossing corners, or C): drag a box round the part of a page to keep, pick
+  this page or all of them, and click **Trim**. The edges outside the box are hidden.
+- Nothing is thrown away: **Show whole pages** (in the same tool) brings the edges back, and Undo works too.
+- Pages of other sizes get the same edges trimmed, and pages that would be left too small are skipped.
+- Words, boxes, pictures and notes you've added stay exactly where they were on the page, and can still be changed.
+- Claude can trim pages too (trim_pages), and now sees a trimmed page's real size.
+
 ## v0.17 — Compare two PDFs
 
 - **Compare** (the button with two pages and arrows): pick another PDF, an older version say, and JuraPDF finds

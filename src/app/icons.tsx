@@ -405,6 +405,13 @@ export const Icons = {
       <path d="M4 20h16" />
     </Svg>
   ),
+  /** Trim pages: two crossing corner brackets, as on a cropping tool. */
+  Trim: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M6 2v16h16" />
+      <path d="M2 6h16v16" />
+    </Svg>
+  ),
   /** Compare two PDFs: two pages side by side with arrows between them. */
   Compare: (p: IconProps) => (
     <Svg {...p}>

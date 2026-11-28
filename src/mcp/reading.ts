@@ -30,7 +30,14 @@ export async function pageFacts(bytes: Uint8Array): Promise<PageFacts[]> {
     throw new Error(`it couldn't be read as a PDF (${e instanceof Error ? e.message : String(e)})`);
   }
   return doc.getPages().map((p) => {
-    const { width, height } = p.getSize();
+    // What shows: the crop box (trimmed pages), within the paper, as pdf.js and other readers do.
+    const media = p.getMediaBox();
+    const crop = p.getCropBox();
+    const x1 = Math.max(media.x, crop.x);
+    const y1 = Math.max(media.y, crop.y);
+    const x2 = Math.min(media.x + media.width, crop.x + crop.width);
+    const y2 = Math.min(media.y + media.height, crop.y + crop.height);
+    const [width, height] = x2 > x1 && y2 > y1 ? [x2 - x1, y2 - y1] : [media.width, media.height];
     const turn = normalRotation(p.getRotation().angle);
     return turn % 180 ? { width: height, height: width, turn } : { width, height, turn };
   });

@@ -1108,6 +1108,34 @@ await step("comparing with another PDF: the differences listed, shown and marked
   await page.waitForFunction((n) => window.jurapdfStore.getState().past.length === n, steps);
 });
 
+await step("trimming the edges off a page, then showing the whole page again", async () => {
+  const steps = await page.evaluate(() => window.jurapdfStore.getState().past.length);
+  const before = await page.evaluate(() => window.jurapdfStore.getState().pdf.sizes[0]);
+  await page.keyboard.press("Home");
+  await page.keyboard.press("c");
+  await page.getByText("Drag a box round the part to keep").waitFor();
+  const p1 = await page.locator('.page[data-page="1"]').boundingBox();
+  // From the bottom right up to the top left (the bar sits over the top of the page).
+  await page.mouse.move(p1.x + p1.width * 0.9, p1.y + p1.height * 0.5);
+  await page.mouse.down();
+  await page.mouse.move(p1.x + p1.width * 0.1, p1.y + p1.height * 0.02, { steps: 5 });
+  await page.mouse.up();
+  await page.locator('.page[data-page="1"] .trim-box').waitFor();
+  if (process.env.SMOKE_SCREENSHOT) await page.screenshot({ path: "smoke-trim.png" });
+  await page.getByRole("button", { name: "Trim", exact: true }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "trim page 1");
+  const after = await page.evaluate(() => window.jurapdfStore.getState().pdf.sizes[0]);
+  expect(Math.abs(after[0] - before[0] * 0.8) < 3 && Math.abs(after[1] - before[1] * 0.48) < 3, `page 1 should be trimmed: ${before} → ${after}`);
+  await page.waitForFunction(() => document.querySelector('.page[data-page="1"] .textLayer')?.textContent?.includes("Smoke page 1"), null, { timeout: 15_000 });
+  await page.keyboard.press("c");
+  await page.getByRole("button", { name: "Show whole pages" }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "untrim page 1");
+  const whole = await page.evaluate(() => window.jurapdfStore.getState().pdf.sizes[0]);
+  expect(Math.abs(whole[0] - before[0]) < 0.5 && Math.abs(whole[1] - before[1]) < 0.5, `page 1 should be whole again: ${whole}`);
+  for (let i = 0; i < 2; i++) await page.keyboard.press("Control+z");
+  await page.waitForFunction((n) => window.jurapdfStore.getState().past.length === n, steps);
+});
+
 await step("making a PDF smaller shrinks a big photo", async () => {
   const steps = await page.evaluate(() => window.jurapdfStore.getState().past.length);
   // A big "photo" (made here), brought in as a page.

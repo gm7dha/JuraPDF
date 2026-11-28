@@ -98,11 +98,14 @@ interface State {
   markDraft: Mark | null;
   /** The sticky note open to read or change (a new one has no id), or null. Cleared by every change. */
   note: OpenNote | null;
+  /** Trimming pages: the part of a page to keep, dragged out (points from its top-left as shown), or null. */
+  trimBox: Mark | null;
   /** Comparing with another PDF: its words and the differences found, or null when not comparing. Ends when another file is opened. */
   compare: CompareState | null;
 
   setNote(note: OpenNote | null): void;
   setCompare(compare: CompareState | null): void;
+  setTrimBox(box: Mark | null): void;
   setPdf(pdf: OpenPdf | null): void;
   /** A change to the PDF (labelled for Undo); `pdf` is the new version. */
   changePdf(pdf: OpenPdf, label: string): void;
@@ -197,8 +200,10 @@ export const useStore = create<State>((set, get) => ({
   markDraft: null,
   note: null,
   compare: null,
+  trimBox: null,
 
   setNote: (note) => set({ note }),
+  setTrimBox: (trimBox) => set({ trimBox }),
   setCompare(compare) {
     // The Changes tab goes with the comparison.
     set(compare || get().sidePane !== "changes" ? { compare } : { compare, sidePane: rememberedPane() });

@@ -23,6 +23,8 @@ import { MarksLayer } from "./MarksLayer";
 import { NotesLayer } from "./NotesLayer";
 import { finishNote, placeNote } from "./noteActions";
 import { endMarkDrag, markDragTo, startMarkAt } from "./redactActions";
+import { TrimLayer } from "./TrimBar";
+import { endTrimDrag, startTrimAt, trimDragTo } from "./trimActions";
 import { SearchHits } from "./SearchHits";
 
 export function PageView() {
@@ -329,7 +331,7 @@ const PageSlot = memo(function PageSlot({ doc, index, box, zoom, root }: SlotPro
       onPointerDown={(e) => {
         // Drawing a shape: press, drag, let go. With the pen: each press, drag and let go is a stroke.
         const kind = useStore.getState().placing?.kind;
-        if (e.button !== 0 || (kind !== "shape" && kind !== "ink" && kind !== "field" && kind !== "redact")) return;
+        if (e.button !== 0 || (kind !== "shape" && kind !== "ink" && kind !== "field" && kind !== "redact" && kind !== "trim")) return;
         e.preventDefault();
         const el = e.currentTarget;
         const box = el.getBoundingClientRect();
@@ -342,6 +344,7 @@ const PageSlot = memo(function PageSlot({ doc, index, box, zoom, root }: SlotPro
         if (kind === "ink") startStrokeAt(index, x, y);
         else if (kind === "field") startFieldAt(index, x, y);
         else if (kind === "redact") startMarkAt(index, x, y);
+        else if (kind === "trim") startTrimAt(index, x, y);
         else startShapeAt(index, x, y);
         el.setPointerCapture(e.pointerId);
         const move = (ev: PointerEvent) => {
@@ -352,6 +355,7 @@ const PageSlot = memo(function PageSlot({ doc, index, box, zoom, root }: SlotPro
             if (kind === "ink") strokeTo(x2, y2);
             else if (kind === "field") fieldDragTo(x2, y2);
             else if (kind === "redact") markDragTo(x2, y2);
+            else if (kind === "trim") trimDragTo(x2, y2);
             else updateDraft({ x2, y2 });
           }
         };
@@ -362,6 +366,7 @@ const PageSlot = memo(function PageSlot({ doc, index, box, zoom, root }: SlotPro
           if (kind === "ink") endStroke();
           else if (kind === "field") endFieldDrag();
           else if (kind === "redact") endMarkDrag();
+          else if (kind === "trim") endTrimDrag();
           else endShapeDrag();
         };
         el.addEventListener("pointermove", move);
@@ -422,6 +427,7 @@ const PageSlot = memo(function PageSlot({ doc, index, box, zoom, root }: SlotPro
       {near && <FormLayer doc={doc} index={index} scale={cssScale} />}
       {near && <CompareLayer index={index} scale={cssScale} />}
       <MarksLayer index={index} scale={cssScale} />
+      <TrimLayer index={index} scale={cssScale} />
       {near && <NotesLayer index={index} scale={cssScale} />}
       <DraftBox index={index} scale={cssScale} />
       {!drawn && <span className="page-loading">Page {index + 1}</span>}

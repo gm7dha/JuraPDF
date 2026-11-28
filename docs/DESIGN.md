@@ -106,5 +106,8 @@ tests          Vitest, pure code only;  scripts/smoke-test.mjs drives the built 
 - **v0.17 (done)** — **compare two PDFs**: both files' words read with pdf.js, compared word by word (Myers, at most
   2,500 differences), listed in a Changes tab, coloured in on the pages, and marked for good as green highlights and
   red sticky notes (one undo step); Claude's compare_pdfs.
+- **v0.18 (done)** — **trim pages** (crop): a dragged box becomes margins as shown, applied to the chosen pages as
+  their crop box (the rest stays in the file; "Show whole pages" sets it back to the media box); JuraPDF's remembered
+  additions move with the new corner; Claude's trim_pages.
 - **Next (Tungsten-style)** — more form box kinds.
 - **Later** — recent files, keeping work in the browser between visits, replying to notes.
