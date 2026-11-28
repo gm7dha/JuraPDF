@@ -59,8 +59,22 @@ export function removeMarked(page: PDFPage, id: number | string): boolean {
   return true;
 }
 
-/** Take a form box's own drawing (its "widgets") off a page copied on its own; false when it has none there. */
-function dropWidgets(page: PDFPage, name: string): boolean {
+/** A round button's meaning: its set's /Opt entry for it, or else its own "on" name. */
+function optionOf(widget: PDFDict): string | undefined {
+  const parent = widget.lookupMaybe(PDFName.of("Parent"), PDFDict);
+  const kids = parent?.lookupMaybe(PDFName.of("Kids"), PDFArray);
+  const opt = parent?.lookupMaybe(PDFName.of("Opt"), PDFArray);
+  if (kids && opt) {
+    for (let i = 0; i < kids.size(); i++) {
+      if (kids.lookup(i) === widget) return opt.lookupMaybe(i, PDFString, PDFHexString)?.decodeText();
+    }
+  }
+  const normal = widget.lookupMaybe(PDFName.of("AP"), PDFDict)?.lookupMaybe(PDFName.of("N"), PDFDict);
+  return normal?.keys().map((k) => k.decodeText()).find((k) => k !== "Off");
+}
+
+/** Take a form box's own drawing (its "widgets") off a page copied on its own (just one round button of a set, given `option`); false when it has none there. */
+function dropWidgets(page: PDFPage, name: string, option?: string): boolean {
   const annots = page.node.lookupMaybe(PDFName.of("Annots"), PDFArray);
   if (!annots) return false;
   const nameOf = (d: PDFDict | undefined): string | undefined => {
@@ -69,7 +83,8 @@ function dropWidgets(page: PDFPage, name: string): boolean {
   };
   let dropped = false;
   for (let i = annots.size() - 1; i >= 0; i--) {
-    if (nameOf(annots.lookupMaybe(i, PDFDict)) === name) {
+    const widget = annots.lookupMaybe(i, PDFDict);
+    if (nameOf(widget) === name && (option === undefined || (widget && optionOf(widget) === option))) {
       annots.remove(i);
       dropped = true;
     }
@@ -110,7 +125,7 @@ export async function pageWithout(bytes: Uint8Array, index: number, id: number):
   doc.addPage(page);
   const item = keptOn(source.getPage(index), index).find((k) => k.id === id)?.item;
   if (item?.kind === "field") {
-    if (!dropWidgets(page, item.name)) return null;
+    if (!dropWidgets(page, item.name, item.field === "round" ? item.option : undefined)) return null;
   } else if (!removeMarked(page, id)) return null;
   return doc.save({ objectsPerTick: Infinity });
 }

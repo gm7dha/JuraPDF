@@ -5,6 +5,18 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.19 — Round buttons and date boxes
+
+- Two more kinds of form box (the form box tool, F, then pick the kind):
+  - **Round buttons**, for picking one of several (Yes / No, Day / Night). Round buttons with the same set name go
+    together, so picking one unpicks the others. Each new one joins the last set, so a few clicks make a set; say
+    what each one means (for example "Day").
+  - **Date boxes**: choose how the date is written (28/11/2026, 28 November 2026 and so on). Type a date any
+    sensible way, such as 3/4/2026, or pick one from the little calendar, and it's written the box's way. Acrobat
+    knows them as date boxes too.
+- Moving or deleting one round button keeps the rest of its set.
+- Claude can add both (add_form_box), and fill in date boxes with dates like 2026-11-28.
+
 ## v0.18 — Trim pages
 
 - **Trim pages** (the button with two crossing corners, or C): drag a box round the part of a page to keep, pick

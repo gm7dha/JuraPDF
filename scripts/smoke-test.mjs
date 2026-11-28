@@ -955,6 +955,55 @@ await step("adding a form box, filling it in, and making the answer part of the 
   await page.waitForFunction((n) => window.jurapdfStore.getState().past.length === n, steps);
 });
 
+await step("round buttons that make a set, and a date box with a calendar", async () => {
+  const steps = await page.evaluate(() => window.jurapdfStore.getState().past.length);
+  await page.keyboard.press("Home");
+  const p1 = await page.locator('.page[data-page="1"]').boundingBox();
+  const click = (fx, fy) => page.mouse.click(p1.x + p1.width * fx, p1.y + p1.height * fy);
+  const label = (l) => page.waitForFunction((l) => window.jurapdfStore.getState().past.at(-1)?.label === l, l);
+  await page.keyboard.press("f");
+  await click(0.6, 0.2);
+  await page.getByLabel("Kind of form box").selectOption("round");
+  await page.getByRole("textbox", { name: "Set", exact: true }).fill("Shift");
+  await page.getByRole("textbox", { name: "Means", exact: true }).fill("Day");
+  await page.getByRole("button", { name: "Done" }).click();
+  await label("add a round button to page 1");
+  await page.locator(".draft").waitFor({ state: "detached" });
+  // The next round button joins the same set.
+  await page.keyboard.press("f");
+  await click(0.7, 0.2);
+  const set = await page.getByRole("textbox", { name: "Set", exact: true }).inputValue();
+  expect(set === "Shift", `the next round button should join the set, not ${set}`);
+  await page.getByRole("textbox", { name: "Means", exact: true }).fill("Night");
+  await page.getByRole("button", { name: "Done" }).click();
+  await page.waitForFunction((n) => window.jurapdfStore.getState().past.length === n + 2, steps);
+  await page.locator(".draft").waitFor({ state: "detached" });
+  await page.keyboard.press("f");
+  await click(0.6, 0.26);
+  await page.getByLabel("Kind of form box").selectOption("date");
+  await page.getByRole("textbox", { name: "Name", exact: true }).fill("Done on");
+  await page.getByLabel("How dates are written").selectOption("d mmmm yyyy");
+  await page.getByRole("button", { name: "Done" }).click();
+  await label("add a date box to page 1");
+  await page.locator(".draft").waitFor({ state: "detached" });
+  // Fill them in: pick Night, type a date (written the box's way).
+  await page.getByRole("radio", { name: "Shift" }).nth(1).click();
+  await label("pick “Night” for “Shift”");
+  const date = page.getByRole("textbox", { name: "Done on", exact: true });
+  await date.click();
+  await date.fill("3/4/2026");
+  await date.press("Enter");
+  await label("fill in “Done on”");
+  const bytes = Buffer.from(await page.evaluate(() => Array.from(window.jurapdfStore.getState().pdf.bytes)));
+  const form = (await PDFDocument.load(bytes)).getForm();
+  const picked = form.getRadioGroup("Shift").getSelected();
+  const when = form.getTextField("Done on").getText();
+  expect(picked === "Night" && when === "3 April 2026", `the answers should be Night and 3 April 2026: ${picked}, ${when}`);
+  if (process.env.SMOKE_SCREENSHOT) await page.screenshot({ path: "smoke-round-date.png" });
+  for (let i = 0; i < 5; i++) await page.keyboard.press("Control+z");
+  await page.waitForFunction((n) => window.jurapdfStore.getState().past.length === n, steps);
+});
+
 await step("adding page numbers, then taking them off", async () => {
   const steps = await page.evaluate(() => window.jurapdfStore.getState().past.length);
   await page.getByRole("button", { name: "Headers and footers", exact: true }).click();

@@ -109,5 +109,8 @@ tests          Vitest, pure code only;  scripts/smoke-test.mjs drives the built 
 - **v0.18 (done)** — **trim pages** (crop): a dragged box becomes margins as shown, applied to the chosen pages as
   their crop box (the rest stays in the file; "Show whole pages" sets it back to the media box); JuraPDF's remembered
   additions move with the new corner; Claude's trim_pages.
-- **Next (Tungsten-style)** — more form box kinds.
+- **v0.19 (done)** — **round buttons and date boxes**: round buttons are options of a radio group (pdf-lib `/Opt`),
+  joined by set name; changing one rebuilds its set from the remembered options. Date boxes are text fields with
+  Acrobat's `AFDate_FormatEx` / `AFDate_KeystrokeEx` actions, read back by JuraPDF (pdf.js `actions`, pdf-lib `AA`).
+- **Next (Tungsten-style)** — list boxes (several picks), signature boxes.
 - **Later** — recent files, keeping work in the browser between visits, replying to notes.

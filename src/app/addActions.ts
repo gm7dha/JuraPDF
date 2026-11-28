@@ -22,16 +22,21 @@ import {
   SHAPE_STYLE,
   sizedShape,
   startingPictureSize,
+  FIELD_BASE,
   FIELD_NAMES,
   FIELD_SIZE,
+  freshOption,
+  squareField,
   fieldBox,
   freshFieldName,
+  type FieldItem,
   type FieldKind,
   type Draft,
   type ShapeKind,
 } from "../model/additions";
 import type { ChosenPicture } from "../model/additions";
 import { fontLabel } from "../model/fontCodes";
+import { DATE_FORMATS } from "../model/forms";
 import { useStore } from "../model/store";
 import { nearestFont, type FontChoice } from "../model/watermark";
 import { AddProblem, addItems, addShapes, changeItem, pictureType } from "../pdf/additions";
@@ -112,15 +117,38 @@ export async function startField(field: FieldKind = lastField): Promise<void> {
   say(`Click on a page where the ${FIELD_NAMES[field].toLowerCase()} should go, or drag out its size. Esc stops.`);
 }
 
+/** The set the last round button went in: the next one joins it, so a few clicks make a set to pick one from. */
+let lastRoundSet = "";
+
+/** A form box's starting details: its name (a round button's set), and what a round button means or how a date box writes dates. */
+function freshField(field: FieldKind): Pick<FieldItem, "name"> & Partial<Pick<FieldItem, "option" | "dateFormat" | "choices">> {
+  const s = useStore.getState();
+  // (Names already used, if known: the name is made unique when it's written anyway.)
+  const fields = (keptKnown(s.pdf?.bytes ?? new Uint8Array()) ?? []).flat().flatMap((k) => (k.item.kind === "field" ? [k.item] : []));
+  const names = fields.map((f) => f.name);
+  if (field === "round") {
+    const set = lastRoundSet && fields.some((f) => f.field === "round" && f.name === lastRoundSet) ? lastRoundSet : freshFieldName("round", names);
+    return { name: set, option: freshOption(fields.filter((f) => f.field === "round" && f.name === set).map((f) => f.option ?? "")) };
+  }
+  return { name: freshFieldName(field, names), choices: field === "choice" ? ["Yes", "No"] : undefined, dateFormat: field === "date" ? lastDateFormat : undefined };
+}
+
+/** How the last date box wrote dates. */
+let lastDateFormat = DATE_FORMATS[0];
+
+/** Remember a round button's set and a date box's format for the next one. */
+export function noteField(item: FieldItem): void {
+  if (item.field === "round") lastRoundSet = item.name;
+  if (item.field === "date" && item.dateFormat) lastDateFormat = item.dateFormat;
+}
+
 /** A press on a page while adding a form box: it's dragged out from here. */
 export function startFieldAt(page: number, x: number, y: number): void {
   const s = useStore.getState();
   if (s.placing?.kind !== "field" || !s.pdf) return;
   const field = s.placing.field;
   fieldStart = { x, y };
-  // (Names already used, if known: the name is made unique when it's written anyway.)
-  const names = (keptKnown(s.pdf.bytes) ?? []).flat().flatMap((k) => (k.item.kind === "field" ? [k.item.name] : []));
-  s.setDraft({ kind: "field", field, page, ...fieldBox(field, x, y, x, y), name: freshFieldName(field, names), multiline: false, size: 0, choices: field === "choice" ? ["Yes", "No"] : undefined });
+  s.setDraft({ kind: "field", field, page, ...fieldBox(field, x, y, x, y), ...freshField(field), multiline: false, size: 0 });
   s.setPlacing(null);
   dropHint();
 }
@@ -137,15 +165,17 @@ export function endFieldDrag(): void {
   noteDragEnd();
 }
 
-/** Make the form box being placed another kind (a text box, tick box or choice list), keeping it about where it is. */
+/** Make the form box being placed another kind (a text box, tick box, list, round button or date box), keeping it about where it is. */
 export function setFieldKind(field: FieldKind): void {
   const d = useStore.getState().draft;
   if (d?.kind !== "field" || d.field === field) return;
   lastField = field;
   const was = FIELD_SIZE[d.field];
-  const size = d.width === was.width && d.height === was.height ? FIELD_SIZE[field] : field === "tick" ? { width: Math.min(d.width, d.height), height: Math.min(d.width, d.height) } : { width: Math.max(d.width, 60), height: Math.max(d.height, 16) };
-  const fresh = /^(Text|Tick|Choice) \d+$/.test(d.name);
-  updateDraft({ field, ...size, name: fresh ? d.name.replace(/^\w+/, { text: "Text", tick: "Tick", choice: "Choice" }[field]) : d.name, choices: field === "choice" ? (d.choices ?? ["Yes", "No"]) : d.choices }, true);
+  const side = Math.min(d.width, d.height);
+  const size = d.width === was.width && d.height === was.height ? FIELD_SIZE[field] : squareField(field) ? { width: side, height: side } : { width: Math.max(d.width, 60), height: Math.max(d.height, 16) };
+  const fresh = new RegExp(`^(${Object.values(FIELD_BASE).join("|")}) \\d+$`).test(d.name);
+  const named = fresh || field === "round" || d.field === "round" ? freshField(field) : { name: d.name };
+  updateDraft({ field, ...size, ...named, choices: field === "choice" ? (d.choices ?? ["Yes", "No"]) : d.choices, dateFormat: field === "date" ? (d.dateFormat ?? lastDateFormat) : undefined }, true);
 }
 
 /** The last colour, thickness and see-through used for the pen. */
@@ -723,6 +753,7 @@ export async function finishAdding(keepTool = false): Promise<void> {
     cancelAdding();
     return;
   }
+  if (draft.kind === "field") noteField(draft);
   if (draft.kind !== "existing" && draft.id !== undefined) {
     const was = opened?.id === draft.id ? opened.item : null;
     const now = { ...draft, preview: undefined } as unknown as AddItem;

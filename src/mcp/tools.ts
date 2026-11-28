@@ -15,7 +15,7 @@ import { addBlankPage, deletePages, extractPages, insertPdf, PageProblem, reorde
 import { marginsLabel, trims } from "../model/trim";
 import { addWatermark, LockedPdf, WatermarkProblem, type WatermarkPicture } from "../pdf/watermark";
 import { additionLabel, choicesOf, FIELD_SIZE, cleanSize, DEFAULT_WORDS, linesOf, SHAPE_NAMES, SHAPE_STYLE, startingPictureSize, type ShapeKind } from "../model/additions";
-import { answerFor, answerLabel, FORM_KIND_NAMES, type Answer, type FormBoxKind, type FormValue } from "../model/forms";
+import { answerFor, answerLabel, DATE_FORMATS, FORM_KIND_NAMES, type Answer, type FormBoxKind, type FormValue } from "../model/forms";
 import { fillForm, formFields, FormProblem } from "../pdf/forms";
 import { DEFAULT_HEADERS, dateText, hasWords, headersLabel, type HeaderSettings } from "../model/headers";
 import { addHeaders, HeaderProblem, removeHeaders } from "../pdf/headers";
@@ -38,7 +38,7 @@ export const FORMAT_GUIDE = `How JuraPDF works with PDFs:
 - Pages are numbered from 1, as the user sees them. "pages" takes a number, a list of numbers, or text like "1-3, 5", "4-" (4 to the end), "all", "odd", "even" or "last".
 - Sizes are paper names (A4, Letter…) or millimetres; "landscape" means wider than tall. A page's "turn" is how it has been rotated to show (0, 90, 180 or 270 degrees clockwise).
 - describe_pdf gives the pages and a taste of their words; read_words gives the words of chosen pages (scanned pages, being pictures, have none); compare_pdfs lists the words that differ from another PDF in the folder (an older version, say).
-- Changes: add_watermark (words or a PNG/JPG picture from the folder, saved into the pages), add_words and add_picture (writing or a PNG/JPG picture such as a signature on one page, placed in points from its top-left corner as it shows; describe_pdf gives the page sizes), add_shape (a see-through highlight over words, or a box, oval, line or arrow to point something out, a box or oval filled in if wanted; read_words gives where words are), add_form_box (a text box, tick box or choice list that whoever opens the PDF can fill in, e.g. to make a printed form fillable), fill_form (fill in the PDF's form boxes; read_form lists them with what's in them), add_headers (page numbers, Bates numbers or words along the top and bottom of pages), add_note (a sticky note, a comment pinned to a page; read_notes lists the notes and their replies, delete_note takes one off), tidy_pdf (a little smaller, looking the same), turn_pages, trim_pages (crop the edges off pages; whole_pages brings them back), delete_pages (one page must stay), move_pages, add_blank_pages, bring_in_pdf (all the pages of another PDF from the folder: this is how to join PDFs), save_pages_as_pdf (some pages as a new PDF in the folder: this is how to split one). undo takes back your last change.
+- Changes: add_watermark (words or a PNG/JPG picture from the folder, saved into the pages), add_words and add_picture (writing or a PNG/JPG picture such as a signature on one page, placed in points from its top-left corner as it shows; describe_pdf gives the page sizes), add_shape (a see-through highlight over words, or a box, oval, line or arrow to point something out, a box or oval filled in if wanted; read_words gives where words are), add_form_box (a text box, tick box, choice list, set of round buttons or date box that whoever opens the PDF can fill in, e.g. to make a printed form fillable), fill_form (fill in the PDF's form boxes; read_form lists them with what's in them), add_headers (page numbers, Bates numbers or words along the top and bottom of pages), add_note (a sticky note, a comment pinned to a page; read_notes lists the notes and their replies, delete_note takes one off), tidy_pdf (a little smaller, looking the same), turn_pages, trim_pages (crop the edges off pages; whole_pages brings them back), delete_pages (one page must stay), move_pages, add_blank_pages, bring_in_pdf (all the pages of another PDF from the folder: this is how to join PDFs), save_pages_as_pdf (some pages as a new PDF in the folder: this is how to split one). undo takes back your last change.
 - Locked PDFs (with a password or protected against changes) can be read but not changed.
 - Talk to the user in plain words: "pages", "words", "picture", "see-through" — not PDF jargon.`;
 
@@ -340,7 +340,7 @@ export const TOOLS: ToolDef[] = [
         ...fields.map((f) => {
           const where = f.pages.length ? ` on ${pagesLabel(f.pages)}` : "";
           const bits = [
-            `- ${JSON.stringify(f.name)}: ${FORM_KIND_NAMES[f.kind]}${f.multiline ? " (several lines)" : ""}${where}, ${shown(f.value)}`,
+            `- ${JSON.stringify(f.name)}: ${f.dateFormat ? `date box (dates written ${f.dateFormat})` : FORM_KIND_NAMES[f.kind]}${f.multiline ? " (several lines)" : ""}${where}, ${shown(f.value)}`,
             f.options?.length ? `choices ${f.options.map((o) => JSON.stringify(o)).join(", ")}` : "",
             f.readOnly ? "can't be changed" : "",
           ];
@@ -726,32 +726,34 @@ export const TOOLS: ToolDef[] = [
     name: "add_form_box",
     title: "Add a form box to fill in",
     description:
-      "Put a form box on one page that whoever opens the PDF (in Acrobat, Preview, a browser…) can fill in: a text box to type in, a tick box, or a choice list. Give its top-left corner in points from the page's top-left as it shows, and its size (left out: a usual size for the kind). read_words gives where the words are, e.g. to put a box beside a label.",
+      "Put a form box on one page that whoever opens the PDF (in Acrobat, Preview, a browser…) can fill in: a text box to type in, a tick box, a choice list, a round button (round buttons with the same name make a set, of which only one can be picked: add one for each choice, each with its own option), or a date box. Give its top-left corner in points from the page's top-left as it shows, and its size (left out: a usual size for the kind). read_words gives where the words are, e.g. to put a box beside a label.",
     inputSchema: {
       type: "object",
       properties: {
         page: { type: "number", description: "The page, from 1." },
-        kind: { type: "string", enum: ["text", "tick", "choice"], description: "A text box, a tick box or a choice list." },
+        kind: { type: "string", enum: ["text", "tick", "choice", "round", "date"], description: "A text box, a tick box, a choice list, a round button or a date box." },
         x: { type: "number", description: "Points from the left edge to its left side." },
         y: { type: "number", description: "Points from the top edge to its top." },
-        width: { type: "number", description: "Its width in points (180 for a text box, 14 for a tick box, 150 for a list, if left out)." },
-        height: { type: "number", description: "Its height in points (22, or 14 for a tick box, if left out; a tick box is square)." },
-        name: { type: "string", description: "Its name in the form, e.g. \"Work order\" (each box's is different; a number is added if it's taken)." },
+        width: { type: "number", description: "Its width in points (180 for a text box, 14 for a tick box or round button, 150 for a list, 120 for a date box, if left out)." },
+        height: { type: "number", description: "Its height in points (22, or 14 for a tick box or round button, if left out; those are square)." },
+        name: { type: "string", description: "Its name in the form, e.g. \"Work order\" (each box's is different; a number is added if it's taken). Round buttons: the set's name, the same for each button in the set." },
+        option: { type: "string", description: "A round button: what picking it means, e.g. \"Yes\" (different for each button in its set)." },
+        date_format: { type: "string", enum: DATE_FORMATS, description: "A date box: how dates are written in it (dd/mm/yyyy if left out)." },
         several_lines: { type: "boolean", description: "A text box: let several lines be typed (false if left out)." },
         choices: { type: "array", items: { type: "string" }, description: "A choice list: what can be chosen." },
       },
       required: ["page", "kind", "x", "y"],
     },
     async run(s, a) {
-      noExtras(a, ["page", "kind", "x", "y", "width", "height", "name", "several_lines", "choices"], "add_form_box");
+      noExtras(a, ["page", "kind", "x", "y", "width", "height", "name", "several_lines", "choices", "option", "date_format"], "add_form_box");
       const doc = needDoc(s);
       const facts = await pageFacts(doc.bytes);
       const page = num(a.page, "page", { min: 1, max: facts.length, integer: true }) - 1;
       const { width: pw, height: ph } = facts[page];
-      const field = oneOf(a.kind, ["text", "tick", "choice"] as const, "kind");
+      const field = oneOf(a.kind, ["text", "tick", "choice", "round", "date"] as const, "kind");
       const size = FIELD_SIZE[field];
       const width = num(a.width, "width", { min: 6, max: pw, fallback: size.width });
-      const height = field === "tick" ? width : num(a.height, "height", { min: 6, max: ph, fallback: size.height });
+      const height = field === "tick" || field === "round" ? width : num(a.height, "height", { min: 6, max: ph, fallback: size.height });
       let choices: string[] | undefined;
       if (field === "choice") {
         if (!Array.isArray(a.choices) || !a.choices.every((c) => typeof c === "string")) throw new InputError("choices should be a list of words, e.g. [\"Day\", \"Night\"].");
@@ -769,6 +771,8 @@ export const TOOLS: ToolDef[] = [
         name: a.name === undefined ? "" : text(a.name, "name"),
         multiline: bool(a.several_lines, "several_lines"),
         choices,
+        option: field === "round" && a.option !== undefined ? text(a.option, "option") : undefined,
+        dateFormat: field === "date" ? (a.date_format === undefined ? DATE_FORMATS[0] : oneOf(a.date_format, DATE_FORMATS, "date_format")) : undefined,
       };
       await change(s, (bytes) => addItems(bytes, [item]), additionLabel(item).replace(/^add/, "added"));
       return say(`Added ${additionLabel(item).replace(/^add /, "")}.`);
