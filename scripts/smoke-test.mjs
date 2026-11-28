@@ -1105,6 +1105,35 @@ await step("signing: draw a signature, put it on a page, and use it again", asyn
   await page.waitForFunction((n) => window.jurapdfStore.getState().past.length === n, steps);
 });
 
+await step("a signature box: added, then signed with the kept signature, which lands in the box", async () => {
+  const steps = await page.evaluate(() => window.jurapdfStore.getState().past.length);
+  await page.keyboard.press("Home");
+  const p1 = await page.locator('.page[data-page="1"]').boundingBox();
+  await page.keyboard.press("f");
+  // (Clear of the toasts along the bottom.)
+  await page.mouse.click(p1.x + p1.width * 0.15, p1.y + 480);
+  await page.getByLabel("Kind of form box").selectOption("signature");
+  await page.getByRole("textbox", { name: "Name", exact: true }).fill("Signed by");
+  await page.getByRole("button", { name: "Done" }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "add a signature box to page 1");
+  await page.locator(".draft").waitFor({ state: "detached" });
+  await page.getByRole("button", { name: "Signed by: sign here" }).click();
+  await page.getByRole("button", { name: "Use this signature" }).first().click();
+  await page.locator(".draft-picture").waitFor();
+  const d = await page.evaluate(() => window.jurapdfStore.getState().draft);
+  await page.getByRole("button", { name: "Done" }).click();
+  await page.waitForFunction(() => window.jurapdfStore.getState().past.at(-1)?.label === "sign page 1");
+  const bytes = Buffer.from(await page.evaluate(() => Array.from(window.jurapdfStore.getState().pdf.bytes)));
+  const field = (await PDFDocument.load(bytes)).getForm().getField("Signed by");
+  const r = field.acroField.getWidgets()[0].getRectangle();
+  const [, ph] = await page.evaluate(() => window.jurapdfStore.getState().pdf.sizes[0]);
+  const top = ph - (r.y + r.height);
+  expect(d.x >= r.x - 0.5 && d.x + d.width <= r.x + r.width + 0.5 && d.y >= top - 0.5 && d.y + d.height <= top + r.height + 0.5, `the signature should sit in the box: ${JSON.stringify(d)} in ${JSON.stringify(r)}`);
+  if (process.env.SMOKE_SCREENSHOT) await page.screenshot({ path: "smoke-sign-box.png" });
+  for (let i = 0; i < 2; i++) await page.keyboard.press("Control+z");
+  await page.waitForFunction((n) => window.jurapdfStore.getState().past.length === n, steps);
+});
+
 await step("stamping: a RECEIVED stamp with a name and the date, put on a page", async () => {
   const steps = await page.evaluate(() => window.jurapdfStore.getState().past.length);
   await page.keyboard.press("Home");

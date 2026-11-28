@@ -77,7 +77,9 @@
   nesting stays shallow. Shapes have `fill` and `seeThrough`; `InkItem` is the pen (`InkDraft.tsx`, `thinStroke`).
 - Form boxes (v0.9, `FieldItem` kind "field": text / tick / choice, and (v0.19) round (`option`; a set of round buttons shares
   `name`, a radio group with `/Opt`; `changeItem` takes the whole set off and puts its other remembered buttons back; `dropWidgets`
-  takes just one by `optionOf`) / list (v0.20, an option list, `several` = multi-select; `hasChoices`) / date (`dateFormat`, a text field with Acrobat's AFDate_FormatEx/KeystrokeEx actions; `dateFormatIn`,
+  takes just one by `optionOf`) / list (v0.20, an option list, `several` = multi-select; `hasChoices`) / signature (v0.21, a text field retyped `/FT /Sig`,
+  no background; FormLayer's `SignBox` → `signInto` sets `signBox` in the store and opens the Sign window, whose signature lands
+  in the box via `signInBox`/`fitInBox`) / date (`dateFormat`, a text field with Acrobat's AFDate_FormatEx/KeystrokeEx actions; `dateFormatIn`,
   `writeDate`, `readDate`, `dateForBox` in src/model/forms.ts; FormLayer adds a calendar and writes typed dates the box's way); any kind can be `required` (v0.20: the Required flag; FormLayer gives an empty one a red edge, `.needed`); `FieldDraft.tsx`, `startField`/`fieldDragTo` in addActions.ts,
   key F): written as real AcroForm fields by pdf-lib (`addField` in src/pdf/additions.ts, grey border, white inside), remembered
   in `/JuraPDFItems` like other additions but found by field name, not by a marked span: `removeField` takes the widgets off

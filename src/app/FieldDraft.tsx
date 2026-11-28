@@ -116,7 +116,7 @@ export function FieldDraft({ draft, scale, pageW, pageH }: { draft: FieldItem; s
             ))}
           </span>
         ) : (
-          <span>{draft.field === "choice" ? `${draft.choices?.[0] ?? ""} ▾` : draft.field === "date" ? (draft.dateFormat ?? DATE_FORMATS[0]) : draft.name}</span>
+          <span>{draft.field === "choice" ? `${draft.choices?.[0] ?? ""} ▾` : draft.field === "date" ? (draft.dateFormat ?? DATE_FORMATS[0]) : draft.field === "signature" ? "Sign here" : draft.name}</span>
         )}
         <span className="draft-size" role="presentation" title="Drag to make it bigger or smaller" onPointerDown={startSize} />
       </div>

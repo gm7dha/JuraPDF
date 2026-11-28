@@ -191,6 +191,8 @@ describe("reading and changing a PDF", () => {
     expect(await ok(s, "fill_form", { answers: { Tools: ["saw", "drill"] } })).toBe("Filled in 1 form box.");
     expect(await ok(s, "read_form")).toMatch(/"Tools": list on page 1, "Saw", "Drill"; choices "Hammer", "Saw", "Drill"; must be filled in/);
     expect(await bad(s, "add_form_box", { page: 1, kind: "list", x: 300, y: 300 })).toMatch(/choices/);
+    expect(await ok(s, "add_form_box", { page: 1, kind: "signature", x: 300, y: 300, name: "Signed" })).toBe("Added a signature box to page 1.");
+    expect(await ok(s, "read_form")).toMatch(/"Signed": signature box on page 1/);
     // Page numbers and headers.
     expect(await ok(s, "add_headers", { bottom_middle: "Page {page} of {pages}" })).toMatch(/^Added page numbers to every page\.$/);
     expect((await words(s))[0]).toContain("Page 1 of");

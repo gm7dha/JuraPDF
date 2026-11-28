@@ -9,6 +9,7 @@ import { memo, useEffect, useState, type CSSProperties, type KeyboardEvent } fro
 import { dateForBox, fitFontSize, optionLabel, readDate, sameValue, tabOrder, writeDate, type FormBox } from "../model/forms";
 import { useStore } from "../model/store";
 import type { PDFDocumentProxy } from "../pdf/pdfjs";
+import { signInto } from "./addActions";
 import { fillIn, formBoxesOn } from "./formActions";
 
 interface Props {
@@ -40,17 +41,18 @@ export const FormLayer = memo(function FormLayer({ doc, index, scale }: Props) {
         const n = seen.get(box.name) ?? 0;
         seen.set(box.name, n + 1);
         // Keyed by name (and which of that name), so a box keeps its place, and the typing in it, across versions.
-        return <Box key={`${box.kind}:${box.name}#${n}`} box={box} scale={scale} />;
+        return <Box key={`${box.kind}:${box.name}#${n}`} box={box} page={index} scale={scale} />;
       })}
     </div>
   );
 });
 
-function Box({ box, scale }: { box: FormBox; scale: number }) {
+function Box({ box, page, scale }: { box: FormBox; page: number; scale: number }) {
   const place: CSSProperties = { left: box.x * scale, top: box.y * scale, width: box.width * scale, height: box.height * scale };
   const tip = `${box.name}${box.readOnly ? " (can't be changed)" : box.required ? " (must be filled in)" : ""}`;
   if (box.kind === "text") return <TextBox box={box} place={place} scale={scale} tip={tip} />;
   if (box.kind === "tick" || box.kind === "radio") return <TickBox box={box} place={place} scale={scale} tip={tip} />;
+  if (box.kind === "signature") return <SignBox box={box} page={page} place={place} scale={scale} tip={tip} />;
   return <ListBox box={box} place={place} scale={scale} tip={tip} />;
 }
 
@@ -178,6 +180,32 @@ function TickBox({ box, place, scale, tip }: { box: FormBox; place: CSSPropertie
       }}
     >
       {wanted !== null && shown ? (radio ? "●" : "✓") : ""}
+    </button>
+  );
+}
+
+/** A box to sign in: a click opens the Sign window, and the signature chosen is put in the box. */
+function SignBox({ box, page, place, scale, tip }: { box: FormBox; page: number; place: CSSProperties; scale: number; tip: string }) {
+  const sign = () => {
+    if (!box.readOnly) signInto({ page, x: box.x, y: box.y, width: box.width, height: box.height });
+  };
+  return (
+    <button
+      type="button"
+      aria-label={`${tip}: sign here`}
+      title={`${tip}: click to sign here`}
+      className={`form-box form-sign${box.required ? " needed" : ""}`}
+      style={{ ...place, fontSize: Math.max(8, Math.min(box.height * 0.4, 14) * scale) }}
+      onClick={sign}
+      onKeyDown={(e) => {
+        e.stopPropagation();
+        if (e.key === " " || e.key === "Enter") {
+          e.preventDefault();
+          sign();
+        }
+      }}
+    >
+      Sign here
     </button>
   );
 }

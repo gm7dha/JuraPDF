@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { HANDWRITING, clearPaper, cleanSaved, dataUrlBytes, inkBounds, placingSize, withSaved, type SavedSignature } from "../model/signature";
 import { useStore } from "../model/store";
-import { placePicture } from "./addActions";
+import { placePicture, signInBox } from "./addActions";
 import { Modal } from "./Modal";
 
 const KEY = "jurapdf.signatures";
@@ -105,8 +105,12 @@ export function SignDialog() {
     }
     const bytes = dataUrlBytes(sig.png);
     const url = URL.createObjectURL(new Blob([bytes], { type: "image/png" }));
+    const picture = { bytes, type: "png" as const, name: "Signature", url, ...placingSize(sig.width, sig.height) };
+    // Opened from a form's signature box: the signature goes in that box.
+    const box = useStore.getState().signBox;
     close();
-    await placePicture({ bytes, type: "png", name: "Signature", url, ...placingSize(sig.width, sig.height) }, "Click on a page where the signature should go. Esc stops.");
+    if (box) await signInBox(picture, box);
+    else await placePicture(picture, "Click on a page where the signature should go. Esc stops.");
   };
 
   const fromPad = () => {
