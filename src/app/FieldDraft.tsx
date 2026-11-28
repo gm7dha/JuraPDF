@@ -7,7 +7,7 @@
  */
 import { useState, type PointerEvent as ReactPointerEvent } from "react";
 
-import { choicesOf, FIELD_NAMES, keepOnPage, squareField, type FieldItem, type FieldKind } from "../model/additions";
+import { choicesOf, FIELD_NAMES, hasChoices, keepOnPage, squareField, type FieldItem, type FieldKind } from "../model/additions";
 import { DATE_FORMATS, writeDate } from "../model/forms";
 import { cancelAdding, finishAdding, markDraft, setFieldKind, updateDraft } from "./addActions";
 import { dragFrom } from "./DraftBox";
@@ -90,6 +90,14 @@ export function FieldDraft({ draft, scale, pageW, pageH }: { draft: FieldItem; s
             </select>
           </>
         )}
+        {draft.field === "list" && (
+          <label className="field-check" title="Let whoever fills it in pick more than one choice">
+            <input type="checkbox" checked={!!draft.several} onChange={(e) => updateDraft({ several: e.target.checked }, true)} /> Pick several
+          </label>
+        )}
+        <label className="field-check" title="Whoever fills in the form must fill this in: readers remind them if it's left empty">
+          <input type="checkbox" checked={!!draft.required} onChange={(e) => updateDraft({ required: e.target.checked }, true)} /> Must be filled in
+        </label>
         {draft.id !== undefined && <KeptButtons name={name} />}
         <button type="button" className="primary-button draft-done" onClick={() => void finishAdding()} title={`Put the ${name} on the page (Enter)`}>
           Done
@@ -101,12 +109,18 @@ export function FieldDraft({ draft, scale, pageW, pageH }: { draft: FieldItem; s
       <div className={`field-box ${draft.field}`} style={{ width: s(draft.width), height: s(draft.height), fontSize: Math.max(8, Math.min(s(draft.height) * 0.6, 16)) }} onPointerDown={startMove} title="Drag to move it">
         {draft.field === "tick" ? (
           <Icons.Tick size={Math.max(8, s(draft.height) * 0.8)} />
-        ) : draft.field === "round" ? null : (
+        ) : draft.field === "round" ? null : draft.field === "list" ? (
+          <span className="field-list" style={{ fontSize: s(10) }}>
+            {(draft.choices ?? []).map((c) => (
+              <span key={c}>{c}</span>
+            ))}
+          </span>
+        ) : (
           <span>{draft.field === "choice" ? `${draft.choices?.[0] ?? ""} ▾` : draft.field === "date" ? (draft.dateFormat ?? DATE_FORMATS[0]) : draft.name}</span>
         )}
         <span className="draft-size" role="presentation" title="Drag to make it bigger or smaller" onPointerDown={startSize} />
       </div>
-      {draft.field === "choice" && (
+      {hasChoices(draft.field) && (
         <label className="field-choices">
           <span>Choices, one to a line</span>
           <textarea

@@ -170,7 +170,7 @@ export async function changeItem(bytes: Uint8Array, index: number, id: number, n
 function check(item: AddItem): void {
   if (item.kind === "words" && !linesOf(item.text).length && !item.cover) throw new AddProblem("Type some words first.");
   if (item.kind === "ink" && !item.strokes.some((s) => s.length)) throw new AddProblem("Draw something first.");
-  if (item.kind === "field" && item.field === "choice" && !item.choices?.length) throw new AddProblem("Type the choices for the list first, one to a line.");
+  if (item.kind === "field" && (item.field === "choice" || item.field === "list") && !item.choices?.length) throw new AddProblem("Type the choices for the list first, one to a line.");
 }
 
 /** Draw one addition between its markers; gives it as remembered (without its id) and the box it covers. */
@@ -234,6 +234,7 @@ function addField(doc: PDFDocument, page: PDFPage, frame: ReturnType<typeof fram
     const options = set.getOptions();
     const option = item.option?.trim() && !options.includes(item.option.trim()) ? item.option.trim() : freshOption(options);
     set.addOptionToPage(option, page, place);
+    if (item.required) set.enableRequired();
     return { item: { ...item, name: set.getName(), option, id: undefined }, box };
   }
   const name = wanted && !taken.includes(wanted) ? wanted : freshFieldName(item.field, taken);
@@ -249,14 +250,25 @@ function addField(doc: PDFDocument, page: PDFPage, frame: ReturnType<typeof fram
       const js = (code: string) => doc.context.obj({ S: "JavaScript", JS: PDFString.of(code) });
       field.acroField.dict.set(PDFName.of("AA"), doc.context.obj({ F: js(`AFDate_FormatEx("${format}");`), K: js(`AFDate_KeystrokeEx("${format}");`) }));
     }
+    if (item.required) field.enableRequired();
   } else if (item.field === "tick") {
-    form.createCheckBox(name).addToPage(page, place);
+    const field = form.createCheckBox(name);
+    field.addToPage(page, place);
+    if (item.required) field.enableRequired();
+  } else if (item.field === "list") {
+    const field = form.createOptionList(name);
+    field.setOptions(item.choices?.length ? item.choices : ["Yes", "No"]);
+    if (item.several) field.enableMultiselect();
+    field.addToPage(page, place);
+    field.setFontSize(10);
+    if (item.required) field.enableRequired();
   } else {
     const field = form.createDropdown(name);
     const choices = item.choices?.length ? item.choices : ["Yes", "No"];
     field.setOptions(choices);
     field.addToPage(page, place);
     field.setFontSize(0);
+    if (item.required) field.enableRequired();
   }
   return { item: { ...item, name, id: undefined }, box };
 }

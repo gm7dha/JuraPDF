@@ -33,11 +33,12 @@ function describe(field: PDFField, pageOf: Map<PDFDict, number>): FormFieldInfo 
   const name = field.getName();
   const pages = [...new Set(field.acroField.getWidgets().map((w) => pageOf.get(w.dict)).filter((p): p is number => p !== undefined))].sort((a, b) => a - b);
   const readOnly = field.isReadOnly() || undefined;
-  if (field instanceof PDFTextField) return { name, kind: "text", value: field.getText() ?? "", multiline: field.isMultiline() || undefined, readOnly, pages, dateFormat: dateFormatOf(field) };
-  if (field instanceof PDFCheckBox) return { name, kind: "tick", value: field.isChecked(), readOnly, pages };
-  if (field instanceof PDFRadioGroup) return { name, kind: "radio", value: field.getSelected() ?? "", options: field.getOptions(), readOnly, pages };
-  if (field instanceof PDFDropdown) return { name, kind: "choice", value: field.getSelected()[0] ?? "", options: field.getOptions(), readOnly, pages };
-  if (field instanceof PDFOptionList) return { name, kind: "list", value: field.getSelected(), options: field.getOptions(), readOnly, pages };
+  const required = field.isRequired() || undefined;
+  if (field instanceof PDFTextField) return { name, kind: "text", value: field.getText() ?? "", multiline: field.isMultiline() || undefined, readOnly, required, pages, dateFormat: dateFormatOf(field) };
+  if (field instanceof PDFCheckBox) return { name, kind: "tick", value: field.isChecked(), readOnly, required, pages };
+  if (field instanceof PDFRadioGroup) return { name, kind: "radio", value: field.getSelected() ?? "", options: field.getOptions(), readOnly, required, pages };
+  if (field instanceof PDFDropdown) return { name, kind: "choice", value: field.getSelected()[0] ?? "", options: field.getOptions(), readOnly, required, pages };
+  if (field instanceof PDFOptionList) return { name, kind: "list", value: field.getSelected(), options: field.getOptions(), readOnly, required, pages };
   if (field instanceof PDFSignature) return { name, kind: "signature", value: "", readOnly, pages };
   return { name, kind: "button", value: "", readOnly, pages };
 }

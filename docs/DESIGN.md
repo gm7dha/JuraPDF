@@ -112,5 +112,8 @@ tests          Vitest, pure code only;  scripts/smoke-test.mjs drives the built 
 - **v0.19 (done)** — **round buttons and date boxes**: round buttons are options of a radio group (pdf-lib `/Opt`),
   joined by set name; changing one rebuilds its set from the remembered options. Date boxes are text fields with
   Acrobat's `AFDate_FormatEx` / `AFDate_KeystrokeEx` actions, read back by JuraPDF (pdf.js `actions`, pdf-lib `AA`).
-- **Next (Tungsten-style)** — list boxes (several picks), signature boxes.
+- **v0.20 (done)** — **list boxes and needed boxes**: list boxes are pdf-lib option lists (multi-select when "Pick
+  several"); any form box can carry the Required flag (`required`, read by pdf.js and pdf-lib), shown in the fill-in
+  layer with a red edge while empty.
+- **Next (Tungsten-style)** — signature boxes, a form's tab order and tidying (align / same size).
 - **Later** — recent files, keeping work in the browser between visits, replying to notes.

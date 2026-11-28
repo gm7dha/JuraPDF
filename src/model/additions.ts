@@ -91,8 +91,8 @@ export interface InkItem {
   id?: number;
 }
 
-/** The kinds of form box: a box to type in, a tick box, or a list to choose from. */
-export type FieldKind = "text" | "tick" | "choice" | "round" | "date";
+/** The kinds of form box: a box to type in, a tick box, a drop-down list, a round button, a date box or a list showing every choice. */
+export type FieldKind = "text" | "tick" | "choice" | "round" | "date" | "list";
 
 /** Square kinds (a tick box, a round button): dragged or sized, they stay square. */
 export const squareField = (kind: FieldKind) => kind === "tick" || kind === "round";
@@ -116,8 +116,12 @@ export interface FieldItem {
   multiline?: boolean;
   /** A text box: the letter size, or 0 to fit the box. */
   size?: number;
-  /** A choice list: what can be chosen. */
+  /** A choice list or list box: what can be chosen. */
   choices?: string[];
+  /** A list box: more than one choice can be picked. */
+  several?: boolean;
+  /** Whoever fills in the form must fill this in (readers warn them if they don't). */
+  required?: boolean;
   /** A round button: what picking it means (its name among the round buttons of its set, which share `name`). */
   option?: string;
   /** A date box: how dates are written, e.g. "dd/mm/yyyy" (see DATE_FORMATS). */
@@ -125,10 +129,10 @@ export interface FieldItem {
   id?: number;
 }
 
-export const FIELD_NAMES: Record<FieldKind, string> = { text: "Text box", tick: "Tick box", choice: "Choice list", round: "Round button", date: "Date box" };
+export const FIELD_NAMES: Record<FieldKind, string> = { text: "Text box", tick: "Tick box", choice: "Choice list", round: "Round button", date: "Date box", list: "List box" };
 
 /** How a new box of each kind is named ("Text 1"); round buttons are named by their set. */
-export const FIELD_BASE: Record<FieldKind, string> = { text: "Text", tick: "Tick", choice: "Choice", round: "Set", date: "Date" };
+export const FIELD_BASE: Record<FieldKind, string> = { text: "Text", tick: "Tick", choice: "Choice", round: "Set", date: "Date", list: "List" };
 
 /** A form box's size when it's put on with a click rather than dragged. */
 export const FIELD_SIZE: Record<FieldKind, { width: number; height: number }> = {
@@ -137,7 +141,11 @@ export const FIELD_SIZE: Record<FieldKind, { width: number; height: number }> = 
   choice: { width: 150, height: 22 },
   round: { width: 14, height: 14 },
   date: { width: 120, height: 22 },
+  list: { width: 150, height: 60 },
 };
+
+/** Kinds that have choices to type (a drop-down list, a list box). */
+export const hasChoices = (kind: FieldKind) => kind === "choice" || kind === "list";
 
 /** A form box dragged out from (x1, y1) to (x2, y2); a click (or a tiny drag) gets the usual size. Tick boxes stay square. */
 export function fieldBox(kind: FieldKind, x1: number, y1: number, x2: number, y2: number): Rect {

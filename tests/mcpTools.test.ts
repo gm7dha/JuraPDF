@@ -186,6 +186,11 @@ describe("reading and changing a PDF", () => {
     expect(more).toMatch(/"Shift": set of round buttons on page 1, "Night"; choices "Day", "Night"/);
     expect(more).toMatch(/"Done on": date box \(dates written d mmmm yyyy\) on page 1, "28 November 2026"/);
     expect(await bad(s, "fill_form", { answers: { "Done on": "someday" } })).toMatch(/date box/);
+    // A list box where several can be picked, which must be filled in.
+    expect(await ok(s, "add_form_box", { page: 1, kind: "list", x: 300, y: 200, name: "Tools", choices: ["Hammer", "Saw", "Drill"], several: true, required: true })).toBe("Added a list box to page 1.");
+    expect(await ok(s, "fill_form", { answers: { Tools: ["saw", "drill"] } })).toBe("Filled in 1 form box.");
+    expect(await ok(s, "read_form")).toMatch(/"Tools": list on page 1, "Saw", "Drill"; choices "Hammer", "Saw", "Drill"; must be filled in/);
+    expect(await bad(s, "add_form_box", { page: 1, kind: "list", x: 300, y: 300 })).toMatch(/choices/);
     // Page numbers and headers.
     expect(await ok(s, "add_headers", { bottom_middle: "Page {page} of {pages}" })).toMatch(/^Added page numbers to every page\.$/);
     expect((await words(s))[0]).toContain("Page 1 of");

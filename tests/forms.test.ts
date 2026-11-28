@@ -267,6 +267,44 @@ describe("adding round buttons and date boxes", () => {
   });
 });
 
+describe("adding list boxes and boxes that must be filled in", () => {
+  it("makes a list box showing every choice, where several can be picked, and marks boxes as needed", async () => {
+    const doc = await PDFDocument.create();
+    doc.addPage([400, 400]);
+    let bytes: Uint8Array = await doc.save();
+    const list: FieldItem = { kind: "field", field: "list", page: 0, x: 50, y: 50, width: 150, height: 60, name: "Tools", choices: ["Hammer", "Saw", "Drill"], several: true, required: true };
+    bytes = await addItems(bytes, [list]);
+    bytes = await addItems(bytes, [{ kind: "field", field: "text", page: 0, x: 50, y: 150, width: 150, height: 22, name: "Who", required: true }]);
+    bytes = await addItems(bytes, [{ kind: "field", field: "tick", page: 0, x: 50, y: 200, width: 14, height: 14, name: "Maybe" }]);
+    const fields = await formFields(bytes);
+    expect(fields.map((f) => [f.name, f.kind, f.options, f.required])).toEqual([
+      ["Tools", "list", ["Hammer", "Saw", "Drill"], true],
+      ["Who", "text", undefined, true],
+      ["Maybe", "tick", undefined, undefined],
+    ]);
+    const boxes = await boxesOn(bytes, 1);
+    const tools = boxes.find((b) => b.name === "Tools")!;
+    expect(tools).toMatchObject({ kind: "list", several: true, required: true });
+    expect(Math.abs(tools.y - 50)).toBeLessThanOrEqual(1);
+    expect(Math.abs(tools.height - 60)).toBeLessThanOrEqual(1);
+    expect(boxes.find((b) => b.name === "Who")?.required).toBe(true);
+    expect(boxes.find((b) => b.name === "Maybe")?.required).toBeUndefined();
+    bytes = await fillForm(bytes, [{ name: "Tools", value: ["Saw", "Drill"] }]);
+    expect((await formFields(bytes))[0].value).toEqual(["Saw", "Drill"]);
+    // Changing it keeps what it is: one pick only now.
+    const [kept] = (await keptIn(bytes))[0];
+    expect(kept.item).toMatchObject({ field: "list", several: true, required: true });
+    bytes = await changeItem(bytes, 0, kept.id, { ...(kept.item as FieldItem), several: false, required: false });
+    expect((await boxesOn(bytes, 1)).find((b) => b.name === "Tools")).toMatchObject({ kind: "list", several: undefined, required: undefined });
+  });
+
+  it("turns away a list box with no choices", async () => {
+    const doc = await PDFDocument.create();
+    doc.addPage([400, 400]);
+    await expect(addItems(await doc.save(), [{ kind: "field", field: "list", page: 0, x: 50, y: 50, width: 150, height: 60, name: "Empty", choices: [] }])).rejects.toThrow(/choices/);
+  });
+});
+
 describe("dates typed loosely", () => {
   it("takes numbers in the format's order of day and month", () => {
     expect(dateForBox("3/4/2026", "d mmmm yyyy")).toBe("3 April 2026");

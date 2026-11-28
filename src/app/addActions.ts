@@ -26,6 +26,7 @@ import {
   FIELD_NAMES,
   FIELD_SIZE,
   freshOption,
+  hasChoices,
   squareField,
   fieldBox,
   freshFieldName,
@@ -130,7 +131,7 @@ function freshField(field: FieldKind): Pick<FieldItem, "name"> & Partial<Pick<Fi
     const set = lastRoundSet && fields.some((f) => f.field === "round" && f.name === lastRoundSet) ? lastRoundSet : freshFieldName("round", names);
     return { name: set, option: freshOption(fields.filter((f) => f.field === "round" && f.name === set).map((f) => f.option ?? "")) };
   }
-  return { name: freshFieldName(field, names), choices: field === "choice" ? ["Yes", "No"] : undefined, dateFormat: field === "date" ? lastDateFormat : undefined };
+  return { name: freshFieldName(field, names), choices: hasChoices(field) ? ["Yes", "No"] : undefined, dateFormat: field === "date" ? lastDateFormat : undefined };
 }
 
 /** How the last date box wrote dates. */
@@ -175,7 +176,7 @@ export function setFieldKind(field: FieldKind): void {
   const size = d.width === was.width && d.height === was.height ? FIELD_SIZE[field] : squareField(field) ? { width: side, height: side } : { width: Math.max(d.width, 60), height: Math.max(d.height, 16) };
   const fresh = new RegExp(`^(${Object.values(FIELD_BASE).join("|")}) \\d+$`).test(d.name);
   const named = fresh || field === "round" || d.field === "round" ? freshField(field) : { name: d.name };
-  updateDraft({ field, ...size, ...named, choices: field === "choice" ? (d.choices ?? ["Yes", "No"]) : d.choices, dateFormat: field === "date" ? (d.dateFormat ?? lastDateFormat) : undefined }, true);
+  updateDraft({ field, ...size, ...named, choices: hasChoices(field) ? (d.choices ?? ["Yes", "No"]) : d.choices, dateFormat: field === "date" ? (d.dateFormat ?? lastDateFormat) : undefined }, true);
 }
 
 /** The last colour, thickness and see-through used for the pen. */

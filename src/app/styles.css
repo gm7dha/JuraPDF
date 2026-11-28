@@ -2012,6 +2012,20 @@ span.bookmark-fold {
   border-radius: 50%;
 }
 
+/* A list box: every choice showing, one to a line. */
+.field-box.list {
+  align-items: flex-start;
+  justify-content: flex-start;
+  overflow: hidden;
+  padding-top: 2px;
+}
+
+.field-list {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
 .field-box.date span:first-child {
   color: var(--ink-3);
 }
@@ -2187,6 +2201,12 @@ span.bookmark-fold {
   color: #000;
   caret-color: #000;
   box-shadow: inset 0 0 0 1.5px #1f6fd1;
+}
+
+/* A box the form says must be filled in, still empty: a red edge. */
+.form-box.needed:not(:focus):not(.typing) {
+  outline: 1.5px solid rgba(209, 55, 58, 0.75);
+  outline-offset: -1.5px;
 }
 
 textarea.form-box {
