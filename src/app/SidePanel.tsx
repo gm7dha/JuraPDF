@@ -1,5 +1,5 @@
 /**
- * The panel down the left: the pages (small pictures), the bookmarks or the notes, picked
+ * The panel down the left: the pages (small pictures), the bookmarks, the notes or (while comparing) the differences, picked
  * with the tabs at its top. Drag its right edge to make it wider or narrower.
  */
 import { useState, type KeyboardEvent, type PointerEvent } from "react";
@@ -7,6 +7,7 @@ import { useState, type KeyboardEvent, type PointerEvent } from "react";
 import { DEFAULT_SIDE_WIDTH, clampSideWidth } from "../model/sidePanel";
 import { useStore, type SidePane } from "../model/store";
 import { Bookmarks } from "./Bookmarks";
+import { ChangesList } from "./ChangesList";
 import { NotesList } from "./NotesList";
 import { Thumbnails } from "./Thumbnails";
 
@@ -19,10 +20,13 @@ const TABS: { pane: SidePane; label: string }[] = [
 export function SidePanel() {
   const pane = useStore((s) => s.sidePane);
   const width = useStore((s) => s.sideWidth[s.sidePane]);
+  const comparing = useStore((s) => !!s.compare);
+  // The Changes tab is there only while comparing with another PDF.
+  const tabs = comparing ? [...TABS, { pane: "changes" as const, label: "Changes" }] : TABS;
   return (
     <aside className={`side-panel ${pane}`}>
       <div className="side-tabs" role="tablist" aria-label="Side panel">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.pane}
             type="button"
@@ -38,7 +42,7 @@ export function SidePanel() {
         ))}
       </div>
       <div className="side-pane" id="side-pane" role="tabpanel" aria-labelledby={`side-tab-${pane}`}>
-        {pane === "pages" ? <Thumbnails /> : pane === "bookmarks" ? <Bookmarks /> : <NotesList />}
+        {pane === "pages" ? <Thumbnails /> : pane === "bookmarks" ? <Bookmarks /> : pane === "changes" ? <ChangesList /> : <NotesList />}
       </div>
       <ResizeEdge pane={pane} width={width} />
     </aside>

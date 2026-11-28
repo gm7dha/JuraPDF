@@ -126,6 +126,18 @@ export interface NewNote {
 /** The PDF with a new note on a page; also gives the new note's id. */
 export async function addNote(bytes: Uint8Array, note: NewNote, now = new Date()): Promise<{ bytes: Uint8Array<ArrayBuffer>; id: string }> {
   const doc = await loadForEditing(bytes);
+  const id = putNote(doc, note, now);
+  return { bytes: await saveEdited(doc), id };
+}
+
+/** The PDF with several new notes (one save, e.g. marking the differences found by comparing). */
+export async function addNotes(bytes: Uint8Array, notes: readonly NewNote[], now = new Date()): Promise<Uint8Array<ArrayBuffer>> {
+  const doc = await loadForEditing(bytes);
+  for (const note of notes) putNote(doc, note, now);
+  return saveEdited(doc);
+}
+
+function putNote(doc: PDFDocument, note: NewNote, now: Date): string {
   if (note.page < 0 || note.page >= doc.getPageCount()) throw new NoteProblem(`There's no page ${note.page + 1}.`);
   const page = doc.getPage(note.page);
   const when = PDFString.of(pdfDate(now));
@@ -146,7 +158,7 @@ export async function addNote(bytes: Uint8Array, note: NewNote, now = new Date()
   });
   const ref = doc.context.register(dict);
   page.node.addAnnot(ref);
-  return { bytes: await saveEdited(doc), id: idOf(ref) };
+  return idOf(ref);
 }
 
 export interface NoteChange {

@@ -260,17 +260,17 @@ export async function formBoxes(page: PDFPageProxy): Promise<FormBox[]> {
 
 /**
  * Each bit of a page's words (in the same order as `pageTextBits`) with its box
- * as shown, in points from the top-left; `level` is false for words that
- * don't run across the page (their box is only rough).
+ * as shown, in points from the top-left; `usable` is false for mirrored words,
+ * and `hasEOL` marks the end of a line.
  */
-export async function pageTextBoxes(doc: PDFDocumentProxy, index: number): Promise<(TextBox & { usable: boolean })[]> {
+export async function pageTextBoxes(doc: PDFDocumentProxy, index: number): Promise<(TextBox & { usable: boolean; hasEOL: boolean })[]> {
   const page = await doc.getPage(index + 1);
   const unit = page.getViewport({ scale: 1 });
-  const out: (TextBox & { usable: boolean })[] = [];
+  const out: (TextBox & { usable: boolean; hasEOL: boolean })[] = [];
   for (const item of (await page.getTextContent()).items) {
     if (!("str" in item)) continue;
     const box = textBoxFrom(item.str, pdfjs.Util.transform(unit.transform, item.transform), item.width, item.height);
-    if (box) out.push(box);
+    if (box) out.push({ ...box, hasEOL: item.hasEOL });
   }
   return out;
 }

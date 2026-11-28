@@ -3,6 +3,7 @@ import { create } from "zustand";
 import type { PDFDocumentProxy } from "../pdf/pdfjs";
 import { pickPages, type ClickKind } from "./pages";
 import type { Draft, Placing } from "./additions";
+import type { CompareState } from "./compare";
 import type { OpenNote } from "./notes";
 import type { SearchState } from "./search";
 import type { Mark } from "./redact";
@@ -25,7 +26,7 @@ export interface OpenPdf {
   password?: string;
 }
 
-export type SidePane = "pages" | "bookmarks" | "notes";
+export type SidePane = "pages" | "bookmarks" | "notes" | "changes";
 
 export type DialogName = "compress" | "help" | "headers" | "password" | "print" | "sign" | "stamp" | "watermark" | "whatsNew" | null;
 
@@ -97,8 +98,11 @@ interface State {
   markDraft: Mark | null;
   /** The sticky note open to read or change (a new one has no id), or null. Cleared by every change. */
   note: OpenNote | null;
+  /** Comparing with another PDF: its words and the differences found, or null when not comparing. Ends when another file is opened. */
+  compare: CompareState | null;
 
   setNote(note: OpenNote | null): void;
+  setCompare(compare: CompareState | null): void;
   setPdf(pdf: OpenPdf | null): void;
   /** A change to the PDF (labelled for Undo); `pdf` is the new version. */
   changePdf(pdf: OpenPdf, label: string): void;
@@ -192,13 +196,18 @@ export const useStore = create<State>((set, get) => ({
   marks: [],
   markDraft: null,
   note: null,
+  compare: null,
 
   setNote: (note) => set({ note }),
+  setCompare(compare) {
+    // The Changes tab goes with the comparison.
+    set(compare || get().sidePane !== "changes" ? { compare } : { compare, sidePane: rememberedPane() });
+  },
   setPdf(pdf) {
     const { pdf: old, past, future } = get();
     const keep = new Set(pdf ? [pdf.doc] : []);
     for (const p of [old, ...past.map((s) => s.pdf), ...future.map((s) => s.pdf)]) if (p && !keep.has(p.doc)) void p.doc.destroy();
-    set({ pdf, currentPage: 0, goTo: null, zoom: get().onePage ? "page" : "width", savedAs: null, savedBytes: pdf?.bytes ?? null, past: [], future: [], selected: [], anchor: null, marks: [], markDraft: null, note: null, placing: null, draft: null, search: pdf ? get().search : null });
+    set({ pdf, currentPage: 0, goTo: null, zoom: get().onePage ? "page" : "width", savedAs: null, savedBytes: pdf?.bytes ?? null, past: [], future: [], selected: [], anchor: null, marks: [], markDraft: null, note: null, placing: null, draft: null, search: pdf ? get().search : null, compare: null, sidePane: get().sidePane === "changes" ? rememberedPane() : get().sidePane });
   },
   changePdf(pdf, label) {
     const { pdf: old, past, future } = get();
@@ -241,7 +250,8 @@ export const useStore = create<State>((set, get) => ({
   toggleSidebar: () => set({ sidebar: !get().sidebar }),
   setSidePane(sidePane) {
     try {
-      globalThis.localStorage?.setItem(SIDE_PANE_KEY, sidePane);
+      // The Changes tab only shows while comparing, so it isn't remembered.
+      if (sidePane !== "changes") globalThis.localStorage?.setItem(SIDE_PANE_KEY, sidePane);
     } catch {
       // Not remembered; still works now.
     }

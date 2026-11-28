@@ -16,6 +16,7 @@ import { drawAhead, keepCanvas, keptCanvas } from "./pageCanvases";
 import { keptAt } from "../model/additions";
 import { keptIn, keptKnown } from "../pdf/items";
 import { clickPage, endFieldDrag, fieldDragTo, startFieldAt, endShapeDrag, endStroke, finishAdding, justDragged, placeAt, startShapeAt, startStrokeAt, strokeTo, updateDraft } from "./addActions";
+import { CompareLayer } from "./CompareLayer";
 import { DraftBox } from "./DraftBox";
 import { FormLayer } from "./FormLayer";
 import { MarksLayer } from "./MarksLayer";
@@ -419,6 +420,7 @@ const PageSlot = memo(function PageSlot({ doc, index, box, zoom, root }: SlotPro
       <SearchHits index={index} spans={spans} />
       <div className="textLayer" ref={text} />
       {near && <FormLayer doc={doc} index={index} scale={cssScale} />}
+      {near && <CompareLayer index={index} scale={cssScale} />}
       <MarksLayer index={index} scale={cssScale} />
       {near && <NotesLayer index={index} scale={cssScale} />}
       <DraftBox index={index} scale={cssScale} />

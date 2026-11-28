@@ -103,5 +103,8 @@ tests          Vitest, pure code only;  scripts/smoke-test.mjs drives the built 
   object streams; Claude's tidy_pdf (tidying only).
 - **v0.16 (done)** — **stamps**: ready-made and own words, colour, name and date, drawn by the browser as a PNG
   and placed like a signature (changeable picture, "stamp “X” on page N").
+- **v0.17 (done)** — **compare two PDFs**: both files' words read with pdf.js, compared word by word (Myers, at most
+  2,500 differences), listed in a Changes tab, coloured in on the pages, and marked for good as green highlights and
+  red sticky notes (one undo step); Claude's compare_pdfs.
 - **Next (Tungsten-style)** — more form box kinds.
 - **Later** — recent files, keeping work in the browser between visits, replying to notes.

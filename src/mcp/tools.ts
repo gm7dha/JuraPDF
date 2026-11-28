@@ -24,7 +24,8 @@ import { squeeze } from "../pdf/compress";
 import { AddProblem, addItems, addPicture, addShape, addWords, pictureType } from "../pdf/additions";
 import { moveTo, sameOrder } from "../model/pages";
 import { InputError, bool, noExtras, num, object, oneOf, text } from "./args";
-import { isLocked, pageFacts, pageWords } from "./reading";
+import { isLocked, pageBits, pageFacts, pageWords } from "./reading";
+import { changesBetween, changesText, wordsIn, type WordAt } from "../model/compare";
 import { Cancelled, type PdfDoc, type Session } from "./session";
 import { checkFree, fileNameFor, needFolder, say, writeOut, type ToolDef, type ToolResult } from "./toolKit";
 
@@ -35,7 +36,7 @@ export const FORMAT_GUIDE = `How JuraPDF works with PDFs:
 - You work on one PDF at a time. Live with Claude (live_status): when the user's JuraPDF tab is connected, that's the PDF open there, and each change shows there at once as one step in its Undo list. Otherwise open one from the JuraPDF folder (list_pdfs, open_pdf), or start one (new_pdf), and save_pdf when done.
 - Pages are numbered from 1, as the user sees them. "pages" takes a number, a list of numbers, or text like "1-3, 5", "4-" (4 to the end), "all", "odd", "even" or "last".
 - Sizes are paper names (A4, Letter…) or millimetres; "landscape" means wider than tall. A page's "turn" is how it has been rotated to show (0, 90, 180 or 270 degrees clockwise).
-- describe_pdf gives the pages and a taste of their words; read_words gives the words of chosen pages (scanned pages, being pictures, have none).
+- describe_pdf gives the pages and a taste of their words; read_words gives the words of chosen pages (scanned pages, being pictures, have none); compare_pdfs lists the words that differ from another PDF in the folder (an older version, say).
 - Changes: add_watermark (words or a PNG/JPG picture from the folder, saved into the pages), add_words and add_picture (writing or a PNG/JPG picture such as a signature on one page, placed in points from its top-left corner as it shows; describe_pdf gives the page sizes), add_shape (a see-through highlight over words, or a box, oval, line or arrow to point something out, a box or oval filled in if wanted; read_words gives where words are), add_form_box (a text box, tick box or choice list that whoever opens the PDF can fill in, e.g. to make a printed form fillable), fill_form (fill in the PDF's form boxes; read_form lists them with what's in them), add_headers (page numbers, Bates numbers or words along the top and bottom of pages), add_note (a sticky note, a comment pinned to a page; read_notes lists the notes and their replies, delete_note takes one off), tidy_pdf (a little smaller, looking the same), turn_pages, delete_pages (one page must stay), move_pages, add_blank_pages, bring_in_pdf (all the pages of another PDF from the folder: this is how to join PDFs), save_pages_as_pdf (some pages as a new PDF in the folder: this is how to split one). undo takes back your last change.
 - Locked PDFs (with a password or protected against changes) can be read but not changed.
 - Talk to the user in plain words: "pages", "words", "picture", "see-through" — not PDF jargon.`;
@@ -899,6 +900,31 @@ export const TOOLS: ToolDef[] = [
         `brought in ${other.name}`,
       );
       return say(`Brought in ${plural(added, "page")} from ${other.name} ${after === 0 ? "at the start" : `after page ${after}`}: now ${added === 1 ? `page ${after + 1}` : `pages ${after + 1}-${after + added}`}. The PDF has ${plural(count + added, "page")}.`);
+    },
+  },
+  {
+    name: "compare_pdfs",
+    title: "Compare with another PDF",
+    description:
+      "Find the words that differ between the PDF being worked on and another PDF in the JuraPDF folder (an older version, say): words put in, taken out and changed, with their pages. Nothing changes. In the app the user can see them coloured in with the Compare button.",
+    inputSchema: { type: "object", properties: { filename: { type: "string", description: "The other PDF, in the JuraPDF folder." } }, required: ["filename"] },
+    readOnly: true,
+    async run(s, a) {
+      noExtras(a, ["filename"], "compare_pdfs");
+      const doc = needDoc(s);
+      const other = readPdfFile(s, a.filename);
+      const wordsOf = async (bytes: Uint8Array, name: string): Promise<WordAt[]> => {
+        try {
+          return (await pageBits(bytes)).flatMap((bits, page) => wordsIn(bits, page));
+        } catch (e) {
+          if (e instanceof LockedPdf) throw new InputError(`${name} is protected by a password, so its words can't be read.`);
+          throw e;
+        }
+      };
+      const mine = await wordsOf(doc.bytes, doc.name);
+      const theirs = await wordsOf(other.bytes, other.name);
+      if (!mine.length || !theirs.length) return say(`${!mine.length ? doc.name : other.name} has no words to compare (scanned pages are pictures of words).`);
+      return say(`Comparing ${doc.name} (this PDF) with ${other.name}.\n${changesText(changesBetween(theirs, mine), other.name)}`);
     },
   },
   {

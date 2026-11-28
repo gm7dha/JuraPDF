@@ -11,6 +11,7 @@ import { Icons } from "./icons";
 import { savePagesAsPictures, saveWordsAsText } from "./exportActions";
 import { readWordsInPictures } from "./ocrActions";
 import { emptyForm, fixAnswers, hasForm } from "./formActions";
+import { startComparing } from "./compareActions";
 import { startNoting } from "./noteActions";
 import { startMarking, stopMarking } from "./redactActions";
 import { addBlank, deleteChosen, insertFromFile, moveChosen, saveChosenAsNew, turnChosen } from "./pageActions";
@@ -39,6 +40,7 @@ export function ViewBar() {
   const changing = useStore((s) => s.placing?.kind === "change" || s.draft?.kind === "existing" || (s.draft?.kind === "words" && !!s.draft.cover) || (!!s.draft && "id" in s.draft && s.draft.id !== undefined));
   const fielding = useStore((s) => s.placing?.kind === "field" || (s.draft?.kind === "field" && s.draft.id === undefined));
   const marking = useStore((s) => s.placing?.kind === "redact");
+  const comparing = useStore((s) => !!s.compare);
   const noting = useStore((s) => s.placing?.kind === "note");
   const inking = useStore((s) => s.placing?.kind === "ink" || (s.draft?.kind === "ink" && s.draft.id === undefined));
   const selected = useStore((s) => s.selected);
@@ -338,6 +340,15 @@ export function ViewBar() {
           title="Make smaller: shrink the PDF's big pictures and tidy it, for email or the web"
         >
           <Icons.Squeeze />
+        </button>
+        <button
+          type="button"
+          className={`icon-button${comparing ? " active" : ""}`}
+          onClick={() => (comparing ? s().setSidePane("changes") : void startComparing())}
+          aria-label="Compare with another PDF"
+          title="Compare: find the words that differ between this PDF and another one (an older version, say)"
+        >
+          <Icons.Compare />
         </button>
         {form && (
           <>

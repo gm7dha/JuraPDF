@@ -5,6 +5,18 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.17 — Compare two PDFs
+
+- **Compare** (the button with two pages and arrows): pick another PDF, an older version say, and JuraPDF finds
+  every word that's different. A new **Changes** tab in the side panel lists them, with their pages.
+- Click one (or press F4, and Shift+F4 to go back) to see it on its page: new words are coloured green, changed
+  words amber, and a red bar shows where words were taken out. It works on pages turned sideways too.
+- **Mark them on this PDF** writes them in for good: new words highlighted green, and a red sticky note where words
+  were taken out or changed, saying what they used to be. Undo takes it all back in one go.
+- Edit the PDF while comparing and the differences are worked out again by themselves.
+- Claude can compare too: the new compare_pdfs tool lists the differences from another PDF in the JuraPDF folder.
+- Scanned pages are pictures of words, so they can't be compared until "Read words in pictures" has found the words.
+
 ## v0.16.1 — Fixes from testing
 
 - **Black out on turned pages is fixed.** On a page turned sideways or upside down, "Black out everything found"
