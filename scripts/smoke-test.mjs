@@ -1004,6 +1004,35 @@ await step("round buttons that make a set, and a date box with a calendar", asyn
   await page.waitForFunction((n) => window.jurapdfStore.getState().past.length === n, steps);
 });
 
+await step("a list box where several can be picked, which must be filled in", async () => {
+  const steps = await page.evaluate(() => window.jurapdfStore.getState().past.length);
+  await page.keyboard.press("Home");
+  const p1 = await page.locator('.page[data-page="1"]').boundingBox();
+  const label = (l) => page.waitForFunction((l) => window.jurapdfStore.getState().past.at(-1)?.label === l, l);
+  await page.keyboard.press("f");
+  await page.mouse.click(p1.x + p1.width * 0.6, p1.y + p1.height * 0.32);
+  await page.getByLabel("Kind of form box").selectOption("list");
+  await page.getByRole("textbox", { name: "Name", exact: true }).fill("Tools");
+  await page.getByLabel("Choices").fill("Hammer\nSaw\nDrill");
+  await page.getByLabel("Pick several").check();
+  await page.getByLabel("Must be filled in").check();
+  await page.getByRole("button", { name: "Done" }).click();
+  await label("add a list box to page 1");
+  await page.locator(".draft").waitFor({ state: "detached" });
+  const list = page.getByRole("listbox", { name: "Tools (must be filled in)" });
+  await list.waitFor();
+  expect(await list.evaluate((e) => e.classList.contains("needed")), "an empty box that must be filled in should have a red edge");
+  if (process.env.SMOKE_SCREENSHOT) await page.screenshot({ path: "smoke-list.png" });
+  await list.selectOption(["Saw", "Drill"]);
+  await label("pick 2 choices for “Tools”");
+  await page.waitForFunction(() => !document.querySelector(".form-list.needed"));
+  const bytes = Buffer.from(await page.evaluate(() => Array.from(window.jurapdfStore.getState().pdf.bytes)));
+  const tools = (await PDFDocument.load(bytes)).getForm().getOptionList("Tools");
+  expect(tools.isRequired() && tools.getSelected().join() === "Saw,Drill", `Tools should be needed, with Saw and Drill picked: ${tools.getSelected()}`);
+  for (let i = 0; i < 2; i++) await page.keyboard.press("Control+z");
+  await page.waitForFunction((n) => window.jurapdfStore.getState().past.length === n, steps);
+});
+
 await step("adding page numbers, then taking them off", async () => {
   const steps = await page.evaluate(() => window.jurapdfStore.getState().past.length);
   await page.getByRole("button", { name: "Headers and footers", exact: true }).click();

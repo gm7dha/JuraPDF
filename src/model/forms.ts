@@ -47,6 +47,8 @@ export interface FormBox {
   secret?: boolean;
   /** A date box: how its dates are written (from the form's own instructions, e.g. "dd/mm/yyyy"). */
   dateFormat?: string;
+  /** Must be filled in (the form says so). */
+  required?: boolean;
 }
 
 /** An answer to put in a form: words, ticked or not, or the choice(s) picked. */
@@ -70,6 +72,8 @@ export interface FormFieldInfo {
   pages: number[];
   /** A date box: how its dates are written. */
   dateFormat?: string;
+  /** Must be filled in. */
+  required?: boolean;
 }
 
 export const FORM_KIND_NAMES: Record<FormFieldInfo["kind"], string> = {
@@ -205,6 +209,7 @@ interface WidgetData {
   defaultAppearanceData?: { fontSize?: number };
   password?: boolean;
   actions?: Record<string, string[]> | null;
+  required?: boolean;
 }
 
 const asText = (v: unknown): string => (typeof v === "string" ? v : v === undefined || v === null ? "" : Array.isArray(v) ? v.map(asText).join(", ") : String(v));
@@ -223,7 +228,7 @@ export function formBoxesFrom(annotations: readonly unknown[], toShown: (rect: n
     const [x1, y1, x2, y2] = toShown(a.rect);
     const where = { x: Math.min(x1, x2), y: Math.min(y1, y2), width: Math.abs(x2 - x1), height: Math.abs(y2 - y1) };
     if (where.width < 1 || where.height < 1) continue;
-    const common = { name: a.fieldName, ...where, readOnly: a.readOnly || undefined };
+    const common = { name: a.fieldName, ...where, readOnly: a.readOnly || undefined, required: a.required || undefined };
     if (a.fieldType === "Tx") {
       boxes.push({
         ...common,

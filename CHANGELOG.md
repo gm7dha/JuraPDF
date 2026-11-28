@@ -5,6 +5,14 @@ request that undoes everything after that point. Your PDFs are ordinary files an
 
 The point in the history for each version is the commit shown (see https://github.com/gm7dha/JuraPDF/commits/main).
 
+## v0.20 — List boxes, and boxes that must be filled in
+
+- A new kind of form box, the **list box**: every choice shows at once, one to a line. Tick **Pick several** and
+  whoever fills it in can pick more than one (hold Ctrl, or ⌘ on a Mac, to pick another).
+- Any form box can now be marked **Must be filled in**. Acrobat and other readers remind people about it, and in
+  JuraPDF an empty one has a red edge until it's filled in.
+- Claude can add list boxes and needed boxes too, and sees which boxes must be filled in.
+
 ## v0.19 — Round buttons and date boxes
 
 - Two more kinds of form box (the form box tool, F, then pick the kind):

@@ -48,10 +48,10 @@ export const FormLayer = memo(function FormLayer({ doc, index, scale }: Props) {
 
 function Box({ box, scale }: { box: FormBox; scale: number }) {
   const place: CSSProperties = { left: box.x * scale, top: box.y * scale, width: box.width * scale, height: box.height * scale };
-  const tip = `${box.name}${box.readOnly ? " (can't be changed)" : ""}`;
+  const tip = `${box.name}${box.readOnly ? " (can't be changed)" : box.required ? " (must be filled in)" : ""}`;
   if (box.kind === "text") return <TextBox box={box} place={place} scale={scale} tip={tip} />;
   if (box.kind === "tick" || box.kind === "radio") return <TickBox box={box} place={place} scale={scale} tip={tip} />;
-  return <ListBox box={box} place={place} tip={tip} />;
+  return <ListBox box={box} place={place} scale={scale} tip={tip} />;
 }
 
 function TextBox({ box, place, scale, tip }: { box: FormBox; place: CSSProperties; scale: number; tip: string }) {
@@ -87,7 +87,7 @@ function TextBox({ box, place, scale, tip }: { box: FormBox; place: CSSPropertie
   const size = fitFontSize(box) * scale;
   const style: CSSProperties = { ...place, fontSize: size, lineHeight: box.multiline ? 1.15 : `${(box.height * scale) - 2}px`, textAlign: box.align === 1 ? "center" : box.align === 2 ? "right" : "left" };
   const props = {
-    className: `form-box form-text${typed !== null ? " typing" : ""}`,
+    className: `form-box form-text${typed !== null ? " typing" : ""}${box.required && !(typed ?? saved) ? " needed" : ""}`,
     style,
     value: typed ?? saved,
     readOnly: box.readOnly,
@@ -166,7 +166,7 @@ function TickBox({ box, place, scale, tip }: { box: FormBox; place: CSSPropertie
       aria-checked={shown}
       aria-label={tip}
       title={tip}
-      className={`form-box form-tick${radio ? " round" : ""}${wanted !== null ? " typing" : ""}`}
+      className={`form-box form-tick${radio ? " round" : ""}${wanted !== null ? " typing" : ""}${box.required && !radio && !shown ? " needed" : ""}`}
       style={{ ...place, fontSize: Math.min(box.width, box.height) * scale * 0.8 }}
       onClick={toggle}
       onKeyDown={(e) => {
@@ -182,7 +182,7 @@ function TickBox({ box, place, scale, tip }: { box: FormBox; place: CSSPropertie
   );
 }
 
-function ListBox({ box, place, tip }: { box: FormBox; place: CSSProperties; tip: string }) {
+function ListBox({ box, place, scale, tip }: { box: FormBox; place: CSSProperties; scale: number; tip: string }) {
   const picked = (Array.isArray(box.value) ? box.value : [String(box.value)]).filter((v) => v !== "").map((v) => optionLabel(box, v));
   const [wanted, setWanted] = useState<string[] | null>(null);
   useEffect(() => {
@@ -193,8 +193,9 @@ function ListBox({ box, place, tip }: { box: FormBox; place: CSSProperties; tip:
   const several = !!box.several;
   return (
     <select
-      className={`form-box form-list${wanted ? " typing" : ""}`}
-      style={place}
+      className={`form-box form-list${wanted ? " typing" : ""}${box.required && !shown.length ? " needed" : ""}`}
+      // A list box's choices show one to a line, at about the size the PDF draws them.
+      style={box.kind === "list" ? { ...place, fontSize: Math.max(6, Math.min(10, (box.height / Math.max(2, labels.length)) * 0.8)) * scale } : place}
       title={tip}
       aria-label={tip}
       disabled={box.readOnly}
